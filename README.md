@@ -4,8 +4,8 @@
  (Under active development!)
 
 ## Table of Contents
-- Download taxaHFE
-- Quickstart
+- [Download taxaHFE](https://github.com/aoliver44/taxaHFE#download-taxahfe)
+- [Quickstart](https://github.com/aoliver44/taxaHFE#quickstart)
 - About
 - Flag information
 - Contribute
