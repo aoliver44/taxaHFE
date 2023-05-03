@@ -6,9 +6,9 @@
 ## Table of Contents
 - [Download taxaHFE](https://github.com/aoliver44/taxaHFE#download-taxahfe)
 - [Quickstart](https://github.com/aoliver44/taxaHFE#quickstart)
-- About
-- Flag information
-- Contribute
+- [Flag information](https://github.com/aoliver44/taxaHFE#information-about-the-flags)
+- - [About](https://github.com/aoliver44/taxaHFE#about)
+- [Contribute](https://github.com/aoliver44/taxaHFE#contribute)
 
 ![Outline of taxaHFE algorithm](microbial_HFE_flowchart.png "Outline of taxaHFE algorithm")
 
@@ -92,7 +92,7 @@ We developed software, called taxaHFE (Hierarchical Feature Engineering), which 
 
 ## Contribute
 
-Feel free to raise in issue, contribute with a pull request, or reach out!
+Feel free to raise an issue, contribute with a pull request, or reach out!
 
 
 
