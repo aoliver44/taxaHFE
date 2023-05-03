@@ -10,6 +10,14 @@
 - - [About](https://github.com/aoliver44/taxaHFE#about)
 - [Contribute](https://github.com/aoliver44/taxaHFE#contribute)
 
+
+
+-----------------------------
+
+<br/>
+
+## **Outline of taxaHFE**
+
 ![Outline of taxaHFE algorithm](microbial_HFE_flowchart.png "Outline of taxaHFE algorithm")
 
 ## Download taxaHFE
