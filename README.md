@@ -34,13 +34,19 @@ Alternatively, you can pull this image using Singularity:
 singularity pull aoliver44/taxa_hfe:latest
 ```
 ## Quickstart
+Using the example data provided!
 1. Start the docker image in the directory with your data!
 ```
 docker run --rm -it -v `pwd`:/home/docker -w /home/docker taxa_hfe:latest bash
 ```
-2. run taxaHFE
+2. run taxaHFE (generic)
 ```
 taxaHFE --subject_identifier subject_id --label cluster [FULL METADATA PATH] [FULL INPUT PATH] [FULL OUTPUT PATH]
+```
+
+3. run taxaHFE on example data provided
+```
+taxaHFE --subject_identifier Sample --label Category --feature_type factor --format_metaphlan TRUE --write_old_files TRUE --ncores 4 /home/docker/example_inputs/metadata.txt /home/docker/example_inputs/microbiome_data.txt /home/docker/example_inputs/output.txt
 ```
 
 ## Information about the flags
