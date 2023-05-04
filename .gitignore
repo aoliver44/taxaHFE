@@ -4,3 +4,6 @@
 .Ruserdata
 home.Rproj
 .Rprofile
+example_inputs/.DS_Store
+.DS_Store
+.bash_history
