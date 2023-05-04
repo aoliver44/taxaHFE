@@ -1,7 +1,7 @@
 
  # **taxaHFE**
  
- (Under active development!)
+ A program to perform hierarchical feature engineering on data with taxonomic organization (i.e., microbiome data, dietary data)
 
 ## Table of Contents
 - [Download taxaHFE](https://github.com/aoliver44/taxaHFE#download-taxahfe)
