@@ -7,7 +7,7 @@
 - [Download taxaHFE](https://github.com/aoliver44/taxaHFE#download-taxahfe)
 - [Quickstart](https://github.com/aoliver44/taxaHFE#quickstart)
 - [Flag information](https://github.com/aoliver44/taxaHFE#information-about-the-flags)
-- - [About](https://github.com/aoliver44/taxaHFE#about)
+- [About](https://github.com/aoliver44/taxaHFE#about)
 - [Contribute](https://github.com/aoliver44/taxaHFE#contribute)
 
 
@@ -25,18 +25,18 @@
 The easiest way to get started is pulling the docker image. Please [install docker](https://www.docker.com/) you go this route. 
 
 ```
-docker pull aoliver44/nutrition_tools:base_1.7
+docker pull aoliver44/taxa_hfe:latest
 ```
 
 Alternatively, you can pull this image using Singularity:
 
 ```
-singularity pull aoliver44/nutrition_tools:base_1.7
+singularity pull aoliver44/taxa_hfe:latest
 ```
 ## Quickstart
 1. Start the docker image in the directory with your data!
 ```
-docker run --rm -it -v `pwd`:/home/docker -w /home/docker aoliver44/nutrition_tools:base_1.7 bash
+docker run --rm -it -v `pwd`:/home/docker -w /home/docker taxa_hfe:latest bash
 ```
 2. run taxaHFE
 ```
