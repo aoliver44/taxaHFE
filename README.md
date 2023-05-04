@@ -77,6 +77,10 @@ Arguments:
 
 --format_metaphlan: is the format of the input file in the "MetaPhlAn" style? What this looks like is (from their tutorial):
 
+<details>
+  <summary>More Infomation on formats</summary>
+<!-- empty line -->
+
 ```
 clade_name	1000	1001	1002	1003	1004	1005
 k__Bacteria	99.42133	100	99.99635	100	100	100
@@ -89,7 +93,14 @@ k__Bacteria|p__Firmicutes|c__Clostridia|o__Clostridiales|f__Ruminococcaceae|g__R
 ```
 
 Notice that each taxonomic level is summarized on its own line, and the columns are the samples assessed. **Importantly, taxaHFE needs the column with the taxonomic (hierarchical) information in a column with the header clade_name.** If ```--format_metaphlan FALSE```, the program will try and summarize each level, and coerce the input file into a "MetaPhlAn" style input. Fair warning, if your input taxonomic file has a lot of missing levels (i.e., k__Bacteria|p__Firmicutes|c__Clostridia|o__Clostridiales|f__|g__|s__Clostridiales_sp_OTU12345), they will get summarized to the last known level. Using the previous example, the empty genus and family level will be summarized to f__Clostridiales_unclassified and g__Clostridiales_unclassified. The downside to this method is that, pontentially very different taxa can get grouped together in a _unclassifed level. Taxonomic assignment has come a long way! Try to use a method that results in the most complete information.
+
+</details>
+<!-- empty line -->
+
+</br>
 input_meta: the file that contains the metadata column you wish to predict with your hierarchical data. This file should contain BOTH your subject_identifier and your metadata label
+
+</br>
 
 input: your taxonomic or hierarchical feature set. Columns should be your subject_identifier, plus one column labeled clade_name.
 
