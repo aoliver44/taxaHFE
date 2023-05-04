@@ -121,6 +121,20 @@ Notice that each taxonomic level is summarized on its own line, and the columns 
 
 **OUTPUTS**
 
+**output_level_[1,2,3...].csv:** summarized files at each taxonomic level (if write_old_files = TRUE)
+
+**output.txt:** taxaHFE processed dataset, with super filter
+
+**output_nosf.txt:** taxaHFE processed dataset, without super filter
+
+**output_old_hfe_label.txt:** Label data for use in the Oudah algorithm (if write_old_files = TRUE)
+
+**output_old_hfe_otu.txt:** OTU data for use in the Oudah algorithm (if write_old_files = TRUE)
+
+**output_old_hfe_taxa.txt:** Taxa data for use in the Oudah algorithm (if write_old_files = TRUE)
+
+**output_plot.pdf:** Figure of the top 10 features identifed by taxaHFE
+
 ## About
 We developed software, called taxaHFE (Hierarchical Feature Engineering), which works by first considering the pairwise correlation structure between a taxon and its descendants to prune descendants above a correlation threshold. Next it permutes a random forest on the taxon and remaining descendants to determine how important each is at explaining an intervention or clinical covariate. If, on average, the taxon is the most important feature in the model, the descendants are dropped, otherwise only the descendants more important than the taxon are kept. Last, an optional final filter step considers all features remaining, and again permutes a random forest. Any features which are either below the average importance of all remaining features or have a negative or zero average importance are dropped.  
 
