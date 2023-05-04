@@ -75,7 +75,7 @@ Arguments:
 
 --feature_type: is the label a factor or a continous variable?
 
---format_metaphlan: is the format of the input file in the "MetaPhlAn" style? What this looks like is (from their tutorial):
+--format_metaphlan: is the format of the input file in the "MetaPhlAn" style? 
 
 <details>
   <summary>More Infomation on formats</summary>
@@ -96,13 +96,22 @@ Notice that each taxonomic level is summarized on its own line, and the columns 
 
 </details>
 <!-- empty line -->
-
-</br>
-input_meta: the file that contains the metadata column you wish to predict with your hierarchical data. This file should contain BOTH your subject_identifier and your metadata label
-
 </br>
 
-input: your taxonomic or hierarchical feature set. Columns should be your subject_identifier, plus one column labeled clade_name.
+--input_covariates: Do you have an additional metadata input (txt | tsv | csv) you want the random forests to consider? 
+
+--subsample: a decimal value for performing stratified subsampling of factor type data
+
+--cor_level: what initial correlation threshold (Pearson) to use when comparing child to parent
+
+--write_old_files: should files summarized at each taxa level be written to file? The old HFE program files are written to for use in the Oudah et al. algorithm
+
+--ncores: number of cores to let the random forest use
+
+
+[input_meta]: the file that contains the metadata column you wish to predict with your hierarchical data. This file should contain BOTH your subject_identifier and your metadata label
+
+[input]: your taxonomic or hierarchical feature set. Columns should be your subject_identifier, plus one column labeled clade_name.
 
 **OUTPUTS**
 
