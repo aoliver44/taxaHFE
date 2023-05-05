@@ -89,9 +89,9 @@ Arguments:
 
 ```
 
---subject_identifier: this is a column that identifies the sample or subject ID. All subjectIDs should be unique.
+--subject_identifier: this is a column that identifies the sample or subject ID in the input metadata. All subjectIDs should be unique.
 
---label: the name of the column in your input dataset that you are trying to predict with HFE. Can be a factor or continous.
+--label: the name of the column in your input metadata that you are trying to predict with HFE. Can be a factor or continous.
 
 --feature_type: is the label a factor or a continous variable?
 
