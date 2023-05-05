@@ -84,18 +84,18 @@ source("/scripts/utilities/taxaHFE_functions.R")
 #                   input=character(),
 #                   output=character())
 # opt <- opt %>% tibble::add_row(
-#   subject_identifier = "subject_id",
-#   label= "fiber_groups",
+#   subject_identifier = "Sample",
+#   label= "Category",
 #   feature_type = "factor",
 #   format_metaphlan = "TRUE",
 #   write_old_files = "FALSE",
 #   subsample = 1,
 #   cor_level = 0.95,
 #   ncores = 4,
-#   input_metadata = "/home/nutrition_tools/ultra_merge/output/merged_data_with_NAs.csv",
+#   input_metadata = "/home/docker/example_inputs/metadata.txt",
 #   input_covariates = "FALSE",
-#   input= "/home/nutrition_tools/data/synthetic_test_data/merged_metaphlan4.txt",
-#   output = "/home/nutrition_tools/output_old/fiber_groups.txt"
+#   input= "/home/docker/example_inputs/microbiome_data.txt",
+#   output = "/home/docker/example_inputs/output.txt"
 # )
 
 ## check for inputs ============================================================

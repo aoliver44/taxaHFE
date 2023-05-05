@@ -259,7 +259,7 @@ taxaHFE_competition <- function(input = hData, feature_type = opt$feature_type, 
   
   ## helper function
   `%!in%` <- Negate(`%in%`)
-  
+
   ## lists to loop over for parents and children levels
   parents <- purrr::discard(dplyr::lead(rev(levels)), is.na)
   children <- rev(levels)
