@@ -39,6 +39,15 @@ Alternatively, you can pull this image using Singularity:
 singularity pull aoliver44/taxa_hfe:latest
 ```
 
+Finally, it's possible to build the image yourself:
+
+1. Download the dockerfile and renv.lock file
+2. Navigate to the directory with these files
+3. Run the command:
+
+```
+docker build -t taxa_hfe:latest .
+```
 </br>
 
 ------------------------------
