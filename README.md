@@ -58,14 +58,15 @@ Using the example data provided!
 ```
 docker run --rm -it -v `pwd`:/home/docker -w /home/docker taxa_hfe:latest bash
 ```
-1. run taxaHFE (generic)
+2. (a) run taxaHFE (generic)
 ```
 taxaHFE --subject_identifier subject_id --label cluster [FULL METADATA PATH] [FULL INPUT PATH] [FULL OUTPUT PATH]
 ```
+OR
 
-1. run taxaHFE on example data provided
+2. (b) run taxaHFE on example data provided
 ```
-taxaHFE --subject_identifier Sample --label Category --feature_type factor --format_metaphlan TRUE --write_old_files TRUE --ncores 4 /home/docker/example_inputs/metadata.txt /home/docker/example_inputs/microbiome_data.txt /home/docker/example_inputs/output.txt
+taxaHFE --subject_identifier Sample --label Category --feature_type factor --format_metaphlan TRUE --write_old_files TRUE --ncores 2 /home/docker/example_inputs/metadata.txt /home/docker/example_inputs/microbiome_data.txt /home/docker/example_inputs/output.txt
 ```
 
 </br>
