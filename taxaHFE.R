@@ -9,7 +9,7 @@
 ## docker info =================================================================
 
 ## docker command:
-#docker run --rm -it -p 8787:8787 -e PASSWORD=yourpasswordhere -v /Users/andrew.oliver/Documents/active_projects_github-USDA/nutrition_tools/:/home amr_r_env:3.1.0
+#docker run --rm -v `PWD`/:/home/docker -w /home/docker aoliver44/taxa_hfe:latest
 
 ## set working dir to /home for the docker container
 setwd("/home/docker")
