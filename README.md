@@ -67,10 +67,13 @@ OR
 Run taxaHFE on example data provided
 
 ```
+## STEP 1: CLONE THE REPOSITORY
 git clone https://github.com/aoliver44/taxaHFE.git && cd taxaHFE
 
+## STEP 2: RUN THE CONTAINER
 docker run --rm -it -v `pwd`:/home/docker -w /home/docker aoliver44/taxa_hfe:latest bash
 
+## STEP 3: RUN TAXAHFE 
 taxaHFE --subject_identifier Sample --label Category --feature_type factor --format_metaphlan TRUE --write_old_files TRUE --ncores 2 /home/docker/example_inputs/metadata.txt /home/docker/example_inputs/microbiome_data.txt /home/docker/example_inputs/output.txt
 ```
 
