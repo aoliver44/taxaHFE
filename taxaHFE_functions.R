@@ -52,6 +52,15 @@ mid_safety_checks <- function(type = opt$feature_type, label = opt$label, out = 
   if (NROW(tmp_merge) < 2) {
     stop("Your subject identifer doesnt match between input data and metadata.\n Or it's in the incorrect format.")
   }
+  
+  ## check and make sure colnames are unique and metadata subject ids are unique
+  if (TRUE %in% duplicated(colnames(input))) {
+    stop("You have repeated column names (subject_id) in your input file.\n")
+  }
+  
+  if (TRUE %in% duplicated(metadata$subject_id)) {
+    stop("You have repeated subject ids in your metadata.\n")
+  }
 
 }
 ## read in covariates  =========================================================
