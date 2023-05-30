@@ -64,8 +64,13 @@ taxaHFE --subject_identifier subject_id --label cluster [FULL METADATA PATH] [FU
 ```
 OR
 
-2. (b) run taxaHFE on example data provided
+Run taxaHFE on example data provided
+
 ```
+git clone https://github.com/aoliver44/taxaHFE.git && cd taxaHFE
+
+docker run --rm -it -v `pwd`:/home/docker -w /home/docker aoliver44/taxa_hfe:latest bash
+
 taxaHFE --subject_identifier Sample --label Category --feature_type factor --format_metaphlan TRUE --write_old_files TRUE --ncores 2 /home/docker/example_inputs/metadata.txt /home/docker/example_inputs/microbiome_data.txt /home/docker/example_inputs/output.txt
 ```
 
