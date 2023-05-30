@@ -56,7 +56,7 @@ docker build -t taxa_hfe:latest .
 Using the example data provided!
 1. Start the docker image in the directory with your data!
 ```
-docker run --rm -it -v `pwd`:/home/docker -w /home/docker taxa_hfe:latest bash
+docker run --rm -it -v `pwd`:/home/docker -w /home/docker aoliver44/taxa_hfe:latest bash
 ```
 2. (a) run taxaHFE (generic)
 ```
