@@ -58,7 +58,7 @@ Run taxaHFE with your data:
 ```
 docker run --rm -it -v `pwd`:/home/docker -w /home/docker aoliver44/taxa_hfe:latest bash
 ```
-1. Run taxaHFE
+2. Run taxaHFE
 ```
 taxaHFE --subject_identifier subject_id --label cluster [FULL METADATA PATH] [FULL INPUT PATH] [FULL OUTPUT PATH]
 ```
