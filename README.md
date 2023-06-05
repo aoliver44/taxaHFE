@@ -53,18 +53,18 @@ docker build -t taxa_hfe:latest .
 ------------------------------
 ## Quickstart
 
-Using the example data provided!
+Run taxaHFE with your data:
 1. Start the docker image in the directory with your data!
 ```
 docker run --rm -it -v `pwd`:/home/docker -w /home/docker aoliver44/taxa_hfe:latest bash
 ```
-2. (a) run taxaHFE (generic)
+1. Run taxaHFE
 ```
 taxaHFE --subject_identifier subject_id --label cluster [FULL METADATA PATH] [FULL INPUT PATH] [FULL OUTPUT PATH]
 ```
 OR
 
-Run taxaHFE on example data provided
+Run taxaHFE on example data provided:
 
 ```
 ## STEP 1: CLONE THE REPOSITORY
