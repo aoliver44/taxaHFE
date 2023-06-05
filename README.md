@@ -54,11 +54,11 @@ docker build -t taxa_hfe:latest .
 ## Quickstart
 
 Run taxaHFE with your data:
-1. Start the docker image in the directory with your data!
+1. Navigate to the directory containing your data, and start the docker image!
 ```
 docker run --rm -it -v `pwd`:/home/docker -w /home/docker aoliver44/taxa_hfe:latest bash
 ```
-2. Run taxaHFE
+1. Run taxaHFE
 ```
 taxaHFE --subject_identifier subject_id --label cluster [FULL METADATA PATH] [FULL INPUT PATH] [FULL OUTPUT PATH]
 ```
