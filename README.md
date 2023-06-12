@@ -36,7 +36,7 @@ docker pull aoliver44/taxa_hfe:latest
 Alternatively, you can pull this image using Singularity:
 
 ```
-singularity pull aoliver44/taxa_hfe:latest
+singularity pull taxaHFE.sif docker://aoliver44/taxa_hfe:latest
 ```
 
 Finally, it's possible to build the image yourself:
