@@ -29,7 +29,7 @@ Options:
     --feature_type of response i.e. numeric or factor [default: factor]
     --input_covariates path to input covariates [default: FALSE]
     --subsample decimal, only let random forests see a fraction of total data [default: 1]
-    --standardized is the sum total feature abundance between subjects equal? [default: TRUE]
+    --standardized is the sum total feature abundance between subjects equal [default: TRUE]
     --abundance pre-taxaHFE abundance filter [default: 0.0001]
     --prevalence pre-taxaHFE prevalence filter [default: 0.01]
     --format_metaphlan tells program to expect the desired hData style format, otherwise it attempts to coerce into format [default: FALSE]
