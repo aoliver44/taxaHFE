@@ -57,6 +57,9 @@ Run taxaHFE with your data:
 1. Navigate to the directory containing your data, and start the docker image!
 ```
 docker run --rm -it -v `pwd`:/home/docker -w /home/docker aoliver44/taxa_hfe:latest bash
+
+## or with singularity
+singularity run -w -W `pwd` --bind `pwd`:/home/docker taxaHFE.sif bash
 ```
 2. Run taxaHFE
 ```
