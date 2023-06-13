@@ -59,7 +59,7 @@ Run taxaHFE with your data:
 docker run --rm -it -v `pwd`:/home/docker -w /home/docker aoliver44/taxa_hfe:latest bash
 
 ## or with singularity
-singularity run -w -W `pwd` --bind `pwd`:/home/docker taxaHFE.sif bash
+singularity run -W `pwd` --bind `pwd`:/home/docker taxaHFE.sif bash
 ```
 2. Run taxaHFE
 ```
