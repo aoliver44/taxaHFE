@@ -19,7 +19,7 @@ setwd("/home/docker")
 library(docopt)
 'Hierarchical feature engineering (HFE) for the reduction of features with respects to a factor or regressor
 Usage:
-    taxaHFE.R [--subject_identifier=<subject_colname> --label=<label> --feature_type=<feature_type> --input_covariates=<path> --subsample=<decimal> --format_metaphlan=<format> --cor_level=<correlation_level> --write_old_files=<TRUE/FALSE> --ncores=<ncores>] <input_metadata> <input> <output>
+    taxaHFE.R [--subject_identifier=<subject_colname> --label=<label> --feature_type=<feature_type> --input_covariates=<path> --subsample=<decimal> --standardized=<TRUE/FALSE> --abundance=<decimal> --prevalence=<decimal> --format_metaphlan=<format> --cor_level=<correlation_level> --write_old_files=<TRUE/FALSE> --ncores=<ncores>] <input_metadata> <input> <output>
     
 Options:
     -h --help  Show this screen.
@@ -29,6 +29,9 @@ Options:
     --feature_type of response i.e. numeric or factor [default: factor]
     --input_covariates path to input covariates [default: FALSE]
     --subsample decimal, only let random forests see a fraction of total data [default: 1]
+    --standardized is the sum total feature abundance between subjects equal? [defualt: TRUE]
+    --abundance pre-taxaHFE abundance filter [default: 0.0001]
+    --prevalence pre-taxaHFE prevalence filter [default: 0.01]
     --format_metaphlan tells program to expect the desired hData style format, otherwise it attempts to coerce into format [default: FALSE]
     --cor_level level of initial correlation filter [default: 0.95]
     --write_old_files write individual level files and old HFE files [default: TRUE]
@@ -40,7 +43,7 @@ Arguments:
 
 ' -> doc
 
-opt <- docopt::docopt(doc, version = 'taxaHFE.R v1.01\n\n')
+opt <- docopt::docopt(doc, version = 'taxaHFE.R v1.10\n\n')
 #print(opt)
 ## load libraries ==============================================================
 
@@ -78,6 +81,9 @@ source("/scripts/utilities/taxaHFE_functions.R")
 #                   format_metaphlan=character(),
 #                   cor_level=numeric(),
 #                   subsample=numeric(),
+#                   abundance=numeric(),
+#                   prevelance=numeric(),
+#                   standardized=character(),
 #                   write_old_files=character(),
 #                   input_covariates=character(),
 #                   input_metadata=character(),
@@ -89,6 +95,9 @@ source("/scripts/utilities/taxaHFE_functions.R")
 #   feature_type = "factor",
 #   format_metaphlan = "TRUE",
 #   write_old_files = "FALSE",
+#   abundance = 0.0001,
+#   prevelance = 0.01,
+#   standardized = "TRUE",
 #   subsample = 1,
 #   cor_level = 0.95,
 #   ncores = 4,
@@ -153,17 +162,16 @@ if (opt$format_metaphlan == "FALSE") {
 
 ## Remove very low prevalent features ==========================================
 
-apply_filters(input = hData)
+apply_filters(input = hData, 
+              standardized = opt$standardized, 
+              filter_abundance = opt$abundance, 
+              filter_prevalence = opt$prevalence)
 
 ## write files for old HFE program =============================================
 
 if (opt$write_old_files == "TRUE") {
   write_old_hfe(input = hData, output = opt$output)
 }
-
-## clean clade name of symbols and spaces so ranger doesnt freak out.
-hData$clade_name <- gsub(" ", "_", hData$clade_name)
-hData$clade_name <- gsub("\\-", "_", hData$clade_name)
 
 ## make the dataframe of features that will compete in parent-child competitions.
 ## Basically this is just the taxonomic (hierarchical) information of all

@@ -1,5 +1,5 @@
 ## HFE FUNCTIONS
-## v1.01
+## v1.10
 
 ## read in microbiome data =====================================================
 read_in_microbiome <- function(input) {
@@ -9,7 +9,7 @@ read_in_microbiome <- function(input) {
   } else {
     suppressMessages(readr::read_delim(file = input, delim = ",", skip = 0, name_repair = "minimal") %>% dplyr::select(., -any_of(c("NCBI_tax_id", "clade_taxid"))))
   }
-
+  
 }
 
 ## read in metadata  ===========================================================
@@ -45,6 +45,20 @@ mid_safety_checks <- function(type = opt$feature_type, label = opt$label, out = 
     stop("No output path found. Did you create the output directory?")
   }
   
+  ## check and make sure clade_name is in the column names of input
+  if (c("clade_name") %!in% colnames(input)) {
+    stop("clade_name not found in column names")
+  }
+
+  ## try and remove weird symbols in feature names
+  hData$clade_name <- str_replace_all(hData$clade_name, "[^_|[:alnum:]]", "")
+  assign(x = "hData", value = hData, envir = .GlobalEnv)
+  
+  ## check to see if you have NA in feature names
+  if (NA %in% input$clade_name) {
+    stop("You have NA as features. Please have names for all features")
+  }
+  
   ## check and make sure colnames and metadata match
   input <- input %>% tibble::column_to_rownames(., var = "clade_name") %>% t() %>% as.data.frame()
   tmp_merge <- merge(meta, input, by.x = "subject_id", by.y = "row.names")
@@ -63,6 +77,7 @@ mid_safety_checks <- function(type = opt$feature_type, label = opt$label, out = 
   }
 
 }
+
 ## read in covariates  =========================================================
 
 read_in_covariates <- function(input, subject_identifier) {
@@ -119,7 +134,9 @@ convert_to_hData <- function(input) {
 
 ## apply filters  ==============================================================
 
-apply_filters <- function(input) {
+apply_filters <- function(input, standardized = opt$standardized, 
+                          filter_abundance = opt$abundance, 
+                          filter_prevalence = opt$prevalence) {
   
   ## this CV check checks to make sure everything is going to get roughly
   ## divided by the same number for the abundance filter
@@ -133,20 +150,24 @@ apply_filters <- function(input) {
     tibble::column_to_rownames(., var = "clade_name") %>% 
     dplyr::summarise_all(sum) %>% t() %>% as.data.frame() %>% dplyr::pull()
   
-  if ((CV(cv_check) >= 0.1) == TRUE) {
-    cat("\n\n\n", "###########################\n", "ERROR: CV too large \n", "###########################")
-    cat("\n", "Program is stopping because your data is not normalized. It should be rarefied or in relative abundance.")
-    stop()
+  
+  ## test and make sure data is something like relative abundance
+  if (standardized == "TRUE") {
+    if ((CV(cv_check) >= 0.1) == TRUE) {
+      cat("\n\n\n", "###########################\n", "ERROR: CV too large \n", "###########################")
+      cat("\n", "Program is stopping because your data is not normalized. It should be rarefied or in relative abundance.")
+      stop()
+    }
   }
   
   cat("\n\n", "###########################\n", "Applying filtering steps...\n", "###########################")
   post_metaphlan_transformation_feature_count <- NROW(input)
   ## remove taxa/rows that are 99% zeros (1% prevalence filter)
-  input <- input[rowSums(input[,2:NCOL(input)] == 0) <= (NCOL(input[,2:NCOL(input)])*0.99), ]
-  cat("\n\n Prevelance filter: ")
+  input <- input[rowSums(input[,2:NCOL(input)] == 0) <= (NCOL(input[,2:NCOL(input)])*(1 - as.numeric(filter_prevalence))), ]
+  cat("\n\n Prevalence filter: ")
   prev_filter <- NROW(input)
   assign(x = "prev_filter", value = prev_filter, envir = .GlobalEnv)
-  cat(paste0(round((((post_metaphlan_transformation_feature_count - prev_filter)/ post_metaphlan_transformation_feature_count ) * 100)), "% of features dropped due to 1% prevelance filter.\n"))
+  cat(paste0(round((((post_metaphlan_transformation_feature_count - prev_filter)/ post_metaphlan_transformation_feature_count ) * 100)), "% of features dropped due to a ", opt$prevalence ,"% prevalence filter.\n"))
   
   ## Remove very low abundant features ===========================================
   ## remove taxa/rows that are below 0.0001 relative abundance
@@ -161,13 +182,13 @@ apply_filters <- function(input) {
   hData_abund_filter <- input %>% tibble::remove_rownames() %>% tibble::column_to_rownames(., var = "clade_name")
   hData_abund_filter$mean_abundance <- rowMeans(hData_abund_filter)
   hData_abund_filter <- hData_abund_filter %>% 
-    dplyr::filter(., (mean_abundance / hData_mean_total_abundance) >= 0.0001) %>% 
+    dplyr::filter(., (mean_abundance / hData_mean_total_abundance) >= as.numeric(filter_abundance)) %>% 
     tibble::rownames_to_column(., var = "clade_name") %>% 
     dplyr::pull(., clade_name)
   
   hData <- input %>% dplyr::filter(., clade_name %in% hData_abund_filter)
   assign(x = "hData", value = hData, envir = .GlobalEnv)
-  cat(paste0(round((((prev_filter - NROW(hData)) / prev_filter) * 100)), "% of post-prevalence filtered features dropped due \n to abundance filter (rel. abund. >10e-4) \n\n"))
+  cat(paste0(round((((prev_filter - NROW(hData)) / prev_filter) * 100)), "% of post-prevalence filtered features dropped due \n to abundance filter (rel. abund. >", opt$abundance ,") \n\n"))
   cat(NROW(hData), "taxa retained for downstream analysis...\n")
 }
 
