@@ -51,7 +51,7 @@ mid_safety_checks <- function(type = opt$feature_type, label = opt$label, out = 
   }
 
   ## try and remove weird symbols in feature names
-  hData$clade_name <- str_replace_all(hData$clade_name, "[^_|[:alnum:]]", "")
+  hData$clade_name <- stringr::str_replace_all(hData$clade_name, "[^_|[:alnum:]]", "")
   assign(x = "hData", value = hData, envir = .GlobalEnv)
   
   ## check to see if you have NA in feature names
