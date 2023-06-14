@@ -122,12 +122,6 @@ if (file.exists(opt$input)) {
   cat("\n",paste0("Using ", opt$input, " as input")) 
 } else { stop("Input not found.") }
 
-## read in microbiome ==========================================================
-## read in data, should be in tab or comma separated format
-
-hData <- read_in_microbiome(input = opt$input)
-original_taxa_count <- NROW(hData)
-
 ## read in metadata file =======================================================
 ## rename the subject_identifier to subject_id and
 ## rename the label to feature_of_interest
@@ -136,6 +130,12 @@ original_taxa_count <- NROW(hData)
 metadata <- read_in_metadata(input = opt$input_metadata, 
                              subject_identifier = opt$subject_identifier, 
                              label = opt$label)
+
+## read in microbiome ==========================================================
+## read in data, should be in tab or comma separated format
+
+hData <- read_in_microbiome(input = opt$input)
+original_taxa_count <- NROW(hData)
 
 ## run safety checks ===========================================================
 

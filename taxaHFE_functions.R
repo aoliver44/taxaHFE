@@ -1,17 +1,6 @@
 ## HFE FUNCTIONS
 ## v1.10
 
-## read in microbiome data =====================================================
-read_in_microbiome <- function(input) {
-  ## read in txt, tsv, or csv microbiome data
-  if (strsplit(basename(input), split="\\.")[[1]][2] %in% c("tsv","txt")) {
-    suppressMessages(readr::read_delim(file = input, delim = "\t", skip = 0, name_repair = "minimal") %>% dplyr::select(., -any_of(c("NCBI_tax_id", "clade_taxid"))))
-  } else {
-    suppressMessages(readr::read_delim(file = input, delim = ",", skip = 0, name_repair = "minimal") %>% dplyr::select(., -any_of(c("NCBI_tax_id", "clade_taxid"))))
-  }
-  
-}
-
 ## read in metadata  ===========================================================
 read_in_metadata <- function(input, subject_identifier, label) {
   if (strsplit(basename(input), split="\\.")[[1]][2] %in% c("tsv","txt")) {
@@ -29,6 +18,21 @@ read_in_metadata <- function(input, subject_identifier, label) {
   }
 }
 
+## read in microbiome data =====================================================
+read_in_microbiome <- function(input, meta = metadata) {
+  ## read in txt, tsv, or csv microbiome data
+  if (strsplit(basename(input), split="\\.")[[1]][2] %in% c("tsv","txt")) {
+    hData <- suppressMessages(readr::read_delim(file = input, delim = "\t", skip = 0, name_repair = "minimal") %>% dplyr::select(., -any_of(c("NCBI_tax_id", "clade_taxid"))))
+  } else {
+    hData <- suppressMessages(readr::read_delim(file = input, delim = ",", skip = 0, name_repair = "minimal") %>% dplyr::select(., -any_of(c("NCBI_tax_id", "clade_taxid"))))
+  }
+  
+  ## only select columns that are in metadata file, reduce computation
+  hData <- hData %>% dplyr::select(., dplyr::any_of(c("clade_name")), dplyr::any_of(metadata$subject_id))
+  
+  ## write input to file
+  assign(x = "hData", value = hData, envir = .GlobalEnv)
+}
 
 ## run safety checks!  =========================================================
 
