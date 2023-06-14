@@ -28,7 +28,7 @@ read_in_microbiome <- function(input, meta = metadata) {
   }
   
   ## only select columns that are in metadata file, reduce computation
-  hData <- hData %>% dplyr::select(., dplyr::any_of(c("clade_name")), dplyr::any_of(metadata$subject_id))
+  hData <- hData %>% dplyr::select(., dplyr::any_of(c("clade_name", metadata$subject_id)))
   
   ## write input to file
   assign(x = "hData", value = hData, envir = .GlobalEnv)
