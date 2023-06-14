@@ -1,5 +1,5 @@
 ## HFE FUNCTIONS
-## v1.10
+## v1.11
 
 ## read in metadata  ===========================================================
 read_in_metadata <- function(input, subject_identifier, label) {

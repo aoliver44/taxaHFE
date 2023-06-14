@@ -1,6 +1,6 @@
 ## Author: Andrew Oliver
-## Version: aoliver44/taxaHFE:1.10
-## Date: May 3, 2023
+## Version: aoliver44/taxaHFE:1.11
+## Date: June 14, 2023
 
 ## base image to start with
 FROM rocker/r-base:4.2.0
