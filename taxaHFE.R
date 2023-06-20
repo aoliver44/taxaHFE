@@ -135,7 +135,7 @@ metadata <- read_in_metadata(input = opt$input_metadata,
 ## read in microbiome ==========================================================
 ## read in data, should be in tab or comma separated format
 
-hData <- read_in_microbiome(input = opt$input)
+hData <- read_in_microbiome(input = opt$input, meta = metadata, cores = opt$ncores)
 original_taxa_count <- NROW(hData)
 
 ## run safety checks ===========================================================

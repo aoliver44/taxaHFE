@@ -22,9 +22,9 @@ read_in_metadata <- function(input, subject_identifier, label) {
 read_in_microbiome <- function(input, meta = metadata, cores = opt$ncores) {
   ## read in txt, tsv, or csv microbiome data
   if (strsplit(basename(input), split="\\.")[[1]][2] %in% c("tsv","txt")) {
-    hData <- suppressMessages(vroom::vroom(file = input, delim = "\t", skip = 0, .name_repair = "minimal", num_threads = cores) %>% dplyr::select(., -any_of(c("NCBI_tax_id", "clade_taxid"))))
+    hData <- suppressMessages(vroom::vroom(file = input, delim = "\t", skip = 0, .name_repair = "minimal", num_threads = as.numeric(cores)) %>% dplyr::select(., -any_of(c("NCBI_tax_id", "clade_taxid"))))
   } else {
-    hData <- suppressMessages(vroom::vroom(file = input, delim = ",", skip = 0, .name_repair = "minimal", num_threads = cores) %>% dplyr::select(., -any_of(c("NCBI_tax_id", "clade_taxid"))))
+    hData <- suppressMessages(vroom::vroom(file = input, delim = ",", skip = 0, .name_repair = "minimal", num_threads = as.numeric(cores)) %>% dplyr::select(., -any_of(c("NCBI_tax_id", "clade_taxid"))))
   }
   
   ## only select columns that are in metadata file, reduce computation
