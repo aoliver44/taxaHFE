@@ -43,7 +43,8 @@ Arguments:
 
 ' -> doc
 
-opt <- docopt::docopt(doc, version = 'taxaHFE.R v1.11\n\n')
+opt <- docopt::docopt(doc, version = 
+'taxaHFE.R v1.12\n\n')
 #print(opt)
 ## load libraries ==============================================================
 

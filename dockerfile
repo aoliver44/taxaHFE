@@ -1,5 +1,5 @@
 ## Author: Andrew Oliver
-## Version: aoliver44/taxaHFE:1.11
+## Version: aoliver44/taxaHFE:1.12
 ## Date: June 14, 2023
 
 ## base image to start with
