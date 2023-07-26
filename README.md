@@ -27,19 +27,19 @@
 ## Download taxaHFE
 
 
-The easiest way to get started is pulling the docker image. Please [install docker](https://www.docker.com/) you go this route. 
+Option 1: The easiest way to get started is pulling the docker image. Please [install docker](https://www.docker.com/) you go this route. 
 
 ```
 docker pull aoliver44/taxa_hfe:latest
 ```
 
-Alternatively, you can pull this image using Singularity:
+Option 2: Alternatively, you can pull this image using Singularity:
 
 ```
 singularity pull taxaHFE.sif docker://aoliver44/taxa_hfe:latest
 ```
 
-Finally, it's possible to build the image yourself:
+Option 3: Finally, it's possible to build the image yourself:
 
 1. Download the dockerfile and renv.lock file
 2. Navigate to the directory with these files
@@ -53,7 +53,7 @@ docker build -t taxa_hfe:latest .
 ------------------------------
 ## Quickstart
 
-Run taxaHFE with your data:
+Option 1: Run taxaHFE with **YOUR** data:
 1. Navigate to the directory containing your data, and start the docker image!
 ```
 docker run --rm -it -v `pwd`:/home/docker -w /home/docker aoliver44/taxa_hfe:latest bash
@@ -67,7 +67,7 @@ taxaHFE --subject_identifier subject_id --label cluster [FULL METADATA PATH] [FU
 ```
 OR
 
-Run taxaHFE on example data provided:
+Option 2: Run taxaHFE on **EXAMPLE** data provided:
 
 ```
 ## STEP 1: CLONE THE REPOSITORY
@@ -89,7 +89,7 @@ taxaHFE --subject_identifier Sample --label Category --feature_type factor --for
 ```
 Hierarchical feature engineering (HFE) for the reduction of features with respects to a factor or regressor
 Usage:
-    taxaHFE.R [--subject_identifier=<subject_colname> --label=<label> --feature_type=<feature_type> --input_covariates=<path> --subsample=<decimal> --format_metaphlan=<format> --cor_level=<correlation_level> --write_old_files=<TRUE/FALSE> --ncores=<ncores>] <input_metadata> <input> <output>
+    taxaHFE.R [--subject_identifier=<subject_colname> --label=<label> --feature_type=<feature_type> --input_covariates=<path> --subsample=<decimal> --standardized=<TRUE/FALSE> --abundance=<decimal> --prevalence=<decimal> --format_metaphlan=<format> --cor_level=<correlation_level> --write_old_files=<TRUE/FALSE> --ncores=<ncores>] <input_metadata> <input> <output>
 
 Options:
     -h --help  Show this screen.
@@ -99,6 +99,9 @@ Options:
     --feature_type of response i.e. numeric or factor [default: factor]
     --input_covariates path to input covariates [default: FALSE]
     --subsample decimal, only let random forests see a fraction of total data [default: 1]
+    --standardized is the sum total feature abundance between subjects equal [default: TRUE]
+    --abundance pre taxaHFE abundance filter [default: 0.0001]
+    --prevalence pre taxaHFE prevalence filter [default: 0.01]
     --format_metaphlan tells program to expect the desired hData style format, otherwise it attempts to coerce into format [default: FALSE]
     --cor_level level of initial correlation filter [default: 0.95]
     --write_old_files write individual level files and old HFE files [default: TRUE]
@@ -107,7 +110,6 @@ Arguments:
     input_meta path to metadata input (txt | tsv | csv)
     input path to input file from hierarchical data (i.e. hData data) (txt | tsv | csv)
     output output file name (txt)
-
 ```
 
 --subject_identifier: this is a column that identifies the sample or subject ID in the input metadata. All subjectIDs should be unique.
@@ -141,13 +143,15 @@ Notice that each taxonomic level is summarized on its own line, and the columns 
 
 --input_covariates: Do you have an additional metadata input (txt | tsv | csv) you want the random forests to consider? 
 
---subsample: a decimal value for performing stratified subsampling of factor type data
+--subsample: a decimal value for performing stratified subsampling of factor type data. This behavior is to help protect against data-leakage.
 
---cor_level: what initial correlation threshold (Pearson) to use when comparing child to parent
+--standardized: is the sum total feature abundance between subjects equal? For microbiome data, this might be a relative abundance of microbes file (sum of features within subjects add up to 1). Set to ```FALSE``` if this is not true. Dietary data, for instance, has different sum-totals depending on the subject (people eat different amounts of food!).
+
+--cor_level: what initial correlation threshold (Pearson) to use when comparing child to parent. We use a high threshold (0.95) and encourage this threashold to stay high. We are really after *redundant* features with this step, were are not trying to institute a deep correlation filter.
 
 --write_old_files: should files summarized at each taxa level be written to file? The old HFE program files are written to for use in the Oudah et al. algorithm
 
---ncores: number of cores to let the random forest use
+--ncores: number of cores to let the random forest use. Not a huge spead up, but if you have the cores available, it can't hurt.
 
 
 [input_meta]: the file that contains the metadata column you wish to predict with your hierarchical data. This file should contain BOTH your subject_identifier and your metadata label
