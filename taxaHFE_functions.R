@@ -37,7 +37,7 @@ read_in_microbiome <- function(input, meta = metadata, cores = opt$ncores) {
 ## run safety checks!  =========================================================
 
 mid_safety_checks <- function(type = opt$feature_type, label = opt$label, out = opt$output, input = hData, meta = metadata) {
-
+  
   ## check if type was mis-specified
   if (type == "factor") {
     if(length(levels(as.factor(metadata$feature_of_interest))) > 9)
@@ -53,7 +53,7 @@ mid_safety_checks <- function(type = opt$feature_type, label = opt$label, out = 
   if (c("clade_name") %!in% colnames(input)) {
     stop("clade_name not found in column names")
   }
-
+  
   ## try and remove weird symbols in feature names
   hData$clade_name <- stringr::str_replace_all(hData$clade_name, "[^_|[:alnum:]]", "")
   assign(x = "hData", value = hData, envir = .GlobalEnv)
@@ -79,7 +79,7 @@ mid_safety_checks <- function(type = opt$feature_type, label = opt$label, out = 
   if (TRUE %in% duplicated(metadata$subject_id)) {
     stop("You have repeated subject ids in your metadata.\n")
   }
-
+  
 }
 
 ## read in covariates  =========================================================
@@ -114,7 +114,7 @@ convert_to_hData <- function(input) {
   input <- input %>% 
     dplyr::relocate(., clade_name) %>%
     tidyr::separate(., col = clade_name, into = levels, sep = "\\|", extra = "merge")
-
+  
   ## summarize each level into its own dataframe
   ## use ultra fast data.table processesing
   for (level in seq(length(levels))) {
@@ -219,7 +219,7 @@ make_taxa_split_df <- function(input) {
   
   assign("taxa_only_split", taxa_only_split, envir = .GlobalEnv)
   assign("levels", levels, envir = .GlobalEnv)
-
+  
 }
 
 ## write separate files to test summary levels =================================
@@ -251,7 +251,7 @@ write_summary_files <- function(input, output) {
       as.data.frame() %>%
       tibble::rownames_to_column(., var = "subject_id") %>%
       janitor::clean_names()
-
+    
     file_merge <- merge(metadata, file_summary, by = "subject_id")
     
     filename <- paste0("_level_", count, ".csv")
@@ -281,19 +281,24 @@ calc_class_frequencies <- function(input = metadata, feature_type = opt$feature_
     class_frequencies <- class_frequencies * as.numeric(opt$subsample)
     
     assign("class_frequencies", class_frequencies, envir = .GlobalEnv)
+  } else {
+    
+    class_frequencies <- as.numeric(opt$subsample)
+    assign("class_frequencies", class_frequencies, envir = .GlobalEnv)
+    
   }
   
 }
 
 ## main competition function ===================================================
 
-taxaHFE_competition <- function(input = hData, feature_type = opt$feature_type, cores = 4, output) {
+taxaHFE_competition <- function(input = hData, feature_type = opt$feature_type, cores = opt$ncores, output) {
   
   cat("\n\n", "##################################\n", "Starting hierarchical competitions\n", "##################################\n\n")
   
   ## helper function
   `%!in%` <- Negate(`%in%`)
-
+  
   ## lists to loop over for parents and children levels
   parents <- purrr::discard(dplyr::lead(rev(levels)), is.na)
   children <- rev(levels)
@@ -350,7 +355,7 @@ taxaHFE_competition <- function(input = hData, feature_type = opt$feature_type, 
       ## correlated with child, drop the highly correlated child...they dont bring
       ## more information to the table that is otherwise carried in the parent (species in this case)
       cor_drop <- suppressMessages(corrr::correlate(hData_parent)) %>% 
-        corrr::focus(., PARENT) %>% dplyr::filter(., PARENT >= as.numeric(opt$cor_level)) %>% 
+        corrr::focus(., PARENT) %>% dplyr::filter(., abs(PARENT) >= as.numeric(opt$cor_level)) %>% 
         dplyr::pull(., term)
       
       hData_parent_merge_cor_subset <- hData_parent_merge %>% 
@@ -411,10 +416,10 @@ taxaHFE_competition <- function(input = hData, feature_type = opt$feature_type, 
           ## this else statement does the sample as the above few lines, just for a continous
           ## feature_of_interest...with RF Regression.
         } else {
-          model <- ranger::ranger(as.numeric(feature_of_interest) ~ . , data = hData_parent_merge_cor_subset, importance = "impurity_corrected", seed = 42, sample.fraction = 0.7, num.threads = as.numeric(cores))
+          model <- ranger::ranger(as.numeric(feature_of_interest) ~ . , data = hData_parent_merge_cor_subset, importance = "impurity_corrected", seed = 42, sample.fraction = class_frequencies, num.threads = as.numeric(cores))
           model_importance <- as.data.frame(model$variable.importance) %>% tibble::rownames_to_column(., var = "taxa")
           for (seed in sample(1:1000, nperm)) {
-            model_tmp <- ranger::ranger(as.numeric(feature_of_interest) ~ . , data = hData_parent_merge_cor_subset, importance = "impurity_corrected", seed = seed, sample.fraction = 0.7, num.threads = as.numeric(cores))
+            model_tmp <- ranger::ranger(as.numeric(feature_of_interest) ~ . , data = hData_parent_merge_cor_subset, importance = "impurity_corrected", seed = seed, sample.fraction = class_frequencies, num.threads = as.numeric(cores))
             model_importance_tmp <- as.data.frame(model_tmp$variable.importance) %>% tibble::rownames_to_column(., var = "taxa")
             suppressWarnings(model_importance <- merge(model_importance, model_importance_tmp, by = "taxa"))
             
@@ -443,7 +448,7 @@ taxaHFE_competition <- function(input = hData, feature_type = opt$feature_type, 
           parent_importance <- model_importance$average[model_importance$taxa == "PARENT"]
           
           children_toss <- model_importance %>% dplyr::filter(., average < parent_importance) %>% dplyr::pull(., taxa)
-          children_toss_zero <- model_importance%>% dplyr::filter(., average < 0) %>% dplyr::pull(., taxa) 
+          children_toss_zero <- model_importance %>% dplyr::filter(., average < 0) %>% dplyr::pull(., taxa) 
           children_toss <- unique(c(children_toss, cor_drop, children_toss_zero))
           
           ## drop parent
@@ -500,7 +505,7 @@ taxaHFE_competition <- function(input = hData, feature_type = opt$feature_type, 
 
 ## super filter ================================================================
 
-super_filter <- function(input = hData, feature_type = "factor", cores = 4, subsample = opt$subsample, output) {
+super_filter <- function(input = hData, feature_type = "factor", cores = opt$ncores, subsample = opt$subsample, output) {
   
   cat("\n\n", "##################################\n", "Starting Super-filter\n", "##################################\n\n")
   
@@ -534,11 +539,11 @@ super_filter <- function(input = hData, feature_type = "factor", cores = 4, subs
     assign("model_importance", model_importance, envir = .GlobalEnv)
     
   } else {
-    model <- ranger::ranger(as.numeric(feature_of_interest) ~ . , data = output_sf, importance = "impurity_corrected", seed = 42, sample.fraction = as.numeric(subsample), num.threads = as.numeric(cores))
+    model <- ranger::ranger(as.numeric(feature_of_interest) ~ . , data = output_sf, importance = "impurity_corrected", seed = 42, sample.fraction = class_frequencies, num.threads = as.numeric(cores))
     model_importance <- as.data.frame(model$variable.importance) %>% tibble::rownames_to_column(., var = "taxa")
     for (seed in sample(1:1000, nperm)) {
       
-      model_tmp <- ranger::ranger(as.numeric(feature_of_interest) ~ . , data = output_sf, importance = "impurity_corrected", seed = seed, sample.fraction = as.numeric(subsample), num.threads = as.numeric(cores))
+      model_tmp <- ranger::ranger(as.numeric(feature_of_interest) ~ . , data = output_sf, importance = "impurity_corrected", seed = seed, sample.fraction = class_frequencies, num.threads = as.numeric(cores))
       model_importance_tmp <- as.data.frame(model_tmp$variable.importance) %>% tibble::rownames_to_column(., var = "taxa")
       suppressWarnings(model_importance <- merge(model_importance, model_importance_tmp, by = "taxa"))
       
@@ -617,14 +622,14 @@ write_old_hfe <- function(input = hData, output) {
   ## count number of splits (+1) in hierarchical data by "|" symbol
   num_levels <- max(stringr::str_count(input$clade_name, "\\|"))
   levels <- levels[1:(num_levels + 1)]
-
+  
   
   input <- input %>% 
     dplyr::relocate(., clade_name) %>%
     tidyr::separate(., col = clade_name, into = levels, sep = "\\|", extra = "merge")
   
   
-
+  
   ## split raw data by pipe symbol into number of expected parts
   if ("L7" %in% colnames(input)) {
     taxonomy <- input %>% dplyr::select(., L1:L7)
@@ -688,13 +693,13 @@ write_old_hfe <- function(input = hData, output) {
 ## essentially a copy of main competition function just with added
 ## merge and consideration of additional features
 
-taxaHFE_competition_covariates <- function(input = hData, covariates, feature_type = opt$feature_type, cores = 4, output) {
+taxaHFE_competition_covariates <- function(input = hData, covariates, feature_type = opt$feature_type, cores = opt$ncores, output) {
   
   cat("\n\n", "####################################\n", "Starting competition with covariates\n", "####################################\n\n")
   
   ## helper function
   `%!in%` <- Negate(`%in%`)
-
+  
   ## lists to loop over for parents and children levels
   parents <- purrr::discard(dplyr::lead(rev(levels)), is.na)
   children <- rev(levels)
@@ -744,7 +749,7 @@ taxaHFE_competition_covariates <- function(input = hData, covariates, feature_ty
       }
       ## merge with metadata
       hData_parent_merge <- merge(metadata, hData_parent, by.x = "subject_id", by.y = "row.names")
-    
+      
       ### CORRELATION #####
       
       ## correlate parent with children. If parent (species) is highly (pearson = 0.95) 
@@ -756,7 +761,7 @@ taxaHFE_competition_covariates <- function(input = hData, covariates, feature_ty
       
       hData_parent_merge_cor_subset <- hData_parent_merge %>% 
         dplyr::select(., -all_of(cor_drop)) 
-
+      
       ## if, after dropping highly correlated children, only species is left,
       ## drop from taxa_only_split (dataframe keeping track of all kept features)
       ## and move on to the next species...ELSE, run a random forest, below
@@ -796,7 +801,7 @@ taxaHFE_competition_covariates <- function(input = hData, covariates, feature_ty
           ## create an intial model and keep track of the variable.importance
           ## this will help us decide if the PARENT (species) or the CHILD (sub-speceies)
           ## brings more information to the table with regards to feature_of_interest
-          model <- ranger::ranger(as.factor(feature_of_interest) ~ . , data = hData_parent_merge_cor_subset, importance = "impurity_corrected", seed = 42, sample.fraction = 0.7, num.threads = as.numeric(cores))
+          model <- ranger::ranger(as.factor(feature_of_interest) ~ . , data = hData_parent_merge_cor_subset, importance = "impurity_corrected", seed = 42, sample.fraction = class_frequencies, num.threads = as.numeric(cores))
           model_importance <- as.data.frame(model$variable.importance) %>% tibble::rownames_to_column(., var = "taxa")
           
           ## welp, the initial model miiight be correct, but lets permute that process
@@ -805,7 +810,7 @@ taxaHFE_competition_covariates <- function(input = hData, covariates, feature_ty
           ## a more sure guess whether a Parent or Child is more important with regards to 
           ## the feature_of_interest
           for (seed in sample(1:1000, nperm)) {
-            model_tmp <- ranger::ranger(as.factor(feature_of_interest) ~ . , data = hData_parent_merge_cor_subset, importance = "impurity_corrected", seed = seed, sample.fraction = 0.7, num.threads = as.numeric(cores))
+            model_tmp <- ranger::ranger(as.factor(feature_of_interest) ~ . , data = hData_parent_merge_cor_subset, importance = "impurity_corrected", seed = seed, sample.fraction = class_frequencies, num.threads = as.numeric(cores))
             model_importance_tmp <- as.data.frame(model_tmp$variable.importance) %>% tibble::rownames_to_column(., var = "taxa")
             suppressWarnings(model_importance <- merge(model_importance, model_importance_tmp, by = "taxa"))
             
@@ -816,10 +821,10 @@ taxaHFE_competition_covariates <- function(input = hData, covariates, feature_ty
           ## this else statement does the sample as the above few lines, just for a continous
           ## feature_of_interest...with RF Regression.
         } else {
-          model <- ranger::ranger(as.numeric(feature_of_interest) ~ . , data = hData_parent_merge_cor_subset, importance = "impurity_corrected", seed = 42, sample.fraction = 0.7, num.threads = as.numeric(cores))
+          model <- ranger::ranger(as.numeric(feature_of_interest) ~ . , data = hData_parent_merge_cor_subset, importance = "impurity_corrected", seed = 42, sample.fraction = class_frequencies, num.threads = as.numeric(cores))
           model_importance <- as.data.frame(model$variable.importance) %>% tibble::rownames_to_column(., var = "taxa")
           for (seed in sample(1:1000, nperm)) {
-            model_tmp <- ranger::ranger(as.numeric(feature_of_interest) ~ . , data = hData_parent_merge_cor_subset, importance = "impurity_corrected", seed = seed, sample.fraction = 0.7, num.threads = as.numeric(cores))
+            model_tmp <- ranger::ranger(as.numeric(feature_of_interest) ~ . , data = hData_parent_merge_cor_subset, importance = "impurity_corrected", seed = seed, sample.fraction = class_frequencies, num.threads = as.numeric(cores))
             model_importance_tmp <- as.data.frame(model_tmp$variable.importance) %>% tibble::rownames_to_column(., var = "taxa")
             suppressWarnings(model_importance <- merge(model_importance, model_importance_tmp, by = "taxa"))
             
@@ -848,7 +853,7 @@ taxaHFE_competition_covariates <- function(input = hData, covariates, feature_ty
           parent_importance <- model_importance$average[model_importance$taxa == "PARENT"]
           
           children_toss <- model_importance %>% dplyr::filter(., taxa %!in% colnames(covariates)) %>% dplyr::filter(., average < parent_importance) %>% dplyr::pull(., taxa)
-          children_toss_zero <- model_importance%>% dplyr::filter(., average < 0) %>% dplyr::pull(., taxa) 
+          children_toss_zero <- model_importance %>% dplyr::filter(., average < 0) %>% dplyr::pull(., taxa) 
           children_toss <- unique(c(children_toss, cor_drop, children_toss_zero))
           
           ## drop parent
@@ -898,8 +903,8 @@ taxaHFE_competition_covariates <- function(input = hData, covariates, feature_ty
   
   ## assign cor vs rf battle tally to global env
   assign("cor_vs_rf", cor_vs_rf, envir = .GlobalEnv)
- 
-   ## print results of cor vs rf battle tally
+  
+  ## print results of cor vs rf battle tally
   cat(paste0("\nPercent of parent-child competitions decided through correlation: ", (sum(cor_vs_rf)/ length(cor_vs_rf) * 100), "\n"))
   cat(paste0("Percent of parent-child competitions decided through RF models: ", ((length(cor_vs_rf) - sum(cor_vs_rf))/ length(cor_vs_rf) * 100), "\n"))
 }
@@ -908,7 +913,7 @@ taxaHFE_competition_covariates <- function(input = hData, covariates, feature_ty
 ## essentially a copy of main super filter function just with added
 ## merge and consideration of additional features
 
-super_filter_covariates <- function(input = hData, covariates, feature_type = "factor", cores = 4, subsample = opt$subsample, output) {
+super_filter_covariates <- function(input = hData, covariates, feature_type = "factor", cores = opt$ncores, subsample = opt$subsample, output) {
   
   cat("\n\n", "##################################\n", "Starting Super-filter\n", "##################################\n\n")
   
@@ -947,11 +952,11 @@ super_filter_covariates <- function(input = hData, covariates, feature_type = "f
     assign("model_importance", model_importance, envir = .GlobalEnv)
     
   } else {
-    model <- ranger::ranger(as.numeric(feature_of_interest) ~ . , data = output_sf, importance = "impurity_corrected", seed = 42, sample.fraction = as.numeric(subsample), num.threads = as.numeric(cores))
+    model <- ranger::ranger(as.numeric(feature_of_interest) ~ . , data = output_sf, importance = "impurity_corrected", seed = 42, sample.fraction = class_frequencies, num.threads = as.numeric(cores))
     model_importance <- as.data.frame(model$variable.importance) %>% tibble::rownames_to_column(., var = "taxa")
     for (seed in sample(1:1000, nperm)) {
       
-      model_tmp <- ranger::ranger(as.numeric(feature_of_interest) ~ . , data = output_sf, importance = "impurity_corrected", seed = seed, sample.fraction = as.numeric(subsample), num.threads = as.numeric(cores))
+      model_tmp <- ranger::ranger(as.numeric(feature_of_interest) ~ . , data = output_sf, importance = "impurity_corrected", seed = seed, sample.fraction = class_frequencies, num.threads = as.numeric(cores))
       model_importance_tmp <- as.data.frame(model_tmp$variable.importance) %>% tibble::rownames_to_column(., var = "taxa")
       suppressWarnings(model_importance <- merge(model_importance, model_importance_tmp, by = "taxa"))
       
