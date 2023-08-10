@@ -166,33 +166,43 @@ apply_filters <- function(input, standardized = opt$standardized,
   
   cat("\n\n", "###########################\n", "Applying filtering steps...\n", "###########################")
   post_metaphlan_transformation_feature_count <- NROW(input)
-  ## remove taxa/rows that are 99% zeros (1% prevalence filter)
-  input <- input[rowSums(input[,2:NCOL(input)] == 0) <= (NCOL(input[,2:NCOL(input)])*(1 - as.numeric(filter_prevalence))), ]
-  cat("\n\n Prevalence filter: ")
-  prev_filter <- NROW(input)
-  assign(x = "prev_filter", value = prev_filter, envir = .GlobalEnv)
-  cat(paste0(round((((post_metaphlan_transformation_feature_count - prev_filter)/ post_metaphlan_transformation_feature_count ) * 100)), "% of features dropped due to a ", opt$prevalence ,"% prevalence filter.\n"))
   
   ## Remove very low abundant features ===========================================
   ## remove taxa/rows that are below 0.0001 relative abundance
   cat("\n Low abundance filter: ")
+  
   hData_mean_total_abundance <- input %>% 
     dplyr::filter(., !grepl("\\|", clade_name)) %>% 
     tibble::column_to_rownames(., var = "clade_name") %>% 
-    summarise_all(sum) %>% rowMeans()
+    summarise_all(sum) %>% t() %>% as.data.frame() %>% rename(., "row_sums" = "V1")
+
+  hData_rel_abundance <- sweep((input %>% tibble::column_to_rownames(., var = "clade_name") 
+                                %>% as.matrix), 2, hData_mean_total_abundance$row_sums, "/")
   
-  
-  ## abundance filter
-  hData_abund_filter <- input %>% tibble::remove_rownames() %>% tibble::column_to_rownames(., var = "clade_name")
-  hData_abund_filter$mean_abundance <- rowMeans(hData_abund_filter)
-  hData_abund_filter <- hData_abund_filter %>% 
-    dplyr::filter(., (mean_abundance / hData_mean_total_abundance) >= as.numeric(filter_abundance)) %>% 
+  high_abundant_taxa <- hData_rel_abundance %>% 
+    as.data.frame() %>% 
     tibble::rownames_to_column(., var = "clade_name") %>% 
+    dplyr::rowwise() %>% 
+    dplyr::mutate(., resistant_row_means = mean(dplyr::c_across(2:NCOL(hData_rel_abundance)), trim = 0.02)) %>% 
+    dplyr::filter(., resistant_row_means > as.numeric(opt$abundance)) %>% 
     dplyr::pull(., clade_name)
   
-  hData <- input %>% dplyr::filter(., clade_name %in% hData_abund_filter)
+  input <- input %>% dplyr::filter(., clade_name %in% high_abundant_taxa)
+  
+  cat(paste0(round((((post_metaphlan_transformation_feature_count - NROW(input)) / post_metaphlan_transformation_feature_count) * 100)), "% of features dropped due \n to abundance filter (rel. abund. >", opt$abundance ,")"))
+  
+  ## Remove very low prevalent features ===========================================
+  ## remove taxa/rows that are 99% zeros (1% prevalence filter)
+  post_abundance_features <- NROW(input)
+  
+  input <- input[rowSums(input[,2:NCOL(input)] == 0) <= (NCOL(input[,2:NCOL(input)])*(1 - as.numeric(filter_prevalence))), ]
+  cat("\n\n Prevalence filter: ")
+  prev_filter <- NROW(input)
+  assign(x = "prev_filter", value = prev_filter, envir = .GlobalEnv)
+  cat(paste0(round((((post_abundance_features - NROW(input)) / post_abundance_features) * 100)), "% of additional features dropped \n due to a ", opt$prevalence ,"% prevalence filter.\n\n"))
+  
+  ## assign hData, post prevelance and abundance filters
   assign(x = "hData", value = hData, envir = .GlobalEnv)
-  cat(paste0(round((((prev_filter - NROW(hData)) / prev_filter) * 100)), "% of post-prevalence filtered features dropped due \n to abundance filter (rel. abund. >", opt$abundance ,") \n\n"))
   cat(NROW(hData), "taxa retained for downstream analysis...\n")
 }
 
