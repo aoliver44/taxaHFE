@@ -125,7 +125,7 @@ compete_node <- function(node, max_depth, corr_threshold, metadata, sample_fract
 
   descendant_winners <- get_descendant_winners(node, max_depth)
   # if no descendant winners, th parent is the winner
-  # TODO: is this possible? should it be handled?
+  # TODO: is this possible? should it be indicated somehow to the end user?
   if (length(descendant_winners) == 0) {
     node$winner <- TRUE
     return()
@@ -145,7 +145,7 @@ compete_node <- function(node, max_depth, corr_threshold, metadata, sample_fract
   # mark correlated in tree
   # highly correlated descendants are not winners
   for (descendant in descendant_winners) {
-    if (descendant$id %in% correlatedIDs) {
+    if (descendant$id %in% correlated_ids) {
       descendant$winner <- FALSE
       descendant$highly_correlated <- TRUE
     }
