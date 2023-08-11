@@ -16,9 +16,9 @@ nperm <- 10
 options(warn = -1)
 
 
-filterPrevalence <- 0.01
-filterMeanAbundance <- 0.0001
-corrThreshold <- 0.95
+filter_prevalence <- 0.01
+filter_mean_abundance <- 0.0001
+corr_threshold <- 0.95
 trim <- 0.02
 feature_of_interest <- "Category"
 feature_type <- "factor"
@@ -200,7 +200,7 @@ compete_tree <- function(tree, modify_tree = FALSE, max_depth = 1000, corr_thres
     metadata = metadata,
     sample_fraction = sample_fraction,
     ncores = ncores,
-    traversal = "post_order"
+    traversal = "post-order"
   )
 
   # return the tree
@@ -249,67 +249,6 @@ calc_class_frequencies <- function(input, type, feature, sample_fraction) {
 }
 
 calc_class_frequencies(input = metadata, type = feature_type, feature = "feature_of_interest", sample_fraction = sample_fraction)
-
-rf_competition <- function(df, metadata, feature_of_interest, subject_identifier, feature_type, sample_fraction, ncores) {
-  merged_data <- merge(df, metadata, by.x = "row.names", by.y = subject_identifier)
-  merged_data <- tibble::column_to_rownames(merged_data, var = "Row.names")
-  data_colnames <- colnames(merged_data)
-  merged_data <- merged_data %>% janitor::clean_names()
-
-  if (feature_type == "factor") {
-    ## create an intial model and keep track of the variable.importance
-    ## this will help us decide if the PARENT (species) or the CHILD (sub-speceies)
-    ## brings more information to the table with regards to feature_of_interest
-    model <- ranger::ranger(as.factor(feature_of_interest) ~ ., data = merged_data, importance = "impurity_corrected", seed = 42, sample.fraction = class_frequencies, replace = TRUE, num.threads = as.numeric(ncores))
-    model_importance <- as.data.frame(model$variable.importance) %>% tibble::rownames_to_column(., var = "taxa")
-
-    ## welp, the initial model miiight be correct, but lets permute that process
-    ## by looping over some random seeds (10, as set in a very early variable nperm at the top)
-    ## and keeping track of the variable.importance. We can then average that and have
-    ## a more sure guess whether a Parent or Child is more important with regards to
-    ## the feature_of_interest
-    for (seed in sample(1:1000, nperm)) {
-      model_tmp <- ranger::ranger(as.factor(feature_of_interest) ~ ., data = merged_data, importance = "impurity_corrected", seed = seed, sample.fraction = class_frequencies, replace = TRUE, num.threads = as.numeric(ncores))
-      model_importance_tmp <- as.data.frame(model_tmp$variable.importance) %>% tibble::rownames_to_column(., var = "taxa")
-      suppressWarnings(model_importance <- merge(model_importance, model_importance_tmp, by = "taxa"))
-    }
-    colnames(model_importance)[2:(nperm + 2)] <- paste0("permutation_", seq(1, nperm + 1))
-    model_importance$average <- rowMeans(model_importance[, 2:(nperm + 2)])
-
-
-
-    ## this else statement does the sample as the above few lines, just for a continous
-    ## feature_of_interest...with RF Regression.
-  } else {
-    model <- ranger::ranger(as.numeric(feature_of_interest) ~ ., data = merged_data, importance = "impurity_corrected", seed = 42, sample.fraction = sample_fraction, num.threads = as.numeric(ncores))
-    model_importance <- as.data.frame(model$variable.importance) %>% tibble::rownames_to_column(., var = "taxa")
-    for (seed in sample(1:1000, nperm)) {
-      model_tmp <- ranger::ranger(as.numeric(feature_of_interest) ~ ., data = merged_data, importance = "impurity_corrected", seed = seed, sample.fraction = sample_fraction, num.threads = as.numeric(ncores))
-      model_importance_tmp <- as.data.frame(model_tmp$variable.importance) %>% tibble::rownames_to_column(., var = "taxa")
-      suppressWarnings(model_importance <- merge(model_importance, model_importance_tmp, by = "taxa"))
-    }
-    colnames(model_importance)[2:(nperm + 2)] <- paste0("permutation_", seq(1, nperm + 1))
-    model_importance$average <- rowMeans(model_importance[, 2:(nperm + 2)])
-  }
-
-  parentColumn <- janitor::make_clean_names(colnames(df)[1])
-  if ((model_importance %>% dplyr::arrange(., desc(average)) %>% slice_head(., n = 1) %>% dplyr::pull(., taxa)) == parentColumn) {
-    rf_winners <- gsub(pattern = "x", replacement = "", x = parentColumn)
-    return(rf_winners)
-  } else {
-    parent_importance <- model_importance$average[model_importance$taxa == parentColumn]
-    children_toss <- model_importance %>%
-      dplyr::filter(., average < parent_importance) %>%
-      dplyr::pull(., taxa)
-    children_toss_zero <- model_importance %>%
-      dplyr::filter(., average < 0) %>%
-      dplyr::pull(., taxa)
-    children_toss <- unique(c(children_toss, children_toss_zero))
-    children_winners <- model_importance$taxa[model_importance$taxa %!in% c(children_toss, parentColumn)]
-    rf_winners <- gsub(pattern = "x", replacement = "", x = children_winners)
-    return(rf_winners)
-  }
-}
 
 rf_competition_gpt <- function(df, metadata, feature_of_interest = "feature_of_interest", subject_identifier, feature_type, sample_fraction = class_frequencies, ncores, nperm = 10) {
   merged_data <- merge(df, metadata, by.x = "row.names", by.y = subject_identifier)
@@ -368,10 +307,10 @@ flatten_tree_with_metadata <- function(node) {
     name = node$name,
     depth = node$level,
     pathString = node$pathString,
-    rf_win = node$rf_winners,
+    rf_win = node$lost_rf,
     highly_cor = node$highlyCorrelated,
-    passed_prevelance = node$passedPrevalenceFilter,
-    passed_abundance = node$passedMeanAbundanceFilter,
+    passed_prevelance = node$passed_prevalence_filter,
+    passed_abundance = node$passed_mean_abundance_filter,
     abundance = node$abundance,
     stringsAsFactors = FALSE
   )
