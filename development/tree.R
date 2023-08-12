@@ -59,6 +59,62 @@ get_descendant_winners <- function(node, max_depth) {
   return(winners)
 }
 
+# set the initial values for a leaf
+# modifies the passed-in node
+# node: current leaf node
+# row_num: unique row number from original df
+# row_df: single row dataframe of abundances for this leaf node
+# filter_prevalence: passed in filter cutoff for prevalence percentage
+# filter_mean_abundance: passed in filter cutoff for mean abundance
+initial_leaf_values <- function(node, row_num, row_df, filter_prevalence, filter_mean_abundance) {
+  # a single row dataframe of the abundance data for this row of the df
+  node$abundance <- row_df
+  # indicates if the prevalence filter was passed
+  node$passed_prevalence_filter <-
+    rowSums(node$abundance != 0) > (NCOL(node$abundance) * filter_prevalence)
+  # indicates if the mean abundance filter was passed
+  node$passed_mean_abundance_filter <-
+    mean(unlist(node$abundance), trim = trim) > filter_mean_abundance
+  # defaults to be modified later
+  node$winner <- FALSE
+  node$highly_correlated <- FALSE
+  node$lost_rf <- FALSE
+  # a unique id corresponding to the row number in the input data
+  node$id <- row_num
+}
+
+# generates abundance, and other values, for clade nodes that were missing a row in the input data
+# uses the sum of the child abundances for the abundance data
+# if no child abundances are available, uses all zeros
+# node: current node, passed in by the tree traversal function
+# zeros_df: a single row df of zeros that matches the original dataframe
+# next_row_id: the next id after the last row in the original dataframe
+fix_unpopulated_node <- function(node, zeros_df, next_row_id) <- {
+    # ignore nodes with abundance or no children
+    if (!is.null(node$abundance)) return()
+
+    # generate abundance from children abundances
+    # skip all children missing abundance
+    df <- zeros_df
+    for (child in node$children) {
+      if (is.null(child$abundance)) next
+
+      df <- rbind(df, child$abundance)
+    }
+
+    # create a bottom row with the sums and grab it out to be assigned to the node
+    # if there are no children abundances (what??), the single zeros row will be summed and still be zero
+    df <- df %>% bind_rows(summarise(., across(where(is.numeric), sum)))
+    
+    # grab the last row from df for the node's abundances
+    # either the sum of child abundances or a row of zeros
+    new_row <- df[nrow(df),]
+    # assign unique id to row name
+    rownames(new_row) <- next_row_id
+    # populate values now that the summed abundance exists
+    initial_leaf_values(node, next_row_id, new_row, filter_prevalence, filter_mean_abundance)
+  }
+
 # build_tree takes a dataframe as input
 # rows are the clade names, with levels separated by "|"
 # it is expected that there will be a row for every level with summed abundances
@@ -89,23 +145,27 @@ build_tree <- function(df, filter_prevalence, filter_mean_abundance) {
 
     # after iterating the levels, node is assigned to the leaf of this row
     # add in the row data and other supporting information
-
-    # a single row dataframe of the abundance data for this row of the df
-    node$abundance <- df[row, 2:ncol(df)]
-    # indicates if the prevalence filter was passed
-    node$passed_prevalence_filter <-
-      rowSums(node$abundance != 0) > (NCOL(node$abundance) * filter_prevalence)
-    # indicates if the mean abundance filter was passed
-    node$passed_mean_abundance_filter <-
-      mean(unlist(node$abundance), trim = trim) > filter_mean_abundance
-    # defaults to be modified later
-    node$winner <- FALSE
-    node$highlyCorrelated <- FALSE
-    node$lost_rf <- FALSE
-    # a unique id corresponding to the row number in the input data
-    node$id <- row
+    initial_leaf_values(node, row, df[row, 2:ncol(df)], filter_prevalence, filter_mean_abundance)
   }
 
+  # now that the tree is built, handle unpopulated leaves with the fix_unpopulated_node
+  # generate a single row zeros df for a default abundance in the case of no child data to sum
+  # matches other abundance by no including clade_name column
+  zeros_df <- df[1, 2:ncol(df)]
+  zeros_df[zeros_df != 0] <- 0
+  
+  # start the unique id counter at 1 greater than the original df size
+  next_row_id <- nrow(df) + 1
+
+  # traverse the tree and fix the unpopulated nodes
+  taxa_tree$Do(function(node) {
+    fix_unpopulated_node(node, zeros_df, next_row_id)
+    # this loop handles that by incrementing next_row_id for every node, ensuring a unique id if needed
+    # they are NOT guaranteed to be sequential since the current node may or may not need it
+    # <<- ensures that we assign to the next_row_id var outside this closure loop
+    next_row_id <<- next_row_id + 1
+  }, traversal = "post-order")
+  
   return(taxa_tree)
 }
 
@@ -307,9 +367,9 @@ flatten_tree_with_metadata <- function(node) {
     name = node$name,
     depth = node$level,
     pathString = node$pathString,
-    rf_win = node$lost_rf,
+    rf_loss = node$lost_rf,
     winner = node$winner,
-    highly_cor = node$highlyCorrelated,
+    highly_cor = node$highly_correlated,
     passed_prevelance = node$passed_prevalence_filter,
     passed_abundance = node$passed_mean_abundance_filter,
     abundance = node$abundance,
@@ -326,7 +386,7 @@ flatten_tree_with_metadata <- function(node) {
 
 # Flatten the tree and tree decisions
 flattened_df <- flatten_tree_with_metadata(competed_tree)
-flattened_df <- flattened_df %>% filter(., rf_win == TRUE, passed_prevelance == TRUE, passed_abundance == TRUE, highly_cor == FALSE)
+flattened_df <- flattened_df %>% filter(., rf_loss == TRUE, passed_prevelance == TRUE, passed_abundance == TRUE, highly_cor == FALSE)
 
 
 
