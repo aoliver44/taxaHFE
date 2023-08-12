@@ -77,7 +77,7 @@ initial_leaf_values <- function(node, row_num, row_df, filter_prevalence, filter
     mean(unlist(node$abundance), trim = trim) > filter_mean_abundance
   # defaults to be modified later
   node$winner <- FALSE
-  node$highlyCorrelated <- FALSE
+  node$highly_correlated <- FALSE
   node$lost_rf <- FALSE
   # a unique id corresponding to the row number in the input data
   node$id <- row_num
@@ -367,9 +367,9 @@ flatten_tree_with_metadata <- function(node) {
     name = node$name,
     depth = node$level,
     pathString = node$pathString,
-    rf_win = node$lost_rf,
+    rf_loss = node$lost_rf,
     winner = node$winner,
-    highly_cor = node$highlyCorrelated,
+    highly_cor = node$highly_correlated,
     passed_prevelance = node$passed_prevalence_filter,
     passed_abundance = node$passed_mean_abundance_filter,
     abundance = node$abundance,
@@ -386,7 +386,7 @@ flatten_tree_with_metadata <- function(node) {
 
 # Flatten the tree and tree decisions
 flattened_df <- flatten_tree_with_metadata(competed_tree)
-flattened_df <- flattened_df %>% filter(., rf_win == TRUE, passed_prevelance == TRUE, passed_abundance == TRUE, highly_cor == FALSE)
+flattened_df <- flattened_df %>% filter(., rf_loss == TRUE, passed_prevelance == TRUE, passed_abundance == TRUE, highly_cor == FALSE)
 
 
 
