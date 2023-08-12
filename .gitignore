@@ -8,3 +8,4 @@ example_inputs/.DS_Store
 .DS_Store
 .bash_history
 example_inputs/merged_metaphlan_v4-0-6.txt
+example_inputs/fecal_scfas.csv
