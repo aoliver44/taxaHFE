@@ -150,7 +150,8 @@ build_tree <- function(df, filter_prevalence, filter_mean_abundance) {
 
   # now that the tree is built, handle unpopulated leaves with the fix_unpopulated_node
   # generate a single row zeros df for a default abundance in the case of no child data to sum
-  zeros_df <- df[1,]
+  # matches other abundance by no including clade_name column
+  zeros_df <- df[1, 2:ncol(df)]
   zeros_df[zeros_df != 0] <- 0
   
   # start the unique id counter at 1 greater than the original df size
