@@ -86,7 +86,7 @@ initial_leaf_values <- function(node, row_num, row_df, filter_prevalence, filter
 # next_row_id: the next id after the last row in the original dataframe
 fix_unpopulated_node <- function(node, zeros_df, next_row_id) <- {
     # ignore nodes with abundance or no children
-    if (!is.null(node$abundance) || length(node$children) == 0) return()
+    if (!is.null(node$abundance)) return()
 
     # generate abundance from children abundances
     # skip all children missing abundance
