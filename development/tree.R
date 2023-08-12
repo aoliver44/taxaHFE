@@ -61,6 +61,11 @@ get_descendant_winners <- function(node, max_depth) {
 
 # set the initial values for a leaf
 # modifies the passed-in node
+# node: current leaf node
+# row_num: unique row number from original df
+# row_df: single row dataframe of abundances for this leaf node
+# filter_prevalence: passed in filter cutoff for prevalence percentage
+# filter_mean_abundance: passed in filter cutoff for mean abundance
 initial_leaf_values <- function(node, row_num, row_df, filter_prevalence, filter_mean_abundance) {
   # a single row dataframe of the abundance data for this row of the df
   node$abundance <- row_df
