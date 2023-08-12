@@ -4,14 +4,14 @@
 ## read in metadata  ===========================================================
 read_in_metadata <- function(input, subject_identifier, label) {
   if (strsplit(basename(input), split="\\.")[[1]][2] %in% c("tsv","txt")) {
-    suppressMessages(readr::read_delim(file = input, delim = "\t")) %>% 
-      dplyr::select(., subject_identifier, label) %>% 
+    suppressMessages(readr::read_delim(file = input, delim = "\t")) %>%
+      dplyr::select(., subject_identifier, label) %>%
       dplyr::rename(., "subject_id" = subject_identifier) %>%
       rename(., "feature_of_interest" = label) %>%
       tidyr::drop_na()
   } else {
-    suppressMessages(readr::read_delim(file = input, delim = ",")) %>% 
-      dplyr::select(., subject_identifier, label) %>% 
+    suppressMessages(readr::read_delim(file = input, delim = ",")) %>%
+      dplyr::select(., subject_identifier, label) %>%
       dplyr::rename(., "subject_id" = subject_identifier) %>%
       rename(., "feature_of_interest" = label) %>%
       tidyr::drop_na()
@@ -86,11 +86,11 @@ mid_safety_checks <- function(type = opt$feature_type, label = opt$label, out = 
 
 read_in_covariates <- function(input, subject_identifier) {
   if (strsplit(basename(input), split="\\.")[[1]][2] %in% c("tsv","txt")) {
-    suppressMessages(readr::read_delim(file = input, delim = "\t")) %>% 
+    suppressMessages(readr::read_delim(file = input, delim = "\t")) %>%
       dplyr::rename(., "subject_id" = subject_identifier) %>%
       tidyr::drop_na()
   } else {
-    suppressMessages(readr::read_delim(file = input, delim = ",")) %>% 
+    suppressMessages(readr::read_delim(file = input, delim = ",")) %>%
       dplyr::rename(., "subject_id" = subject_identifier) %>%
       tidyr::drop_na()
   }
@@ -111,7 +111,7 @@ convert_to_hData <- function(input) {
   cat("\n\n", "Attempting to convert to metaphlan-style input...")
   
   ## split raw data by pipe symbol into number of expected parts
-  input <- input %>% 
+  input <- input %>%
     dplyr::relocate(., clade_name) %>%
     tidyr::separate(., col = clade_name, into = levels, sep = "\\|", extra = "merge")
   
@@ -120,15 +120,15 @@ convert_to_hData <- function(input) {
   for (level in seq(length(levels))) {
     
     summarize_level <- paste0("hData_L", level)
-    hData_tmp <- input %>% 
-      dplyr::select(., 1:level, (length(levels) + 1):dplyr::last_col()) %>% 
+    hData_tmp <- input %>%
+      dplyr::select(., 1:level, (length(levels) + 1):dplyr::last_col()) %>%
       tidyr::unite(., "clade_name", L1:levels[level], sep = "|", remove = F, na.rm = T) %>%
       dplyr::select(., -c( L1:levels[level])) %>%
-      dtplyr::lazy_dt() 
-    hData_tmp <- hData_tmp %>% 
-      group_by(., clade_name) %>% 
-      summarise_all(base::sum) %>% 
-      as.data.frame() %>% 
+      dtplyr::lazy_dt()
+    hData_tmp <- hData_tmp %>%
+      group_by(., clade_name) %>%
+      summarise_all(base::sum) %>%
+      as.data.frame() %>%
       dplyr::filter(., !grepl(pattern = "NA", clade_name))
     assign(summarize_level, hData_tmp, envir = .GlobalEnv)
     
@@ -175,7 +175,7 @@ apply_filters <- function(input, standardized = opt$standardized,
     dplyr::filter(., !grepl("\\|", clade_name)) %>% 
     tibble::column_to_rownames(., var = "clade_name") %>% 
     summarise_all(sum) %>% t() %>% as.data.frame() %>% rename(., "row_sums" = "V1")
-
+  
   hData_rel_abundance <- sweep((input %>% tibble::column_to_rownames(., var = "clade_name") 
                                 %>% as.matrix), 2, hData_mean_total_abundance$row_sums, "/")
   
@@ -206,7 +206,7 @@ apply_filters <- function(input, standardized = opt$standardized,
   cat(NROW(hData), "taxa retained for downstream analysis...\n")
 }
 
-## make make_taxa_split dataframe ============================================== 
+## make make_taxa_split dataframe ==============================================
 make_taxa_split_df <- function(input) {
   
   ## long vector of possible levels in hierarchical data
@@ -217,10 +217,10 @@ make_taxa_split_df <- function(input) {
   levels <- levels[1:(num_levels + 1)]
   
   ## split raw data by pipe symbol into number of expected parts
-  taxa_only_split <- input %>% 
+  taxa_only_split <- input %>%
     dplyr::relocate(., clade_name) %>%
     tidyr::separate(., col = clade_name, into = levels, sep = "\\|", extra = "merge", remove = FALSE) %>%
-    dplyr::select(., 1:(length(levels) + 1)) 
+    dplyr::select(., 1:(length(levels) + 1))
   
   ## add some columns to this dataframe (full clade name, full taxa abundance, number of NAs)
   ## NOTE: future scripts could add an abundance threshold filter here
@@ -244,7 +244,7 @@ write_summary_files <- function(input, output) {
   levels <- levels[1:(num_levels + 1)]
   
   ## split raw data by pipe symbol into number of expected parts
-  hData_summary <- input %>% 
+  hData_summary <- input %>%
     dplyr::relocate(., clade_name) %>%
     tidyr::separate(., col = clade_name, into = levels, sep = "\\|", extra = "merge", remove = FALSE) %>%
     dplyr::mutate(., level = ((stringr::str_count(hData$clade_name, "\\|")) + 1))
@@ -253,7 +253,7 @@ write_summary_files <- function(input, output) {
   for (i in seq(length(levels))) {
     
     ## select different levels and write them to file
-    file_summary <- hData_summary %>% 
+    file_summary <- hData_summary %>%
       dplyr::filter(., level == i) %>%
       dplyr::select(., -level, -dplyr::any_of(levels)) %>%
       tibble::column_to_rownames(., var = "clade_name") %>%
@@ -326,9 +326,9 @@ taxaHFE_competition <- function(input = hData, feature_type = opt$feature_type, 
       tidyr::drop_na()
     
     ## start progress bar
-    pb <- progress_bar$new( format = " Child vs Parents [:bar] :percent in :elapsed", total = length(children_counts[children_counts$count > 1, ][,1] %>% dplyr::pull()), clear = FALSE, width= 60) 
+    pb <- progress_bar$new( format = " Child vs Parents [:bar] :percent in :elapsed", total = length(children_counts[children_counts$count > 1, ][,1] %>% dplyr::pull()), clear = FALSE, width= 60)
     
-    ## start a counter to keep track of each for-loop 
+    ## start a counter to keep track of each for-loop
     sub_count = 1
     
     ## loop through all the species with greater than 1 sub-species. If species
@@ -343,17 +343,17 @@ taxaHFE_competition <- function(input = hData, feature_type = opt$feature_type, 
         dplyr::filter(., grepl(pattern = paste0("\\b", parent_trial, "\\b"), clade_name)) %>%
         tidyr::separate(., col = clade_name, into = levels, sep = "\\|") %>%
         dplyr::select(., .data[[children[count]]], where(is.numeric)) %>%
-        dplyr::rename(., "child" = 1) %>% 
+        dplyr::rename(., "child" = 1) %>%
         tidyr::replace_na(., list(child = "PARENT")) %>%
         dplyr::group_by(., child) %>%
-        dplyr::summarise(., across(where(is.numeric), ~ sum(.))) %>% 
+        dplyr::summarise(., across(where(is.numeric), ~ sum(.))) %>%
         tibble::column_to_rownames(., var = "child") %>%
         t() %>%
-        as.data.frame() 
+        as.data.frame()
       
       ## if no columns named parent exists (species renamed parent in previous step)
       ## create column by summing up children (eg,sub-species)
-      if ("PARENT" %!in% colnames(hData_parent)) { 
+      if ("PARENT" %!in% colnames(hData_parent)) {
         hData_parent$PARENT <- rowSums(hData_parent)
       }
       ## merge with metadata
@@ -361,14 +361,14 @@ taxaHFE_competition <- function(input = hData, feature_type = opt$feature_type, 
       
       ### CORRELATION #####
       
-      ## correlate parent with children. If parent (eg, species) is highly (pearson = 0.95) 
+      ## correlate parent with children. If parent (eg, species) is highly (pearson = 0.95)
       ## correlated with child, drop the highly correlated child...they dont bring
       ## more information to the table that is otherwise carried in the parent (species in this case)
-      cor_drop <- suppressMessages(corrr::correlate(hData_parent)) %>% 
-        corrr::focus(., PARENT) %>% dplyr::filter(., abs(PARENT) >= as.numeric(opt$cor_level)) %>% 
+      cor_drop <- suppressMessages(corrr::correlate(hData_parent)) %>%
+        corrr::focus(., PARENT) %>% dplyr::filter(., abs(PARENT) >= as.numeric(opt$cor_level)) %>%
         dplyr::pull(., term)
       
-      hData_parent_merge_cor_subset <- hData_parent_merge %>% 
+      hData_parent_merge_cor_subset <- hData_parent_merge %>%
         dplyr::select(., -all_of(cor_drop)) %>%
         select(., -subject_id)
       
@@ -380,7 +380,7 @@ taxaHFE_competition <- function(input = hData, feature_type = opt$feature_type, 
         ## variable is found in the Parent column (in this case species), and there are no
         ## NAs (which is expected, because the hierarchy is complete if were looking at
         ## species vs subspecies. If we were looking at genus vs species, we'd expect 1 NA, because
-        ## after this step, only a species (PARENT) or a subspecies(CHILD) moved forward, and one was 
+        ## after this step, only a species (PARENT) or a subspecies(CHILD) moved forward, and one was
         ## dropped...thus a NA was created. Just a way to make the dropping more selective.)
         mutate_child = children[count]
         taxa_only_split <- taxa_only_split %>% dplyr::mutate(., !!mutate_child := ifelse((.data[[parents[count]]] == parent_trial & !is.na(.data[[parents[count]]]) & na_count == (count - 1)), "drop_dis", .data[[children[count]]]))
@@ -412,7 +412,7 @@ taxaHFE_competition <- function(input = hData, feature_type = opt$feature_type, 
           ## welp, the initial model miiight be correct, but lets permute that process
           ## by looping over some random seeds (10, as set in a very early variable nperm at the top)
           ## and keeping track of the variable.importance. We can then average that and have
-          ## a more sure guess whether a Parent or Child is more important with regards to 
+          ## a more sure guess whether a Parent or Child is more important with regards to
           ## the feature_of_interest
           for (seed in sample(1:1000, nperm)) {
             model_tmp <- ranger::ranger(as.factor(feature_of_interest) ~ . , data = hData_parent_merge_cor_subset, importance = "impurity_corrected", seed = seed, sample.fraction = class_frequencies, replace = TRUE, num.threads = as.numeric(cores))
@@ -443,7 +443,7 @@ taxaHFE_competition <- function(input = hData, feature_type = opt$feature_type, 
         ### RF WINNER - PARENT ####
         ## Ok we have the permuted variable.importance. Do, via the average, any
         ## children (sub-species) beat the parents with regards to discriminatory information
-        ## with regards to the feature_of_interest? 
+        ## with regards to the feature_of_interest?
         ## If the largest average variable importance is PARENT:
         if ((model_importance %>% dplyr::arrange(., desc(average)) %>% slice_head(., n = 1) %>% dplyr::pull(., taxa)) == "PARENT") {
           ## drop children from master taxa file taxa_only_split
@@ -452,28 +452,28 @@ taxaHFE_competition <- function(input = hData, feature_type = opt$feature_type, 
           taxa_only_split <- taxa_only_split %>% dplyr::filter(., !grepl(pattern = "drop_dis", x = .data[[children[count]]]))
           assign("taxa_only_split", taxa_only_split, envir = .GlobalEnv)
           
-        } else { 
+        } else {
           ### RF WINNER - CHILD ####
           mutate_child = children[count]
           parent_importance <- model_importance$average[model_importance$taxa == "PARENT"]
           
           children_toss <- model_importance %>% dplyr::filter(., average < parent_importance) %>% dplyr::pull(., taxa)
-          children_toss_zero <- model_importance %>% dplyr::filter(., average < 0) %>% dplyr::pull(., taxa) 
+          children_toss_zero <- model_importance %>% dplyr::filter(., average < 0) %>% dplyr::pull(., taxa)
           children_toss <- unique(c(children_toss, cor_drop, children_toss_zero))
           
           ## drop parent
           mutate_at_list <- rev(parents)[1:(length(parents) + 1 - count)]
-          taxa_only_split <- taxa_only_split %>% 
+          taxa_only_split <- taxa_only_split %>%
             dplyr::mutate(., !!mutate_child := ifelse((.data[[parents[count]]] == parent_trial & !is.na(.data[[parents[count]]]) & is.na(.data[[children[count]]])), "drop_dis", .data[[children[count]]]))
-          taxa_only_split <- taxa_only_split %>% 
-            mutate_at(mutate_at_list, ~ 
+          taxa_only_split <- taxa_only_split %>%
+            mutate_at(mutate_at_list, ~
                         replace(., .data[[parents[count]]] == parent_trial, NA)) %>%
             dplyr::filter(., !grepl(pattern = "drop_dis", x = .data[[children[count]]]))
           
           ## drop children that didnt win against parent
-          taxa_only_split <- taxa_only_split %>% 
+          taxa_only_split <- taxa_only_split %>%
             dplyr::mutate(., !!mutate_child := ifelse((.data[[children[count]]] %in% children_toss & is.na(.data[[parents[count]]]) & !is.na(.data[[children[count]]])), "drop_dis", .data[[children[count]]]))
-          taxa_only_split <- taxa_only_split %>% 
+          taxa_only_split <- taxa_only_split %>%
             dplyr::filter(., !grepl(pattern = "drop_dis", x = .data[[children[count]]]))
           assign("taxa_only_split", taxa_only_split, envir = .GlobalEnv)
           
@@ -515,7 +515,7 @@ taxaHFE_competition <- function(input = hData, feature_type = opt$feature_type, 
 
 ## super filter ================================================================
 
-super_filter <- function(input = hData, feature_type = "factor", cores = opt$ncores, subsample = opt$subsample, output) {
+super_filter <- function(input = hData, feature_type = "factor", cores = 4, subsample = opt$subsample, output) {
   
   cat("\n\n", "##################################\n", "Starting Super-filter\n", "##################################\n\n")
   
@@ -527,12 +527,12 @@ super_filter <- function(input = hData, feature_type = "factor", cores = opt$nco
     janitor::clean_names()
   
   hData_sf <- merge(metadata, hData_sf, by.x = "subject_id", by.y = "subject_id")
-  output_sf <- hData_sf %>% dplyr::select(., -subject_id) 
+  output_sf <- hData_sf %>% dplyr::select(., -subject_id)
   nperm = nperm + 190
   
   pb <- progress_bar$new( format = " Super-filter [:bar] :percent in :elapsed", total = nperm, clear = FALSE, width= 60)
   
-  if (feature_type == "factor") {  
+  if (feature_type == "factor") {
     model <- ranger::ranger(as.factor(feature_of_interest) ~ . , data = output_sf, importance = "impurity_corrected", seed = 42, sample.fraction = class_frequencies, replace = TRUE, num.threads = as.numeric(cores))
     model_importance <- as.data.frame(model$variable.importance) %>% tibble::rownames_to_column(., var = "taxa")
     for (seed in sample(1:1000, nperm)) {
@@ -586,7 +586,7 @@ super_filter <- function(input = hData, feature_type = "factor", cores = opt$nco
 
 write_figure <- function(input, output) {
   
-  top_features <- model_importance %>% dplyr::filter(., average > mean(average)) %>% 
+  top_features <- model_importance %>% dplyr::filter(., average > mean(average)) %>%
     dplyr::filter(., average > 0) %>% dplyr::arrange(., desc(average)) %>% dplyr::pull(., taxa)
   
   top_features <- top_features[1:pmin(10, length(top_features))]
@@ -601,7 +601,7 @@ write_figure <- function(input, output) {
                        geom_point(position = position_jitter(width = 0.2), alpha = 0.4) +
                        facet_wrap( ~ variable, scales = "free_y", ncol = 1, labeller = labeller(groupwrap = label_wrap_gen(10))) +
                        theme_bw() +
-                       theme(strip.text.x = element_text(size = 7), legend.position = "none", text = element_text(color = "black")) + 
+                       theme(strip.text.x = element_text(size = 7), legend.position = "none", text = element_text(color = "black")) +
                        labs(y = "ln(Relative abundance)", x = "Feature of Interest") +
                        ggsci::scale_fill_jama() + coord_flip())
     
@@ -634,7 +634,7 @@ write_old_hfe <- function(input = hData, output) {
   levels <- levels[1:(num_levels + 1)]
   
   
-  input <- input %>% 
+  input <- input %>%
     dplyr::relocate(., clade_name) %>%
     tidyr::separate(., col = clade_name, into = levels, sep = "\\|", extra = "merge")
   
@@ -643,7 +643,7 @@ write_old_hfe <- function(input = hData, output) {
   ## split raw data by pipe symbol into number of expected parts
   if ("L7" %in% colnames(input)) {
     taxonomy <- input %>% dplyr::select(., L1:L7)
-    input <- input %>% 
+    input <- input %>%
       dplyr::select(., L7, where(is.numeric)) %>%
       dplyr::group_by(., L7) %>%
       dplyr::summarise_if(is.numeric, sum)
@@ -671,7 +671,7 @@ write_old_hfe <- function(input = hData, output) {
     
   } else {
     taxonomy <- input %>% dplyr::select(., L1:L6)
-    input <- input %>% 
+    input <- input %>%
       dplyr::select(., L6, where(is.numeric)) %>%
       dplyr::group_by(., L6) %>%
       dplyr::summarise_if(is.numeric, sum)
@@ -703,7 +703,7 @@ write_old_hfe <- function(input = hData, output) {
 ## essentially a copy of main competition function just with added
 ## merge and consideration of additional features
 
-taxaHFE_competition_covariates <- function(input = hData, covariates, feature_type = opt$feature_type, cores = opt$ncores, output) {
+taxaHFE_competition_covariates <- function(input = hData, covariates, feature_type = opt$feature_type, cores = 4, output) {
   
   cat("\n\n", "####################################\n", "Starting competition with covariates\n", "####################################\n\n")
   
@@ -727,9 +727,9 @@ taxaHFE_competition_covariates <- function(input = hData, covariates, feature_ty
       tidyr::drop_na()
     
     ## start progress bar
-    pb <- progress_bar$new( format = " Child vs Parents [:bar] :percent in :elapsed", total = length(children_counts[children_counts$count > 1, ][,1] %>% dplyr::pull()), clear = FALSE, width= 60) 
+    pb <- progress_bar$new( format = " Child vs Parents [:bar] :percent in :elapsed", total = length(children_counts[children_counts$count > 1, ][,1] %>% dplyr::pull()), clear = FALSE, width= 60)
     
-    ## start a counter to keep track of each for-loop 
+    ## start a counter to keep track of each for-loop
     sub_count = 1
     
     ## loop through all the species with greater than 1 sub-species. If species
@@ -744,17 +744,17 @@ taxaHFE_competition_covariates <- function(input = hData, covariates, feature_ty
         dplyr::filter(., grepl(pattern = paste0("\\b", parent_trial, "\\b"), clade_name)) %>%
         tidyr::separate(., col = clade_name, into = levels, sep = "\\|") %>%
         dplyr::select(., .data[[children[count]]], where(is.numeric)) %>%
-        dplyr::rename(., "child" = 1) %>% 
+        dplyr::rename(., "child" = 1) %>%
         tidyr::replace_na(., list(child = "PARENT")) %>%
         dplyr::group_by(., child) %>%
-        dplyr::summarise(., across(where(is.numeric), ~ sum(.))) %>% 
+        dplyr::summarise(., across(where(is.numeric), ~ sum(.))) %>%
         tibble::column_to_rownames(., var = "child") %>%
         t() %>%
-        as.data.frame() 
+        as.data.frame()
       
       ## if no columns named parent exists (species renamed parent in previous step)
       ## create column by summing up children (sub-species)
-      if ("PARENT" %!in% colnames(hData_parent)) { 
+      if ("PARENT" %!in% colnames(hData_parent)) {
         hData_parent$PARENT <- rowSums(hData_parent)
       }
       ## merge with metadata
@@ -762,15 +762,15 @@ taxaHFE_competition_covariates <- function(input = hData, covariates, feature_ty
       
       ### CORRELATION #####
       
-      ## correlate parent with children. If parent (species) is highly (pearson = 0.95) 
+      ## correlate parent with children. If parent (species) is highly (pearson = 0.95)
       ## correlated with child, drop the highly correlated child...they dont bring
       ## more information to the table that is otherwise carried in the parent (species in this case)
-      cor_drop <- suppressMessages(corrr::correlate(hData_parent)) %>% 
-        corrr::focus(., PARENT) %>% dplyr::filter(., PARENT >= as.numeric(opt$cor_level)) %>% 
+      cor_drop <- suppressMessages(corrr::correlate(hData_parent)) %>%
+        corrr::focus(., PARENT) %>% dplyr::filter(., abs(PARENT) >= as.numeric(opt$cor_level)) %>%
         dplyr::pull(., term)
       
-      hData_parent_merge_cor_subset <- hData_parent_merge %>% 
-        dplyr::select(., -all_of(cor_drop)) 
+      hData_parent_merge_cor_subset <- hData_parent_merge %>%
+        dplyr::select(., -all_of(cor_drop))
       
       ## if, after dropping highly correlated children, only species is left,
       ## drop from taxa_only_split (dataframe keeping track of all kept features)
@@ -780,7 +780,7 @@ taxaHFE_competition_covariates <- function(input = hData, covariates, feature_ty
         ## variable is found in the Parent column (in this case species), and there are no
         ## NAs (which is expected, because the hierarchy is complete if were looking at
         ## species vs subspecies. If we were looking at genus vs species, we'd expect 1 NA, because
-        ## after this step, only a species (PARENT) or a subspecies(CHILD) moved forward, and one was 
+        ## after this step, only a species (PARENT) or a subspecies(CHILD) moved forward, and one was
         ## dropped...thus a NA was created. Just a way to make the dropping more selective.)
         mutate_child = children[count]
         taxa_only_split <- taxa_only_split %>% dplyr::mutate(., !!mutate_child := ifelse((.data[[parents[count]]] == parent_trial & !is.na(.data[[parents[count]]]) & na_count == (count - 1)), "drop_dis", .data[[children[count]]]))
@@ -802,8 +802,8 @@ taxaHFE_competition_covariates <- function(input = hData, covariates, feature_ty
         
         ## merge with covariates
         hData_parent_merge_cor_subset <- merge(covariates, hData_parent_merge_cor_subset, by = "subject_id")
-        hData_parent_merge_cor_subset <- hData_parent_merge_cor_subset %>% 
-          dplyr::select(., -dplyr::any_of(opt$subject_identifier)) %>% 
+        hData_parent_merge_cor_subset <- hData_parent_merge_cor_subset %>%
+          dplyr::select(., -dplyr::any_of(opt$subject_identifier)) %>%
           tidyr::drop_na()
         
         ## if the feature of interest is a factor, do a RF Classification
@@ -817,7 +817,7 @@ taxaHFE_competition_covariates <- function(input = hData, covariates, feature_ty
           ## welp, the initial model miiight be correct, but lets permute that process
           ## by looping over some random seeds (10, as set in a very early variable nperm at the top)
           ## and keeping track of the variable.importance. We can then average that and have
-          ## a more sure guess whether a Parent or Child is more important with regards to 
+          ## a more sure guess whether a Parent or Child is more important with regards to
           ## the feature_of_interest
           for (seed in sample(1:1000, nperm)) {
             model_tmp <- ranger::ranger(as.factor(feature_of_interest) ~ . , data = hData_parent_merge_cor_subset, importance = "impurity_corrected", seed = seed, sample.fraction = class_frequencies, num.threads = as.numeric(cores))
@@ -848,7 +848,7 @@ taxaHFE_competition_covariates <- function(input = hData, covariates, feature_ty
         ### RF WINNER - PARENT ####
         ## Ok we have the permuted variable.importance. Do, via the average, any
         ## children (sub-species) beat the parents with regards to discriminatory information
-        ## with regards to the feature_of_interest? 
+        ## with regards to the feature_of_interest?
         ## If the largest average variable importance is PARENT:
         if ((model_importance %>% dplyr::filter(., taxa %!in% colnames(covariates)) %>% dplyr::arrange(., desc(average)) %>% slice_head(., n = 1) %>% dplyr::pull(., taxa)) == "PARENT") {
           ## drop children from master taxa file taxa_only_split
@@ -857,28 +857,28 @@ taxaHFE_competition_covariates <- function(input = hData, covariates, feature_ty
           taxa_only_split <- taxa_only_split %>% dplyr::filter(., !grepl(pattern = "drop_dis", x = .data[[children[count]]]))
           assign("taxa_only_split", taxa_only_split, envir = .GlobalEnv)
           
-        } else { 
+        } else {
           ### RF WINNER - CHILD ####
           mutate_child = children[count]
           parent_importance <- model_importance$average[model_importance$taxa == "PARENT"]
           
           children_toss <- model_importance %>% dplyr::filter(., taxa %!in% colnames(covariates)) %>% dplyr::filter(., average < parent_importance) %>% dplyr::pull(., taxa)
-          children_toss_zero <- model_importance %>% dplyr::filter(., average < 0) %>% dplyr::pull(., taxa) 
+          children_toss_zero <- model_importance %>% dplyr::filter(., average < 0) %>% dplyr::pull(., taxa)
           children_toss <- unique(c(children_toss, cor_drop, children_toss_zero))
           
           ## drop parent
           mutate_at_list <- rev(parents)[1:(length(parents) + 1 - count)]
-          taxa_only_split <- taxa_only_split %>% 
+          taxa_only_split <- taxa_only_split %>%
             dplyr::mutate(., !!mutate_child := ifelse((.data[[parents[count]]] == parent_trial & !is.na(.data[[parents[count]]]) & is.na(.data[[children[count]]])), "drop_dis", .data[[children[count]]]))
-          taxa_only_split <- taxa_only_split %>% 
-            mutate_at(mutate_at_list, ~ 
+          taxa_only_split <- taxa_only_split %>%
+            mutate_at(mutate_at_list, ~
                         replace(., .data[[parents[count]]] == parent_trial, NA)) %>%
             dplyr::filter(., !grepl(pattern = "drop_dis", x = .data[[children[count]]]))
           
           ## drop children that didnt win against parent
-          taxa_only_split <- taxa_only_split %>% 
+          taxa_only_split <- taxa_only_split %>%
             dplyr::mutate(., !!mutate_child := ifelse((.data[[children[count]]] %in% children_toss & is.na(.data[[parents[count]]]) & !is.na(.data[[children[count]]])), "drop_dis", .data[[children[count]]]))
-          taxa_only_split <- taxa_only_split %>% 
+          taxa_only_split <- taxa_only_split %>%
             dplyr::filter(., !grepl(pattern = "drop_dis", x = .data[[children[count]]]))
           assign("taxa_only_split", taxa_only_split, envir = .GlobalEnv)
           
@@ -923,7 +923,7 @@ taxaHFE_competition_covariates <- function(input = hData, covariates, feature_ty
 ## essentially a copy of main super filter function just with added
 ## merge and consideration of additional features
 
-super_filter_covariates <- function(input = hData, covariates, feature_type = "factor", cores = opt$ncores, subsample = opt$subsample, output) {
+super_filter_covariates <- function(input = hData, covariates, feature_type = "factor", cores = 4, subsample = opt$subsample, output) {
   
   cat("\n\n", "##################################\n", "Starting Super-filter\n", "##################################\n\n")
   
@@ -940,12 +940,12 @@ super_filter_covariates <- function(input = hData, covariates, feature_type = "f
   hData_sf <- merge(metadata, hData_sf, by.x = "subject_id", by.y = "subject_id")
   hData_sf <- merge(hData_sf, covariates, by = "subject_id")
   covariate_list <- covariates %>% dplyr::select(., -subject_id) %>% colnames()
-  output_sf <- hData_sf %>% dplyr::select(., -subject_id) 
+  output_sf <- hData_sf %>% dplyr::select(., -subject_id)
   nperm = nperm + 190
   
   pb <- progress_bar$new( format = " Super-filter [:bar] :percent in :elapsed", total = nperm, clear = FALSE, width= 60)
   
-  if (feature_type == "factor") {  
+  if (feature_type == "factor") {
     model <- ranger::ranger(as.factor(feature_of_interest) ~ . , data = output_sf, importance = "impurity_corrected", seed = 42, sample.fraction = class_frequencies, replace = TRUE, num.threads = as.numeric(cores))
     model_importance <- as.data.frame(model$variable.importance) %>% tibble::rownames_to_column(., var = "taxa")
     for (seed in sample(1:1000, nperm)) {
