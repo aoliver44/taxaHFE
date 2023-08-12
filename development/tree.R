@@ -155,14 +155,14 @@ build_tree <- function(df, filter_prevalence, filter_mean_abundance) {
   zeros_df[zeros_df != 0] <- 0
   
   # start the unique id counter at 1 greater than the original df size
-  next_row_id = nrow(df) + 1
+  next_row_id <- nrow(df) + 1
 
   # traverse the tree and fix the unpopulated nodes
   taxa_tree$Do(function(node) {
     fix_unpopulated_node(node, zeros_df, next_row_id)
     # this loop handles that by incrementing next_row_id for every node, ensuring a unique id if needed
     # they are NOT guaranteed to be sequential since the current node may or may not need it
-    # <<- ensures that we assign to the next_row_id outside this closure loop
+    # <<- ensures that we assign to the next_row_id var outside this closure loop
     next_row_id <<- next_row_id + 1
   }, traversal = "post-order")
   
