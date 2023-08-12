@@ -23,6 +23,7 @@ trim <- 0.02
 feature_of_interest <- "Category"
 feature_type <- "factor"
 ncores <- 4
+nperm <- 10
 sample_fraction <- 1
 subject_identifier <- "Sample"
 
@@ -30,7 +31,8 @@ options(width = 150)
 
 metadata <- metadata %>%
   dplyr::select(., subject_identifier, feature_of_interest) %>%
-  dplyr::rename(., "feature_of_interest" = feature_of_interest)
+  dplyr::rename(., "feature_of_interest" = feature_of_interest) %>%
+  dplyr::rename(., "subject_id" = subject_identifier)
 
 # get_descendant_winners goes through the descendants of node, returning a list of all found winners
 # maxDepth defines how deep the winner function will go to find a winner
@@ -111,8 +113,14 @@ build_tree <- function(df, filter_prevalence, filter_mean_abundance) {
 # this will modify the node in place
 # for this node, evaluates correlation and rf against all descendants that have won previous rounds
 # modifies the node indicating if it is a winner against those descendants
-# OR which of 1:n descendants have out-competed it
+# OR which of 1:n descendants are winners 
 compete_node <- function(node, max_depth, corr_threshold, metadata, sample_fraction, ncores) {
+  
+  ## do not consider children that do not pass abundance and prevalence filters
+  if (!node$passed_prevalence_filter || !node$passed_mean_abundance_filter) { 
+    return() 
+  }
+  
   # handle no children, this node is the winner
   if (length(node$children) == 0) {
     node$winner <- TRUE
@@ -124,7 +132,7 @@ compete_node <- function(node, max_depth, corr_threshold, metadata, sample_fract
   df <- as.data.frame(node$abundance, check.names = FALSE)
 
   descendant_winners <- get_descendant_winners(node, max_depth)
-  # if no descendant winners, th parent is the winner
+  # if no descendant winners, the parent is the winner
   # TODO: is this possible? should it be indicated somehow to the end user?
   if (length(descendant_winners) == 0) {
     node$winner <- TRUE
@@ -163,7 +171,7 @@ compete_node <- function(node, max_depth, corr_threshold, metadata, sample_fract
 
   # run the random forest on the remaining parent + descendants
   # TODO: do the baked-in values need to be modifiable?
-  rf_winners <- rf_competition_gpt(df = transposed, metadata, "feature_of_interest", "Sample", "factor", sample_fraction, ncores)
+  rf_winners <- rf_competition(transposed, metadata,"feature_of_interest", "subject_id", feature_type, sample_fraction, ncores, nperm)
 
   # mark winners/losers of parent and descendants
   # also mark the non-winners as rf losers
@@ -217,16 +225,8 @@ calculate_correlation <- function(df, corrThreshold) {
   )
 }
 
-calculateCorrelation_debug <- function(df, corrThreshold) {
-  parentColumn <- colnames(df)[1]
-  return(
-    suppressMessages(corrr::correlate(df)) %>%
-      corrr::focus(., parentColumn)
-  )
-}
-
-calc_class_frequencies <- function(input, type, feature, sample_fraction) {
-  if (type == "factor") {
+calc_class_frequencies <- function(input, feature_type, feature = "feature_of_interest", sample_fraction) {
+  if (feature_type == "factor") {
     ## create a vector to deal with class imbalance
     ## this is infomred by: https://github.com/imbs-hl/ranger/issues/167
     ## note in the ranger model, they use sample.fraction and replace = T
@@ -241,17 +241,15 @@ calc_class_frequencies <- function(input, type, feature, sample_fraction) {
     ## sample sizes are usually a little small i think its better to use all
     ## data??
     class_frequencies <- class_frequencies * as.numeric(sample_fraction)
-    assign("class_frequencies", class_frequencies, envir = .GlobalEnv)
+    return(class_frequencies)
   } else {
     class_frequencies <- 1
-    assign("class_frequencies", class_frequencies, envir = .GlobalEnv)
+    return(class_frequencies)
   }
 }
 
-calc_class_frequencies(input = metadata, type = feature_type, feature = "feature_of_interest", sample_fraction = sample_fraction)
-
-rf_competition_gpt <- function(df, metadata, feature_of_interest = "feature_of_interest", subject_identifier, feature_type, sample_fraction = class_frequencies, ncores, nperm = 10) {
-  merged_data <- merge(df, metadata, by.x = "row.names", by.y = subject_identifier)
+rf_competition <- function(df, metadata, feature_of_interest = "feature_of_interest", subject_identifier = "subject_id", feature_type = feature_type, sample_fraction = calc_class_frequencies(), ncores = ncores, nperm = nperm) {
+  merged_data <- merge(df, metadata, by.x = "row.names", by.y = "subject_id")
   merged_data <- tibble::column_to_rownames(merged_data, var = "Row.names")
   data_colnames <- colnames(merged_data)
   merged_data <- merged_data %>% janitor::clean_names()
@@ -295,11 +293,13 @@ competed_tree <- compete_tree(
   hTree[["k__Bacteria"]],
   corr_threshold = corr_threshold,
   metadata = metadata,
-  sample_fraction = sample_fraction,
-  ncores = ncores
+  ncores = ncores,
+  sample_fraction = calc_class_frequencies(input = metadata, 
+                                           feature_type = feature_type,
+                                           sample_fraction = sample_fraction),
 )
 
-print(hTree, "winner")
+print(competed_tree, "winner")
 
 
 flatten_tree_with_metadata <- function(node) {
@@ -308,6 +308,7 @@ flatten_tree_with_metadata <- function(node) {
     depth = node$level,
     pathString = node$pathString,
     rf_win = node$lost_rf,
+    winner = node$winner,
     highly_cor = node$highlyCorrelated,
     passed_prevelance = node$passed_prevalence_filter,
     passed_abundance = node$passed_mean_abundance_filter,
@@ -324,7 +325,7 @@ flatten_tree_with_metadata <- function(node) {
 }
 
 # Flatten the tree and tree decisions
-flattened_df <- flatten_tree_with_metadata(hTree[["k__Bacteria"]])
+flattened_df <- flatten_tree_with_metadata(competed_tree)
 flattened_df <- flattened_df %>% filter(., rf_win == TRUE, passed_prevelance == TRUE, passed_abundance == TRUE, highly_cor == FALSE)
 
 
@@ -333,3 +334,10 @@ flattened_df <- flattened_df %>% filter(., rf_win == TRUE, passed_prevelance == 
 
 hello <- as.Node(flattened_df)
 View(as.data.frame(hello))
+
+
+
+
+
+
+
