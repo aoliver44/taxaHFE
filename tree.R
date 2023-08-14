@@ -44,24 +44,24 @@ metadata <- metadata %>%
 # maxDepth defines how deep the winner function will go to find a winner
 get_descendant_winners <- function(node, max_depth) {
   winners <- list()
-
+  
   # if maxDepth is zero, this is the bottom
   # return an empty list as no further generations will be considered
   if (max_depth == 0) {
     return(winners)
   }
-
+  
   for (child in node$children) {
     # if the child is a winner, add the child to list and move to the next child
     if (child$winner) {
       winners <- append(winners, child)
       next
     }
-
+    
     # otherwise, check the child's children for winners
     winners <- append(winners, get_descendant_winners(child, max_depth - 1))
   }
-
+  
   return(winners)
 }
 
@@ -102,21 +102,21 @@ fix_unpopulated_node <- function(node, zeros_df, next_row_id) {
   if (!is.null(node$abundance)) {
     return()
   }
-
-
+  
+  
   # generate abundance from children abundances
   # skip all children missing abundance
   df <- zeros_df
   for (child in node$children) {
     if (is.null(child$abundance)) next
-
+    
     df <- rbind(df, child$abundance)
   }
-
+  
   # create a bottom row with the sums and grab it out to be assigned to the node
   # if there are no children abundances (what??), the single zeros row will be summed and still be zero
   df <- df %>% dplyr::bind_rows(dplyr::summarise(., dplyr::across(where(is.numeric), sum)))
-
+  
   # grab the last row from df for the node's abundances
   # either the sum of child abundances or a row of zeros
   new_row <- df[nrow(df), ]
@@ -134,14 +134,14 @@ fix_unpopulated_node <- function(node, zeros_df, next_row_id) {
 build_tree <- function(df, filter_prevalence, filter_mean_abundance) {
   # root node for the tree
   taxa_tree <- data.tree::Node$new("taxaTree", id = 0)
-
+  
   for (row in seq_len(nrow(df))) {
     # generate a vector of clade levels
     levels <- unlist(strsplit(hData[row, "clade_name"], "\\|"))
-
+    
     # start at the root node
     node <- taxa_tree
-
+    
     # iterate the vector of clade level names
     # if the level hasn't been added yet, add it as a new child to the current node
     # otherwise get a reference to the existing node for further iteration
@@ -153,21 +153,21 @@ build_tree <- function(df, filter_prevalence, filter_mean_abundance) {
         node <- potential_node
       }
     }
-
+    
     # after iterating the levels, node is assigned to the leaf of this row
     # add in the row data and other supporting information
     initial_leaf_values(node, row, df[row, 2:ncol(df)], filter_prevalence, filter_mean_abundance)
   }
-
+  
   # now that the tree is built, handle unpopulated leaves with the fix_unpopulated_node
   # generate a single row zeros df for a default abundance in the case of no child data to sum
   # matches other abundance by no including clade_name column
   zeros_df <- df[1, 2:ncol(df)]
   zeros_df[zeros_df != 0] <- 0
-
+  
   # start the unique id counter at 1 greater than the original df size
   next_row_id <- nrow(df) + 1
-
+  
   # traverse the tree and fix the unpopulated nodes
   taxa_tree$Do(function(node) {
     fix_unpopulated_node(node, zeros_df, next_row_id)
@@ -176,7 +176,7 @@ build_tree <- function(df, filter_prevalence, filter_mean_abundance) {
     # <<- ensures that we assign to the next_row_id var outside this closure loop
     next_row_id <<- next_row_id + 1
   }, traversal = "post-order")
-
+  
   return(taxa_tree)
 }
 
@@ -185,36 +185,29 @@ build_tree <- function(df, filter_prevalence, filter_mean_abundance) {
 # for this node, evaluates correlation and rf against all descendants that have won previous rounds
 # modifies the node indicating if it is a winner against those descendants
 # OR which of 1:n descendants are winners
-<<<<<<< HEAD
-compete_node <- function(node, skip_levels, max_depth, corr_threshold, metadata, sample_fraction, ncores) {
-  if (node$level %in% skip_levels) {
-    return()
-  }
-=======
 compete_node <- function(node, lowest_level, max_depth, corr_threshold, metadata, sample_fraction, ncores) {
   # skip anything lower than the lowest level (exclusive)
   if (node$level < lowest_level) {
     return()
   }
-
->>>>>>> fe87dde94f355a0f1f99791362633133c246dd58
+  
   ## do not consider children that do not pass abundance and prevalence filters
   if (!node$passed_prevalence_filter || !node$passed_mean_abundance_filter) {
     node$outcomes <- append(node$outcomes, "loss: did not pass filters")
     return()
   }
-
+  
   # handle no children, this node is the winner
   if (length(node$children) == 0) {
     node$outcomes <- append(node$outcomes, "win: no children")
     node$winner <- TRUE
     return()
   }
-
+  
   # build dataframe of parent and descendant winners
   # parent is always row 1
   df <- as.data.frame(node$abundance, check.names = FALSE)
-
+  
   descendant_winners <- get_descendant_winners(node, max_depth)
   # if no descendant winners, the parent is the winner
   # TODO: is this possible? should it be indicated somehow to the end user?
@@ -223,18 +216,18 @@ compete_node <- function(node, lowest_level, max_depth, corr_threshold, metadata
     node$winner <- TRUE
     return()
   }
-
+  
   # add the descendant's abundance dataframe row to df
   for (descendant in descendant_winners) {
     df <- rbind(df, descendant$abundance)
   }
-
+  
   # transpose the dataframe to fit the input format for the correlation and ml
   transposed <- as.data.frame(t(df))
-
+  
   # determine the child ids that are strongly correlated
   correlated_ids <- calculate_correlation(df = transposed, corr_threshold)
-
+  
   # mark correlated in tree
   # highly correlated descendants are not winners
   not_correlated_descendant_winners <- list()
@@ -247,7 +240,7 @@ compete_node <- function(node, lowest_level, max_depth, corr_threshold, metadata
       not_correlated_descendant_winners <- append(not_correlated_descendant_winners, descendant)
     }
   }
-
+  
   # if all descendants are correlated, the parent wins
   if (length(descendant_winners) == length(correlated_ids)) {
     node$outcomes <- append(node$outcomes, sprintf(
@@ -263,15 +256,15 @@ compete_node <- function(node, lowest_level, max_depth, corr_threshold, metadata
     node$winner <- TRUE
     return()
   }
-
+  
   # drop from transposed data all correlated children
   transposed <- transposed %>%
     dplyr::select(., -dplyr::any_of(correlated_ids))
-
+  
   # run the random forest on the remaining parent + descendants
   # TODO: do the baked-in values need to be modifiable?
   rf_winners <- rf_competition(transposed, metadata, "feature_of_interest", "subject_id", feature_type, sample_fraction, ncores, nperm)
-
+  
   # generate winner and loser name lists from the competitors (parent and non-correlated descendants), using the outcome
   # build ahead of time so that a summary can be provided in outcomes
   # this can be sped up and done in a single loop if outcomes are not needed
@@ -286,7 +279,7 @@ compete_node <- function(node, lowest_level, max_depth, corr_threshold, metadata
     }
   }
   outcome_str <- sprintf("winners: %s; losers: %s", paste(winner_names, collapse = ","), paste(loser_names, collapse = ","))
-
+  
   # now actually mark the results, including outcome string
   # mark winners/losers of parent and descendants
   # also mark the non-winners as rf losers
@@ -300,7 +293,7 @@ compete_node <- function(node, lowest_level, max_depth, corr_threshold, metadata
       competitor$lost_rf <- TRUE
     }
   }
-
+  
   return()
 }
 
@@ -313,21 +306,21 @@ compete_all_winners <- function(tree, metadata, sample_fraction, ncores) {
   if (length(competitors) == 0) {
     return()
   }
-
+  
   # all winners into a transposed data frame
   df <- data.frame()
   for (winner in competitors) {
     df <- rbind(df, winner$abundance)
   }
   transposed <- as.data.frame(t(df))
-
+  
   # compete here
   # return list of winner ids
   # right now does nothing, all are marked as winners
   rf_winners <- lapply(competitors, function(node) node$id)
-
+  
   # TODO: so much duplication below
-
+  
   # generate winner and loser name lists from the competitors (parent and non-correlated descendants), using the outcome
   # build ahead of time so that a summary can be provided in outcomes
   # this can be sped up and done in a single loop if outcomes are not needed
@@ -341,7 +334,7 @@ compete_all_winners <- function(tree, metadata, sample_fraction, ncores) {
     }
   }
   outcome_str <- sprintf("winners: %s; losers: %s", paste(winner_names, collapse = ","), paste(loser_names, collapse = ","))
-
+  
   # now actually mark the results, including outcome string
   # mark winners/losers of parent and descendants
   # also mark the non-winners as rf losers
@@ -360,35 +353,23 @@ compete_all_winners <- function(tree, metadata, sample_fraction, ncores) {
 # competes an entries tree
 # takes a data.tree root node as input
 # modify_tree: determines if the input tree will be modified in place
-<<<<<<< HEAD
-# skip_levels: levels of the tree to skip, to reduce high levels from potentially dominating
-=======
 # lowest_level: lowest level of the tree to consider during operations
 #   this level will be compared in a final all-vs-all random forest after the main tree competition
 #   defaults to skipping the lowest level (all abundances)
->>>>>>> fe87dde94f355a0f1f99791362633133c246dd58
 # max_depth: determines how deep the descendant competitions will be held
 #   defaults to a massive number to allow every descendant
 # corr_threshold: the threshold to mark a descendant as highly correlated
 # metadata: the metadata associated with the input df that generated the tree
 # sample_fraction: TODO (don't know what this is)
 # ncores: the number of cores to use when running the random forest
-<<<<<<< HEAD
-compete_tree <- function(tree, modify_tree = FALSE, skip_levels = c(1), max_depth = 1000, corr_threshold, metadata, sample_fraction, ncores) {
-=======
 compete_tree <- function(tree, modify_tree = FALSE, lowest_level = 2, max_depth = 1000, corr_threshold, metadata, sample_fraction, ncores) {
->>>>>>> fe87dde94f355a0f1f99791362633133c246dd58
   # if not modifying the input tree, create a copy of the tree to perform the competition
   if (!modify_tree) tree <- data.tree::Clone(tree)
-
+  
   # perform the competition, modifying the tree (which may or may not be a clone of the input)
   tree$Do(
     compete_node,
-<<<<<<< HEAD
-    skip_levels = skip_levels,
-=======
     lowest_level = lowest_level,
->>>>>>> fe87dde94f355a0f1f99791362633133c246dd58
     max_depth = max_depth,
     corr_threshold = corr_threshold,
     metadata = metadata,
@@ -396,13 +377,10 @@ compete_tree <- function(tree, modify_tree = FALSE, lowest_level = 2, max_depth 
     ncores = ncores,
     traversal = "post-order"
   )
-
-<<<<<<< HEAD
-=======
+  
   # compete all winners
   compete_all_winners(tree, metadata, sample_fraction, ncores)
-
->>>>>>> fe87dde94f355a0f1f99791362633133c246dd58
+  
   # return the tree
   return(tree)
 }
@@ -445,26 +423,26 @@ rf_competition <- function(df, metadata, feature_of_interest = "feature_of_inter
   merged_data <- tibble::column_to_rownames(merged_data, var = "Row.names")
   data_colnames <- colnames(merged_data)
   merged_data <- merged_data %>% janitor::clean_names()
-
+  
   if (feature_type == "factor") {
     response_formula <- as.formula(paste("as.factor(", feature_of_interest, ") ~ .", sep = ""))
   } else {
     response_formula <- as.formula(paste("as.numeric(", feature_of_interest, ") ~ .", sep = ""))
   }
-
+  
   run_ranger <- function(seed) {
     ranger::ranger(response_formula, data = merged_data, importance = "impurity_corrected", seed = seed, sample.fraction = sample_fraction, replace = TRUE, num.threads = as.numeric(ncores))$variable.importance %>%
       as.data.frame() %>%
       dplyr::rename(., "importance" = ".") %>%
       tibble::rownames_to_column(var = "taxa")
   }
-
+  
   model_importance <- purrr::map_df(sample(1:1000, nperm), run_ranger) %>%
     dplyr::group_by(taxa) %>%
     dplyr::summarise(., average = mean(importance))
-
+  
   parentColumn <- janitor::make_clean_names(colnames(df)[1])
-
+  
   if ((model_importance %>% arrange(desc(average)) %>% pull(taxa))[1] == parentColumn) {
     return(gsub(pattern = "x", replacement = "", x = parentColumn))
   } else {
@@ -483,11 +461,7 @@ hTree <- build_tree(hData, filter_prevalence, filter_mean_abundance)
 
 competed_tree <- compete_tree(
   hTree,
-<<<<<<< HEAD
-  skip_levels = c(1, 2),
-=======
   lowest_level = 3,
->>>>>>> fe87dde94f355a0f1f99791362633133c246dd58
   corr_threshold = corr_threshold,
   metadata = metadata,
   ncores = ncores,
@@ -512,12 +486,12 @@ flatten_tree_with_metadata <- function(node) {
     abundance = node$abundance,
     stringsAsFactors = FALSE
   )
-
+  
   if (length(node$children) > 0) {
     children_df <- do.call(rbind, lapply(node$children, flatten_tree_with_metadata))
     df <- rbind(df, children_df)
   }
-
+  
   return(df)
 }
 
