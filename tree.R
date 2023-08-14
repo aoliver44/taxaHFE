@@ -115,7 +115,7 @@ fix_unpopulated_node <- function(node, zeros_df, next_row_id) {
 
   # create a bottom row with the sums and grab it out to be assigned to the node
   # if there are no children abundances (what??), the single zeros row will be summed and still be zero
-  df <- df %>% dplyr::bind_rows(dplyr::summarise(., dplyr::across(dplyr::where(is.numeric), sum)))
+  df <- df %>% dplyr::bind_rows(dplyr::summarise(., dplyr::across(where(is.numeric), sum)))
 
   # grab the last row from df for the node's abundances
   # either the sum of child abundances or a row of zeros
