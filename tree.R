@@ -417,7 +417,7 @@ flatten_tree_with_metadata <- function(node) {
     name = node$name,
     depth = node$level,
     pathString = node$pathString,
-    outcomes = paste(node$outcomes, collapse = "\n"),
+    outcomes = paste(node$outcomes, collapse = "|\n"),
     winner = node$winner,
     rf_loss = node$lost_rf,
     highly_cor = node$highly_correlated,
