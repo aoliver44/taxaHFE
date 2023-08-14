@@ -220,11 +220,6 @@ compete_node <- function(node, skip_levels, max_depth, corr_threshold, metadata,
     df <- rbind(df, descendant$abundance)
   }
 
-  # build a "map" of ids -> names for easy string formatting later
-  # this isn't great because the ids are coerced into character type but there is no built in map
-  id_to_name_map <- append(lapply(descendant_winners, function(descendant) descendant$name), node$name)
-  names(id_to_name_map) <- append(sapply(descendant_winners, function(descendant) descendant$id), node$id)
-
   # transpose the dataframe to fit the input format for the correlation and ml
   transposed <- as.data.frame(t(df))
 
