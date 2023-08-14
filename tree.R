@@ -1,18 +1,35 @@
-library(data.tree)
-library(dplyr)
-library(corrr)
-library(tibble)
-library(purrr)
-library(janitor)
-library(ranger)
+## HFE FUNCTIONS
+## v1.12
 
-hData <- read.delim("/home/docker/example_inputs/microbiome_data.txt", check.names = F)
-metadata <- read.delim("/home/docker/example_inputs/metadata.txt", sep = "\t", check.names = FALSE)
-hTree <- data.tree::Node$new("taxaTree", id = 0)
+library(janitor, quietly = T, verbose = F, warn.conflicts = F)
+library(tidyr, quietly = T, verbose = F, warn.conflicts = F)
+library(tibble, quietly = T, verbose = F, warn.conflicts = F)
+library(ggplot2, quietly = T, verbose = F, warn.conflicts = F)
+library(ggsci, quietly = T, verbose = F, warn.conflicts = F)
+library(progress, quietly = T, verbose = F, warn.conflicts = F)
+library(data.tree, quietly = T, verbose = F, warn.conflicts = F)
+library(dplyr, quietly = T, verbose = F, warn.conflicts = F)
+library(corrr, quietly = T, verbose = F, warn.conflicts = F)
+library(tibble, quietly = T, verbose = F, warn.conflicts = F)
+library(purrr, quietly = T, verbose = F, warn.conflicts = F)
+library(ranger, quietly = T, verbose = F, warn.conflicts = F)
+library(vroom, quietly = T, verbose = F, warn.conflicts = F)
 
 ## set random seed if needed
 set.seed(42)
-nperm <- 10
+nperm <- 10 # permute the random forest this many times
+trim <- 0.02 # trim outliers from mean feature abundance calc
+
+## get vars from user input ====================================================
+filter_prevalence <- opt$prevalence
+filter_mean_abundance <- opt$abundance
+corr_threshold <- opt$cor_level
+feature_of_interest <- opt$label
+feature_type <- opt$feature_type
+ncores <- opt$ncores
+sample_fraction <- opt$subsample
+subject_identifier <- opt$subject_identifier
+
 ## helper functions ============================================================
 
 ## Negate function ("not in"):
@@ -21,51 +38,121 @@ nperm <- 10
 ## suppress warnings
 options(warn = -1)
 
+## make empty tree =============================================================
+hTree <- data.tree::Node$new("taxaTree", id = 0)
 
-filter_prevalence <- 0.01
-filter_mean_abundance <- 0.0001
-corr_threshold <- 0.95
-trim <- 0.02
-feature_of_interest <- "Category"
-feature_type <- "factor"
-ncores <- 4
-nperm <- 10
-sample_fraction <- 1
-subject_identifier <- "Sample"
+## read in metadata  ===========================================================
+read_in_metadata <- function(input, subject_identifier, label) {
+  if (strsplit(basename(input), split="\\.")[[1]][2] %in% c("tsv","txt")) {
+    suppressMessages(readr::read_delim(file = input, delim = "\t")) %>%
+      dplyr::select(., subject_identifier, label) %>%
+      dplyr::rename(., "subject_id" = subject_identifier) %>%
+      rename(., "feature_of_interest" = label) %>%
+      tidyr::drop_na()
+  } else {
+    suppressMessages(readr::read_delim(file = input, delim = ",")) %>%
+      dplyr::select(., subject_identifier, label) %>%
+      dplyr::rename(., "subject_id" = subject_identifier) %>%
+      rename(., "feature_of_interest" = label) %>%
+      tidyr::drop_na()
+  }
+}
 
-options(width = 150)
+## read in microbiome data =====================================================
+read_in_microbiome <- function(input, meta = metadata, cores = opt$ncores) {
+  ## read in txt, tsv, or csv microbiome data
+  if (strsplit(basename(input), split="\\.")[[1]][2] %in% c("tsv","txt")) {
+    hData <- suppressMessages(vroom::vroom(file = input, delim = "\t", skip = 0, 
+                                           .name_repair = "minimal", 
+                                           num_threads = as.numeric(cores)) %>% 
+                                dplyr::select(., -any_of(c("NCBI_tax_id", 
+                                                           "clade_taxid"))))
+  } else {
+    hData <- suppressMessages(vroom::vroom(file = input, delim = ",", skip = 0, 
+                                           .name_repair = "minimal", 
+                                           num_threads = as.numeric(cores)) %>% 
+                                dplyr::select(., -any_of(c("NCBI_tax_id", 
+                                                           "clade_taxid"))))
+  }
+  
+  ## only select columns that are in metadata file, reduce computation
+  hData <- hData %>% dplyr::select(., dplyr::any_of(c("clade_name", metadata$subject_id)))
+  
+  ## check and make sure clade_name is the first column in hData
+  if (colnames(hData[1]) != "clade_name") {
+    stop("clade_name is not the first column of the hiearchical data.")
+  }
+  
+  ## write input to file
+  return(as.data.frame(hData))
+}
 
-metadata <- metadata %>%
-  dplyr::select(., subject_identifier, feature_of_interest) %>%
-  dplyr::rename(., "feature_of_interest" = feature_of_interest) %>%
-  dplyr::rename(., "subject_id" = subject_identifier)
+## write separate files to test summary levels =================================
+# write old files in order to test 2018 Oudah HFE program
+write_summary_files <- function(input, output) {
+  
+  ## long vector of possible levels in hierarchical data
+  levels <- c("L1", "L2", "L3", "L4", "L5", "L6", "L7", "L8", "L9", "L10", "L11", "L12", "L13", "L14", "L15")
+  
+  ## count number of splits (+1) in hierarchical data by "|" symbol
+  num_levels <- max(stringr::str_count(input$clade_name, "\\|"))
+  levels <- levels[1:(num_levels + 1)]
+  
+  ## split raw data by pipe symbol into number of expected parts
+  hData_summary <- input %>%
+    dplyr::relocate(., clade_name) %>%
+    tidyr::separate(., col = clade_name, into = levels, sep = "\\|", extra = "merge", remove = FALSE) %>%
+    dplyr::mutate(., level = ((stringr::str_count(hData$clade_name, "\\|")) + 1))
+  
+  count = 1
+  for (i in seq(length(levels))) {
+    
+    ## select different levels and write them to file
+    file_summary <- hData_summary %>%
+      dplyr::filter(., level == i) %>%
+      dplyr::select(., -level, -dplyr::any_of(levels)) %>%
+      tibble::column_to_rownames(., var = "clade_name") %>%
+      t() %>%
+      as.data.frame() %>%
+      tibble::rownames_to_column(., var = "subject_id") %>%
+      janitor::clean_names()
+    
+    file_merge <- merge(metadata, file_summary, by = "subject_id")
+    
+    filename <- paste0("_level_", count, ".csv")
+    readr::write_csv(x = file_merge, file = paste0(tools::file_path_sans_ext(output), filename))
+    count = count + 1
+  }
+  
+}
 
+## get descenant winners =======================================================
 # get_descendant_winners goes through the descendants of node, returning a list of all found winners
 # maxDepth defines how deep the winner function will go to find a winner
 get_descendant_winners <- function(node, max_depth) {
   winners <- list()
-
+  
   # if maxDepth is zero, this is the bottom
   # return an empty list as no further generations will be considered
   if (max_depth == 0) {
     return(winners)
   }
-
+  
   for (child in node$children) {
     # if the child is a winner, add the child to list and move to the next child
     if (child$winner) {
       winners <- append(winners, child)
       next
     }
-
+    
     # otherwise, check the child's children for winners
     winners <- append(winners, get_descendant_winners(child, max_depth - 1))
   }
-
+  
   return(winners)
 }
 
-# set the initial values for a leaf
+## set the initial values for a leaf ===========================================
 # modifies the passed-in node
 # node: current leaf node
 # row_num: unique row number from original df
@@ -91,6 +178,7 @@ initial_leaf_values <- function(node, row_num, row_df, filter_prevalence, filter
   node$id <- row_num
 }
 
+## fix unpopulated node ========================================================
 # generates abundance, and other values, for clade nodes that were missing a row in the input data
 # uses the sum of the child abundances for the abundance data
 # if no child abundances are available, uses all zeros
@@ -102,21 +190,21 @@ fix_unpopulated_node <- function(node, zeros_df, next_row_id) {
   if (!is.null(node$abundance)) {
     return()
   }
-
-
+  
+  
   # generate abundance from children abundances
   # skip all children missing abundance
   df <- zeros_df
   for (child in node$children) {
     if (is.null(child$abundance)) next
-
+    
     df <- rbind(df, child$abundance)
   }
-
+  
   # create a bottom row with the sums and grab it out to be assigned to the node
   # if there are no children abundances (what??), the single zeros row will be summed and still be zero
   df <- df %>% dplyr::bind_rows(dplyr::summarise(., dplyr::across(where(is.numeric), sum)))
-
+  
   # grab the last row from df for the node's abundances
   # either the sum of child abundances or a row of zeros
   new_row <- df[nrow(df), ]
@@ -126,6 +214,7 @@ fix_unpopulated_node <- function(node, zeros_df, next_row_id) {
   initial_leaf_values(node, next_row_id, new_row, filter_prevalence, filter_mean_abundance)
 }
 
+## build tree from df ==========================================================
 # build_tree takes a dataframe as input
 # rows are the clade names, with levels separated by "|"
 # it is expected that there will be a row for every level with summed abundances
@@ -134,14 +223,19 @@ fix_unpopulated_node <- function(node, zeros_df, next_row_id) {
 build_tree <- function(df, filter_prevalence, filter_mean_abundance) {
   # root node for the tree
   taxa_tree <- data.tree::Node$new("taxaTree", id = 0)
-
+  
+  ## progress bar
+  pb <- progress_bar$new( format = " Child vs Parents [:bar] :percent in :elapsed", total = nrow(df), clear = FALSE, width= 60)
   for (row in seq_len(nrow(df))) {
+    ## progress bar
+    pb$tick()
+    
     # generate a vector of clade levels
-    levels <- unlist(strsplit(hData[row, "clade_name"], "\\|"))
-
+    levels <- unlist(strsplit(as.character(hData[row, "clade_name"]), "\\|"))
+    
     # start at the root node
     node <- taxa_tree
-
+    
     # iterate the vector of clade level names
     # if the level hasn't been added yet, add it as a new child to the current node
     # otherwise get a reference to the existing node for further iteration
@@ -153,21 +247,21 @@ build_tree <- function(df, filter_prevalence, filter_mean_abundance) {
         node <- potential_node
       }
     }
-
+    
     # after iterating the levels, node is assigned to the leaf of this row
     # add in the row data and other supporting information
     initial_leaf_values(node, row, df[row, 2:ncol(df)], filter_prevalence, filter_mean_abundance)
   }
-
+  
   # now that the tree is built, handle unpopulated leaves with the fix_unpopulated_node
   # generate a single row zeros df for a default abundance in the case of no child data to sum
   # matches other abundance by no including clade_name column
   zeros_df <- df[1, 2:ncol(df)]
   zeros_df[zeros_df != 0] <- 0
-
+  
   # start the unique id counter at 1 greater than the original df size
   next_row_id <- nrow(df) + 1
-
+  
   # traverse the tree and fix the unpopulated nodes
   taxa_tree$Do(function(node) {
     fix_unpopulated_node(node, zeros_df, next_row_id)
@@ -176,10 +270,11 @@ build_tree <- function(df, filter_prevalence, filter_mean_abundance) {
     # <<- ensures that we assign to the next_row_id var outside this closure loop
     next_row_id <<- next_row_id + 1
   }, traversal = "post-order")
-
+  
   return(taxa_tree)
 }
 
+## main compete node function ==================================================
 # competes the input node
 # this will modify the node in place
 # for this node, evaluates correlation and rf against all descendants that have won previous rounds
@@ -190,24 +285,24 @@ compete_node <- function(node, lowest_level, max_depth, corr_threshold, metadata
   if (node$level < lowest_level) {
     return()
   }
-
+  
   ## do not consider children that do not pass abundance and prevalence filters
   if (!node$passed_prevalence_filter || !node$passed_mean_abundance_filter) {
     node$outcomes <- append(node$outcomes, "loss: did not pass filters")
     return()
   }
-
+  
   # handle no children, this node is the winner
   if (length(node$children) == 0) {
     node$outcomes <- append(node$outcomes, "win: no children")
     node$winner <- TRUE
     return()
   }
-
+  
   # build dataframe of parent and descendant winners
   # parent is always row 1
   df <- as.data.frame(node$abundance, check.names = FALSE)
-
+  
   descendant_winners <- get_descendant_winners(node, max_depth)
   # if no descendant winners, the parent is the winner
   # TODO: is this possible? should it be indicated somehow to the end user?
@@ -216,18 +311,18 @@ compete_node <- function(node, lowest_level, max_depth, corr_threshold, metadata
     node$winner <- TRUE
     return()
   }
-
+  
   # add the descendant's abundance dataframe row to df
   for (descendant in descendant_winners) {
     df <- rbind(df, descendant$abundance)
   }
-
+  
   # transpose the dataframe to fit the input format for the correlation and ml
   transposed <- as.data.frame(t(df))
-
+  
   # determine the child ids that are strongly correlated
   correlated_ids <- calculate_correlation(df = transposed, corr_threshold)
-
+  
   # mark correlated in tree
   # highly correlated descendants are not winners
   not_correlated_descendant_winners <- list()
@@ -240,7 +335,7 @@ compete_node <- function(node, lowest_level, max_depth, corr_threshold, metadata
       not_correlated_descendant_winners <- append(not_correlated_descendant_winners, descendant)
     }
   }
-
+  
   # if all descendants are correlated, the parent wins
   if (length(descendant_winners) == length(correlated_ids)) {
     node$outcomes <- append(node$outcomes, sprintf(
@@ -256,15 +351,15 @@ compete_node <- function(node, lowest_level, max_depth, corr_threshold, metadata
     node$winner <- TRUE
     return()
   }
-
+  
   # drop from transposed data all correlated children
   transposed <- transposed %>%
     dplyr::select(., -dplyr::any_of(correlated_ids))
-
+  
   # run the random forest on the remaining parent + descendants
   # TODO: do the baked-in values need to be modifiable?
   rf_winners <- rf_competition(transposed, metadata, "feature_of_interest", "subject_id", feature_type, sample_fraction, ncores, nperm)
-
+  
   # generate winner and loser name lists from the competitors (parent and non-correlated descendants), using the outcome
   # build ahead of time so that a summary can be provided in outcomes
   # this can be sped up and done in a single loop if outcomes are not needed
@@ -279,7 +374,7 @@ compete_node <- function(node, lowest_level, max_depth, corr_threshold, metadata
     }
   }
   outcome_str <- sprintf("winners: %s; losers: %s", paste(winner_names, collapse = ","), paste(loser_names, collapse = ","))
-
+  
   # now actually mark the results, including outcome string
   # mark winners/losers of parent and descendants
   # also mark the non-winners as rf losers
@@ -293,10 +388,11 @@ compete_node <- function(node, lowest_level, max_depth, corr_threshold, metadata
       competitor$lost_rf <- TRUE
     }
   }
-
+  
   return()
 }
 
+## compete all winners (final RF) ==============================================
 # compete all winners, updating the tree in the process
 # TODO: combine the overlaps in this code with the code in the function above
 compete_all_winners <- function(tree, metadata, sample_fraction, ncores) {
@@ -306,21 +402,21 @@ compete_all_winners <- function(tree, metadata, sample_fraction, ncores) {
   if (length(competitors) == 0) {
     return()
   }
-
+  
   # all winners into a transposed data frame
   df <- data.frame()
   for (winner in competitors) {
     df <- rbind(df, winner$abundance)
   }
   transposed <- as.data.frame(t(df))
-
+  
   # compete here
   # return list of winner ids
   # right now does nothing, all are marked as winners
   rf_winners <- lapply(competitors, function(node) node$id)
-
+  
   # TODO: so much duplication below
-
+  
   # generate winner and loser name lists from the competitors (parent and non-correlated descendants), using the outcome
   # build ahead of time so that a summary can be provided in outcomes
   # this can be sped up and done in a single loop if outcomes are not needed
@@ -334,7 +430,7 @@ compete_all_winners <- function(tree, metadata, sample_fraction, ncores) {
     }
   }
   outcome_str <- sprintf("winners: %s; losers: %s", paste(winner_names, collapse = ","), paste(loser_names, collapse = ","))
-
+  
   # now actually mark the results, including outcome string
   # mark winners/losers of parent and descendants
   # also mark the non-winners as rf losers
@@ -350,6 +446,7 @@ compete_all_winners <- function(tree, metadata, sample_fraction, ncores) {
   }
 }
 
+## wrapper function to loop through tree nodes =================================
 # competes an entries tree
 # takes a data.tree root node as input
 # modify_tree: determines if the input tree will be modified in place
@@ -365,7 +462,7 @@ compete_all_winners <- function(tree, metadata, sample_fraction, ncores) {
 compete_tree <- function(tree, modify_tree = FALSE, lowest_level = 2, max_depth = 1000, corr_threshold, metadata, sample_fraction, ncores) {
   # if not modifying the input tree, create a copy of the tree to perform the competition
   if (!modify_tree) tree <- data.tree::Clone(tree)
-
+  
   # perform the competition, modifying the tree (which may or may not be a clone of the input)
   tree$Do(
     compete_node,
@@ -377,14 +474,16 @@ compete_tree <- function(tree, modify_tree = FALSE, lowest_level = 2, max_depth 
     ncores = ncores,
     traversal = "post-order"
   )
-
+  
   # compete all winners
   compete_all_winners(tree, metadata, sample_fraction, ncores)
-
+  
   # return the tree
   return(tree)
 }
 
+## calculate node correlation ==================================================
+# calculate correlation between nodes and the remaining children
 calculate_correlation <- function(df, corrThreshold) {
   parentColumn <- colnames(df)[1]
   return(
@@ -395,6 +494,12 @@ calculate_correlation <- function(df, corrThreshold) {
   )
 }
 
+## calculate class frequencies =================================================
+# function to calculate frequencies of factor classes from metadata
+# and pass that into the ranger function, to help with class imbalance. These
+# class frequencies are modified by the subsample flag (a subsample of the
+# class frequencies).
+# If metadata variable is not a factor, returns the subsample flag
 calc_class_frequencies <- function(input, feature_type, feature = "feature_of_interest", sample_fraction) {
   if (feature_type == "factor") {
     ## create a vector to deal with class imbalance
@@ -413,42 +518,54 @@ calc_class_frequencies <- function(input, feature_type, feature = "feature_of_in
     class_frequencies <- class_frequencies * as.numeric(sample_fraction)
     return(class_frequencies)
   } else {
-    class_frequencies <- 1
+    class_frequencies <- as.numeric(sample_fraction)
     return(class_frequencies)
   }
 }
 
+## rf competition function =====================================================
 rf_competition <- function(df, metadata, feature_of_interest = "feature_of_interest", subject_identifier = "subject_id", feature_type = feature_type, sample_fraction = calc_class_frequencies(), ncores = ncores, nperm = nperm) {
+  # merge node abundance + children abundance with metadata
   merged_data <- merge(df, metadata, by.x = "row.names", by.y = "subject_id")
+  # clean node names so ranger doesnt throw an error
   merged_data <- tibble::column_to_rownames(merged_data, var = "Row.names")
   data_colnames <- colnames(merged_data)
   merged_data <- merged_data %>% janitor::clean_names()
-
+  
+  # determine if rf regression or classification should be run
   if (feature_type == "factor") {
     response_formula <- as.formula(paste("as.factor(", feature_of_interest, ") ~ .", sep = ""))
   } else {
     response_formula <- as.formula(paste("as.numeric(", feature_of_interest, ") ~ .", sep = ""))
   }
-
+  
+  # run ranger, setting parameters such as
+  # random seed
+  # sample.fraction (acquired from class frequencies function)
+  # num.threads number of threads to five ranger
   run_ranger <- function(seed) {
     ranger::ranger(response_formula, data = merged_data, importance = "impurity_corrected", seed = seed, sample.fraction = sample_fraction, replace = TRUE, num.threads = as.numeric(ncores))$variable.importance %>%
       as.data.frame() %>%
       dplyr::rename(., "importance" = ".") %>%
       tibble::rownames_to_column(var = "taxa")
   }
-
+  
+  # run the above function across 10 random seeds and average the vip scores
   model_importance <- purrr::map_df(sample(1:1000, nperm), run_ranger) %>%
     dplyr::group_by(taxa) %>%
     dplyr::summarise(., average = mean(importance))
-
+  
+  # specify the parent column, which is the vip score to beat
   parentColumn <- janitor::make_clean_names(colnames(df)[1])
-
+  
+  # if top vip score is the parent, parent wins, else grab the children who 
+  # beat the parent's VIP score
   if ((model_importance %>% arrange(desc(average)) %>% pull(taxa))[1] == parentColumn) {
     return(gsub(pattern = "x", replacement = "", x = parentColumn))
   } else {
     parent_importance <- model_importance$average[model_importance$taxa == parentColumn]
     children_toss <- model_importance %>%
-      dplyr::filter(average < parent_importance | average < 0) %>%
+      dplyr::filter(average < parent_importance) %>%
       dplyr::pull(taxa)
     children_winners <- model_importance %>%
       dplyr::filter(!taxa %in% c(children_toss, parentColumn)) %>%
@@ -457,21 +574,8 @@ rf_competition <- function(df, metadata, feature_of_interest = "feature_of_inter
   }
 }
 
-hTree <- build_tree(hData, filter_prevalence, filter_mean_abundance)
-
-competed_tree <- compete_tree(
-  hTree,
-  lowest_level = 3,
-  corr_threshold = corr_threshold,
-  metadata = metadata,
-  ncores = ncores,
-  sample_fraction = calc_class_frequencies(
-    input = metadata,
-    feature_type = feature_type,
-    sample_fraction = sample_fraction
-  ),
-)
-
+## Flatten tree to data frame ==================================================
+## exports tree as dataframe with tons of info on how the competition went
 flatten_tree_with_metadata <- function(node) {
   df <- data.frame(
     name = node$name,
@@ -486,21 +590,12 @@ flatten_tree_with_metadata <- function(node) {
     abundance = node$abundance,
     stringsAsFactors = FALSE
   )
-
+  
   if (length(node$children) > 0) {
     children_df <- do.call(rbind, lapply(node$children, flatten_tree_with_metadata))
     df <- rbind(df, children_df)
   }
-
+  
   return(df)
 }
 
-# Flatten the tree and tree decisions
-flattened_df <- flatten_tree_with_metadata(competed_tree)
-# filter to only winners
-flattened_df <- flattened_df %>% filter(., winner == TRUE)
-
-View(flattened_df)
-
-# hello <- as.Node(flattened_df)
-# View(as.data.frame(hello))
