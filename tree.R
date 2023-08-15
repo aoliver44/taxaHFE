@@ -16,19 +16,9 @@ library(ranger, quietly = T, verbose = F, warn.conflicts = F)
 library(vroom, quietly = T, verbose = F, warn.conflicts = F)
 
 ## set random seed if needed
-set.seed(42)
+set.seed(Sys.time())
 nperm <- 10 # permute the random forest this many times
 trim <- 0.02 # trim outliers from mean feature abundance calc
-
-## get vars from user input ====================================================
-filter_prevalence <- opt$prevalence
-filter_mean_abundance <- opt$abundance
-corr_threshold <- opt$cor_level
-feature_of_interest <- opt$label
-feature_type <- opt$feature_type
-ncores <- opt$ncores
-sample_fraction <- opt$subsample
-subject_identifier <- opt$subject_identifier
 
 ## helper functions ============================================================
 
@@ -38,57 +28,53 @@ subject_identifier <- opt$subject_identifier
 ## suppress warnings
 options(warn = -1)
 
-## make empty tree =============================================================
-hTree <- data.tree::Node$new("taxaTree", id = 0)
-
 ## read in metadata  ===========================================================
 read_in_metadata <- function(input, subject_identifier, label) {
-  if (strsplit(basename(input), split="\\.")[[1]][2] %in% c("tsv","txt")) {
-    suppressMessages(readr::read_delim(file = input, delim = "\t")) %>%
-      dplyr::select(., subject_identifier, label) %>%
-      dplyr::rename(., "subject_id" = subject_identifier) %>%
-      rename(., "feature_of_interest" = label) %>%
-      tidyr::drop_na()
+  if (strsplit(basename(input), split = "\\.")[[1]][2] %in% c("tsv","txt")) {
+    delim = "\t"
   } else {
-    suppressMessages(readr::read_delim(file = input, delim = ",")) %>%
-      dplyr::select(., subject_identifier, label) %>%
-      dplyr::rename(., "subject_id" = subject_identifier) %>%
-      rename(., "feature_of_interest" = label) %>%
-      tidyr::drop_na()
+    delim = ","
   }
+  suppressMessages(readr::read_delim(file = input, delim = delim)) %>%
+    dplyr::select(., subject_identifier, label) %>%
+    dplyr::rename(., "subject_id" = subject_identifier) %>%
+    rename(., "feature_of_interest" = label) %>%
+    tidyr::drop_na()
 }
 
 ## read in microbiome data =====================================================
 read_in_microbiome <- function(input, meta = metadata, cores = opt$ncores) {
+  
   ## read in txt, tsv, or csv microbiome data
-  if (strsplit(basename(input), split="\\.")[[1]][2] %in% c("tsv","txt")) {
-    hData <- suppressMessages(vroom::vroom(file = input, delim = "\t", skip = 0, 
-                                           .name_repair = "minimal", 
-                                           num_threads = as.numeric(cores)) %>% 
-                                dplyr::select(., -any_of(c("NCBI_tax_id", 
-                                                           "clade_taxid"))))
+  if (strsplit(basename(input), split = "\\.")[[1]][2] %in% c("tsv","txt")) {
+    delim = "\t"
   } else {
-    hData <- suppressMessages(vroom::vroom(file = input, delim = ",", skip = 0, 
-                                           .name_repair = "minimal", 
-                                           num_threads = as.numeric(cores)) %>% 
-                                dplyr::select(., -any_of(c("NCBI_tax_id", 
-                                                           "clade_taxid"))))
+    delim = ","
   }
   
+  hData <- suppressMessages(vroom::vroom(file = input, delim = delim, skip = 0, 
+                                         .name_repair = "minimal", 
+                                         num_threads = as.numeric(cores)) %>% 
+                              dplyr::select(., -any_of(c("NCBI_tax_id", 
+                                                         "clade_taxid"))))
   ## only select columns that are in metadata file, reduce computation
   hData <- hData %>% dplyr::select(., dplyr::any_of(c("clade_name", metadata$subject_id)))
   
   ## check and make sure clade_name is the first column in hData
-  if (colnames(hData[1]) != "clade_name") {
-    stop("clade_name is not the first column of the hiearchical data.")
+  if ("clade_name" %!in% colnames(hData)) {
+    stop("column clade_name not found in input data")
   }
-  
+  if (colnames(hData)[1] != "clade_name") {
+    hData <- hData %>% dplyr::relocate(., "clade_name")
+  }
   ## write input to file
   return(as.data.frame(hData))
 }
 
 ## write separate files to test summary levels =================================
 # write old files in order to test 2018 Oudah HFE program
+# TO DO: make sure the files written are post prev and abund filtered data
+# try to take in tree as input
 write_summary_files <- function(input, output) {
   
   ## long vector of possible levels in hierarchical data
@@ -100,9 +86,9 @@ write_summary_files <- function(input, output) {
   
   ## split raw data by pipe symbol into number of expected parts
   hData_summary <- input %>%
-    dplyr::relocate(., clade_name) %>%
-    tidyr::separate(., col = clade_name, into = levels, sep = "\\|", extra = "merge", remove = FALSE) %>%
-    dplyr::mutate(., level = ((stringr::str_count(hData$clade_name, "\\|")) + 1))
+    dplyr::relocate(., "clade_name") %>%
+    tidyr::separate(., col = "clade_name", into = levels, sep = "\\|", extra = "merge", remove = FALSE) %>%
+    dplyr::mutate(., level = ((stringr::str_count(input$clade_name, "\\|")) + 1))
   
   count = 1
   for (i in seq(length(levels))) {
@@ -185,7 +171,7 @@ initial_leaf_values <- function(node, row_num, row_df, filter_prevalence, filter
 # node: current node, passed in by the tree traversal function
 # zeros_df: a single row df of zeros that matches the original dataframe
 # next_row_id: the next id after the last row in the original dataframe
-fix_unpopulated_node <- function(node, zeros_df, next_row_id) {
+fix_unpopulated_node <- function(node, zeros_df, next_row_id, filter_prevalence, filter_mean_abundance) {
   # ignore nodes with abundance or no children
   if (!is.null(node$abundance)) {
     return()
@@ -203,7 +189,7 @@ fix_unpopulated_node <- function(node, zeros_df, next_row_id) {
   
   # create a bottom row with the sums and grab it out to be assigned to the node
   # if there are no children abundances (what??), the single zeros row will be summed and still be zero
-  df <- df %>% dplyr::bind_rows(dplyr::summarise(., dplyr::across(where(is.numeric), sum)))
+  df <- df %>% dplyr::bind_rows(dplyr::summarise(., dplyr::across(tidyselect::where(is.numeric), sum)))
   
   # grab the last row from df for the node's abundances
   # either the sum of child abundances or a row of zeros
@@ -225,13 +211,13 @@ build_tree <- function(df, filter_prevalence, filter_mean_abundance) {
   taxa_tree <- data.tree::Node$new("taxaTree", id = 0)
   
   ## progress bar
-  pb <- progress_bar$new( format = " Child vs Parents [:bar] :percent in :elapsed", total = nrow(df), clear = FALSE, width= 60)
+  pb <- progress_bar$new( format = " Adding nodes to tree [:bar] :percent in :elapsed", total = nrow(df), clear = FALSE, width= 60)
   for (row in seq_len(nrow(df))) {
     ## progress bar
     pb$tick()
     
     # generate a vector of clade levels
-    levels <- unlist(strsplit(as.character(hData[row, "clade_name"]), "\\|"))
+    levels <- unlist(strsplit(df[row, "clade_name"], "\\|"))
     
     # start at the root node
     node <- taxa_tree
@@ -264,7 +250,7 @@ build_tree <- function(df, filter_prevalence, filter_mean_abundance) {
   
   # traverse the tree and fix the unpopulated nodes
   taxa_tree$Do(function(node) {
-    fix_unpopulated_node(node, zeros_df, next_row_id)
+    fix_unpopulated_node(node, zeros_df, next_row_id, filter_prevalence, filter_mean_abundance)
     # this loop handles that by incrementing next_row_id for every node, ensuring a unique id if needed
     # they are NOT guaranteed to be sequential since the current node may or may not need it
     # <<- ensures that we assign to the next_row_id var outside this closure loop
@@ -280,7 +266,7 @@ build_tree <- function(df, filter_prevalence, filter_mean_abundance) {
 # for this node, evaluates correlation and rf against all descendants that have won previous rounds
 # modifies the node indicating if it is a winner against those descendants
 # OR which of 1:n descendants are winners
-compete_node <- function(node, lowest_level, max_depth, corr_threshold, metadata, sample_fraction, ncores) {
+compete_node <- function(node, lowest_level, max_depth, corr_threshold, metadata, sample_fraction, ncores, feature_type, nperm) {
   # skip anything lower than the lowest level (exclusive)
   if (node$level < lowest_level) {
     return()
@@ -457,9 +443,9 @@ compete_all_winners <- function(tree, metadata, sample_fraction, ncores) {
 #   defaults to a massive number to allow every descendant
 # corr_threshold: the threshold to mark a descendant as highly correlated
 # metadata: the metadata associated with the input df that generated the tree
-# sample_fraction: TODO (don't know what this is)
+# sample_fraction: fraction of data to use in rf to help prevent data leakage
 # ncores: the number of cores to use when running the random forest
-compete_tree <- function(tree, modify_tree = FALSE, lowest_level = 2, max_depth = 1000, corr_threshold, metadata, sample_fraction, ncores) {
+compete_tree <- function(tree, modify_tree = TRUE, lowest_level = 2, max_depth = 1000, corr_threshold, metadata, sample_fraction, ncores, feature_type, nperm) {
   # if not modifying the input tree, create a copy of the tree to perform the competition
   if (!modify_tree) tree <- data.tree::Clone(tree)
   
@@ -472,6 +458,8 @@ compete_tree <- function(tree, modify_tree = FALSE, lowest_level = 2, max_depth 
     metadata = metadata,
     sample_fraction = sample_fraction,
     ncores = ncores,
+    feature_type = feature_type,
+    nperm = nperm,
     traversal = "post-order"
   )
   
@@ -518,8 +506,7 @@ calc_class_frequencies <- function(input, feature_type, feature = "feature_of_in
     class_frequencies <- class_frequencies * as.numeric(sample_fraction)
     return(class_frequencies)
   } else {
-    class_frequencies <- as.numeric(sample_fraction)
-    return(class_frequencies)
+    return(as.numeric(sample_fraction))
   }
 }
 
