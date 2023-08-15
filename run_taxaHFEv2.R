@@ -117,8 +117,6 @@ metadata <- read_in_metadata(input = opt$input_metadata,
 ## read in data, should be in tab or comma separated format
 
 hData <- read_in_microbiome(input = opt$input, meta = metadata, cores = opt$ncores)
-#convert_to_hData(input = hData)
-#hData <- do.call(rbind, lapply(ls(pattern = "hData_L"), get))
 
 ## write old files =============================================================
 #write_summary_files(input = hData, output = opt$output)
@@ -144,11 +142,22 @@ competed_tree <- compete_tree(
 
 ## 
 # Flatten the tree and tree decisions
-flattened_df_2 <- flatten_tree_with_metadata(competed_tree)
+flattened_df <- flatten_tree_with_metadata(competed_tree)
 # filter to only winners
-flattened_df_2 <- flattened_df_2 %>% filter(., winner == TRUE)
+flattened_df_winners <- flattened_df %>% dplyr::filter(., winner == TRUE)
 
 ## write output
+output_nosf <- flattened_df_winners %>%
+  dplyr::select(., name, 10:dplyr::last_col()) %>%
+  tibble::remove_rownames() %>%
+  tibble::column_to_rownames(., var = "name") %>%
+  t() %>%
+  as.data.frame() %>%
+  tibble::rownames_to_column(var = "subject_id")
 
+output_nosf$subject_id <- gsub(pattern = "abundance\\.", replacement = "", x = output_nosf$subject_id)
+output_nosf <- merge(metadata, output_nosf, by = "subject_id")
+readr::write_delim(file = paste0(tools::file_path_sans_ext(opt$output), "taxaHFEv2_no_sf.csv"), x = output_nosf, delim = ",")
 
 ## SF 
+

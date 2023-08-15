@@ -23,7 +23,7 @@ library(lineprof, quietly = T, verbose = F, warn.conflicts = F)
 ## set random seed if needed
 set.seed(Sys.time())
 nperm <- 10 # permute the random forest this many times
-trim <- 0.02 # trim outliers from mean feature abundance calc
+trim <- 0.00 # trim outliers from mean feature abundance calc
 
 ## helper functions ============================================================
 
@@ -220,21 +220,21 @@ convert_to_hData <- function(input) {
 #   if (!is.null(node$abundance)) {
 #     return()
 #   }
-#   
-#   
+# 
+# 
 #   # generate abundance from children abundances
 #   # skip all children missing abundance
 #   df <- zeros_df
 #   for (child in node$children) {
 #     if (is.null(child$abundance)) next
-#     
+# 
 #     df <- rbind(df, child$abundance)
 #   }
-#   
+# 
 #   # create a bottom row with the sums and grab it out to be assigned to the node
 #   # if there are no children abundances (what??), the single zeros row will be summed and still be zero
 #   df <- df %>% dplyr::bind_rows(dplyr::summarise(., dplyr::across(tidyselect::where(is.numeric), sum)))
-#   
+# 
 #   # grab the last row from df for the node's abundances
 #   # either the sum of child abundances or a row of zeros
 #   new_row <- df[nrow(df), ]
@@ -249,11 +249,11 @@ fix_unpopulated_node <- function(node, zeros_df, next_row_id, filter_prevalence,
   if (!is.null(node$abundance)) {
     return()
   }
-  
+
   # Collect non-null child abundances
   child_abundances <- lapply(node$children, function(child) child$abundance)
   child_abundances <- Filter(function(abundance) !is.null(abundance), child_abundances)
-  
+
   if (length(child_abundances) == 0) {
     # No child abundances, use a row of zeros
     new_row <- as.data.table(zeros_df)[, lapply(.SD, sum)]
@@ -262,10 +262,10 @@ fix_unpopulated_node <- function(node, zeros_df, next_row_id, filter_prevalence,
     combined_abundances <- rbindlist(child_abundances)
     new_row <- combined_abundances[, lapply(.SD, sum)]
   }
-  
+
   # Assign unique id to row name
   rownames(new_row) <- next_row_id
-  
+
   # Populate values now that the summed abundance exists
   initial_leaf_values(node, next_row_id, new_row, filter_prevalence, filter_mean_abundance)
 }
