@@ -14,6 +14,11 @@ library(tibble, quietly = T, verbose = F, warn.conflicts = F)
 library(purrr, quietly = T, verbose = F, warn.conflicts = F)
 library(ranger, quietly = T, verbose = F, warn.conflicts = F)
 library(vroom, quietly = T, verbose = F, warn.conflicts = F)
+library(tidyselect, quietly = T, verbose = F, warn.conflicts = F)
+library(data.table, quietly = T, verbose = F, warn.conflicts = F)
+library(dtplyr, quietly = T, verbose = F, warn.conflicts = F)
+library(lineprof, quietly = T, verbose = F, warn.conflicts = F)
+
 
 ## set random seed if needed
 set.seed(Sys.time())
