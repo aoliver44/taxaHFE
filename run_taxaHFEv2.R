@@ -59,26 +59,28 @@ opt <- data.frame(subject_identifier = character(),
                   prevalence = numeric(),
                   standardized = character(),
                   write_old_files = character(),
+                  lowest_level = numeric(),
                   input_covariates = character(),
                   input_metadata = character(),
                   input = character(),
                   output = character())
 opt <- opt %>% tibble::add_row(
-  subject_identifier = "SEQN",
-  label = "LBXCRP",
-  feature_type = "numeric",
+  subject_identifier = "Sample",
+  label = "Study.Group",
+  feature_type = "factor",
   format_metaphlan = "FALSE",
   write_old_files = "FALSE",
-  abundance = 0.01,
+  abundance = 0.0001,
   prevalence = 0.01,
   standardized = "FALSE",
   sample_fraction = 1,
   cor_level = 0.95,
+  lowest_level = 2,
   ncores = 4,
-  input_metadata = "/home/docker/example_inputs/wweia_crp_matched.txt",
+  input_metadata = "/home/docker/example_inputs/ERAWIJANTARI_metadata.tsv",
   input_covariates = "FALSE",
-  input = "/home/docker/example_inputs/ingred_otu_drywt_crp_matched.txt",
-  output = "/home/docker/example_inputs/output.txt"
+  input = "/home/docker/example_inputs/ERAWIJANTARI_species.tsv",
+  output = "/home/docker/example_inputs/out.txt"
 )
 
 ## load functions ==============================================================
@@ -115,6 +117,8 @@ metadata <- read_in_metadata(input = opt$input_metadata,
 ## read in data, should be in tab or comma separated format
 
 hData <- read_in_microbiome(input = opt$input, meta = metadata, cores = opt$ncores)
+#convert_to_hData(input = hData)
+#hData <- do.call(rbind, lapply(ls(pattern = "hData_L"), get))
 
 ## write old files =============================================================
 #write_summary_files(input = hData, output = opt$output)
@@ -140,6 +144,11 @@ competed_tree <- compete_tree(
 
 ## 
 # Flatten the tree and tree decisions
-flattened_df <- flatten_tree_with_metadata(competed_tree)
+flattened_df_2 <- flatten_tree_with_metadata(competed_tree)
 # filter to only winners
-flattened_df <- flattened_df %>% filter(., winner == TRUE)
+flattened_df_2 <- flattened_df_2 %>% filter(., winner == TRUE)
+
+## write output
+
+
+## SF 

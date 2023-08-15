@@ -169,6 +169,45 @@ initial_leaf_values <- function(node, row_num, row_df, filter_prevalence, filter
   node$id <- row_num
 }
 
+## convert to metaphlan  =======================================================
+# convert an input data to approximate a metaphlan input
+# this speeds up tree building dramatically
+
+convert_to_hData <- function(input) {
+  
+  ## long vector of possible levels in hierarchical data
+  levels <- c("L1", "L2", "L3", "L4", "L5", "L6", "L7", "L8", "L9", "L10", "L11", "L12", "L13", "L14", "L15")
+  
+  ## count number of splits (+1) in hierarchical data by "|" symbol
+  num_levels <- max(stringr::str_count(input$clade_name, "\\|"))
+  levels <- levels[1:(num_levels + 1)]
+  
+  cat("\n\n", "Attempting to convert to metaphlan-style input...")
+  
+  ## split raw data by pipe symbol into number of expected parts
+  input <- input %>%
+    dplyr::relocate(., clade_name) %>%
+    tidyr::separate(., col = clade_name, into = levels, sep = "\\|", extra = "merge")
+  
+  ## summarize each level into its own dataframe
+  ## use ultra fast data.table processesing
+  for (level in seq(length(levels))) {
+    
+    summarize_level <- paste0("hData_L", level)
+    hData_tmp <- input %>%
+      dplyr::select(., 1:level, (length(levels) + 1):dplyr::last_col()) %>%
+      tidyr::unite(., "clade_name", L1:levels[level], sep = "|", remove = F, na.rm = T) %>%
+      dplyr::select(., -c( L1:levels[level])) %>%
+      dtplyr::lazy_dt()
+    hData_tmp <- hData_tmp %>%
+      group_by(., clade_name) %>%
+      summarise_all(base::sum) %>%
+      as.data.frame() %>%
+      dplyr::filter(., !grepl(pattern = "NA", clade_name))
+    assign(summarize_level, hData_tmp, envir = .GlobalEnv)
+  }
+}
+
 ## fix unpopulated node ========================================================
 # generates abundance, and other values, for clade nodes that were missing a row in the input data
 # uses the sum of the child abundances for the abundance data
@@ -176,32 +215,58 @@ initial_leaf_values <- function(node, row_num, row_df, filter_prevalence, filter
 # node: current node, passed in by the tree traversal function
 # zeros_df: a single row df of zeros that matches the original dataframe
 # next_row_id: the next id after the last row in the original dataframe
+# fix_unpopulated_node <- function(node, zeros_df, next_row_id, filter_prevalence, filter_mean_abundance) {
+#   # ignore nodes with abundance or no children
+#   if (!is.null(node$abundance)) {
+#     return()
+#   }
+#   
+#   
+#   # generate abundance from children abundances
+#   # skip all children missing abundance
+#   df <- zeros_df
+#   for (child in node$children) {
+#     if (is.null(child$abundance)) next
+#     
+#     df <- rbind(df, child$abundance)
+#   }
+#   
+#   # create a bottom row with the sums and grab it out to be assigned to the node
+#   # if there are no children abundances (what??), the single zeros row will be summed and still be zero
+#   df <- df %>% dplyr::bind_rows(dplyr::summarise(., dplyr::across(tidyselect::where(is.numeric), sum)))
+#   
+#   # grab the last row from df for the node's abundances
+#   # either the sum of child abundances or a row of zeros
+#   new_row <- df[nrow(df), ]
+#   # assign unique id to row name
+#   rownames(new_row) <- next_row_id
+#   # populate values now that the summed abundance exists
+#   initial_leaf_values(node, next_row_id, new_row, filter_prevalence, filter_mean_abundance)
+# }
+
 fix_unpopulated_node <- function(node, zeros_df, next_row_id, filter_prevalence, filter_mean_abundance) {
-  # ignore nodes with abundance or no children
+  # Ignore nodes with abundance or no children
   if (!is.null(node$abundance)) {
     return()
   }
   
+  # Collect non-null child abundances
+  child_abundances <- lapply(node$children, function(child) child$abundance)
+  child_abundances <- Filter(function(abundance) !is.null(abundance), child_abundances)
   
-  # generate abundance from children abundances
-  # skip all children missing abundance
-  df <- zeros_df
-  for (child in node$children) {
-    if (is.null(child$abundance)) next
-    
-    df <- rbind(df, child$abundance)
+  if (length(child_abundances) == 0) {
+    # No child abundances, use a row of zeros
+    new_row <- as.data.table(zeros_df)[, lapply(.SD, sum)]
+  } else {
+    # Combine child abundances and calculate row sums
+    combined_abundances <- rbindlist(child_abundances)
+    new_row <- combined_abundances[, lapply(.SD, sum)]
   }
   
-  # create a bottom row with the sums and grab it out to be assigned to the node
-  # if there are no children abundances (what??), the single zeros row will be summed and still be zero
-  df <- df %>% dplyr::bind_rows(dplyr::summarise(., dplyr::across(tidyselect::where(is.numeric), sum)))
-  
-  # grab the last row from df for the node's abundances
-  # either the sum of child abundances or a row of zeros
-  new_row <- df[nrow(df), ]
-  # assign unique id to row name
+  # Assign unique id to row name
   rownames(new_row) <- next_row_id
-  # populate values now that the summed abundance exists
+  
+  # Populate values now that the summed abundance exists
   initial_leaf_values(node, next_row_id, new_row, filter_prevalence, filter_mean_abundance)
 }
 
@@ -216,7 +281,8 @@ build_tree <- function(df, filter_prevalence, filter_mean_abundance) {
   taxa_tree <- data.tree::Node$new("taxaTree", id = 0)
   
   ## progress bar
-  pb <- progress_bar$new( format = " Adding nodes to tree [:bar] :percent in :elapsed", total = nrow(df), clear = FALSE, width= 60)
+  pb <- progress_bar$new( format = " Adding nodes to tree [:bar] :percent in :elapsed", total = nrow(df), clear = FALSE, width = 60)
+  
   for (row in seq_len(nrow(df))) {
     ## progress bar
     pb$tick()
