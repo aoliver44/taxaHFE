@@ -1,5 +1,5 @@
 ## HFE FUNCTIONS
-## v1.12
+## v2
 
 library(janitor, quietly = T, verbose = F, warn.conflicts = F)
 library(tidyr, quietly = T, verbose = F, warn.conflicts = F)
@@ -22,8 +22,8 @@ library(lineprof, quietly = T, verbose = F, warn.conflicts = F)
 
 ## set random seed if needed
 set.seed(Sys.time())
-nperm <- 10 # permute the random forest this many times
-trim <- 0.00 # trim outliers from mean feature abundance calc
+nperm <- 20 # permute the random forest this many times
+trim <- 0.02 # trim outliers from mean feature abundance calc
 
 ## helper functions ============================================================
 
@@ -40,15 +40,22 @@ read_in_metadata <- function(input, subject_identifier, label) {
   } else {
     delim = ","
   }
-  suppressMessages(readr::read_delim(file = input, delim = delim)) %>%
+  metadata <- suppressMessages(readr::read_delim(file = input, delim = delim)) %>%
     dplyr::select(., subject_identifier, label) %>%
     dplyr::rename(., "subject_id" = subject_identifier) %>%
     rename(., "feature_of_interest" = label) %>%
     tidyr::drop_na()
+  ## this is an effort to clean names for the RF later, which will complain big time
+  ## if there are symbols or just numbers in your subject IDs
+  cat("\n\nIF your subject_identifiers are just numerics OR have weird symbols\nin them, there's a chance this program crashes. The RF engine,\nranger, is a little picky and very stubborn with names.\n")
+  cat("TaxaHFE will do its best to handle the names initially...\n")
+  cat("(we <3 ranger though)\n")
+  metadata$subject_id <- metadata$subject_id %>% janitor::make_clean_names(use_make_names = F)
+  return(metadata)
 }
 
 ## read in microbiome data =====================================================
-read_in_microbiome <- function(input, meta = metadata, cores = opt$ncores) {
+read_in_microbiome <- function(input, meta = metadata, abundance, format_metaphlan, cores = opt$ncores) {
   
   ## read in txt, tsv, or csv microbiome data
   if (strsplit(basename(input), split = "\\.")[[1]][2] %in% c("tsv","txt")) {
@@ -61,9 +68,11 @@ read_in_microbiome <- function(input, meta = metadata, cores = opt$ncores) {
                                          .name_repair = "minimal", 
                                          num_threads = as.numeric(cores)) %>% 
                               dplyr::select(., -any_of(c("NCBI_tax_id", 
-                                                         "clade_taxid"))))
+                                                         "clade_taxid"))) %>%
+                              janitor::clean_names(use_make_names = F))
   ## only select columns that are in metadata file, reduce computation
-  hData <- hData %>% dplyr::select(., dplyr::any_of(c("clade_name", metadata$subject_id)))
+  hData <- hData %>% 
+    dplyr::select(., dplyr::any_of(c("clade_name", metadata$subject_id)))
   
   ## check and make sure clade_name is the first column in hData
   if ("clade_name" %!in% colnames(hData)) {
@@ -72,37 +81,70 @@ read_in_microbiome <- function(input, meta = metadata, cores = opt$ncores) {
   if (colnames(hData)[1] != "clade_name") {
     hData <- hData %>% dplyr::relocate(., "clade_name")
   }
+  
+  ## Applying initial abundance cutoffs. This will vastly shrink the dataset usually
+  cat("\nApplying initial abundance filters...\n")
+  ## count number of splits (+1) in hierarchical data by "|" symbol
+  
+  #3 get the base level sums per sample
+  num_levels <- max(stringr::str_count(hData$clade_name, "\\|"))
+  levels <- paste0("L", seq(1:(num_levels + 1)))
+  
+  if (format_metaphlan == TRUE) {
+    hData_total_abundance <- hData %>% 
+      dplyr::filter(., !grepl("\\|", clade_name)) %>% 
+      tibble::column_to_rownames(., var = "clade_name") %>% 
+      summarise_all(sum) %>% t() %>% as.data.frame() %>% rename(., "row_sums" = "V1")
+  } else {
+  hData_total_abundance <- hData %>% 
+    tidyr::separate(., col = "clade_name", into = levels,
+                    extra = "drop", sep = "\\|") %>%
+    dplyr::select(., tidyselect::where(is.numeric)) %>%
+    summarise_all(sum) %>% t() %>% as.data.frame() %>% rename(., "row_sums" = "V1")
+  }
+  
+  ## divide those base level sums by all the features in the dataset
+  ## this is a sample by sample relative abundance
+  hData_rel_abundance <- sweep((hData %>% tibble::column_to_rownames(., var = "clade_name") 
+                                %>% as.matrix), 2, hData_total_abundance$row_sums, "/")
+  
+  ## filter features with mean abundance that is above the threshold
+  high_abundant_taxa <- hData_rel_abundance %>% 
+    as.data.frame() %>% 
+    tibble::rownames_to_column(., var = "clade_name") %>% 
+    dplyr::rowwise() %>% 
+    dplyr::mutate(., resistant_row_means = mean(dplyr::c_across(2:NCOL(hData_rel_abundance)), trim = trim, na.rm = T)) %>% 
+    dplyr::filter(., resistant_row_means > as.numeric(abundance)) %>% 
+    dplyr::pull(., clade_name)
+  
+  ## select those features from the original dataset, back to original counts
+  hData <- hData %>% dplyr::filter(., clade_name %in% high_abundant_taxa)
+  
   ## write input to file
   return(as.data.frame(hData))
 }
 
 ## write separate files to test summary levels =================================
-# write old files in order to test 2018 Oudah HFE program
-# TO DO: make sure the files written are post prev and abund filtered data
-# try to take in tree as input
-write_summary_files <- function(input, output) {
+# write summarized abundance files for each level except taxa_tree
+write_summary_files <- function(input, metadata, output) {
   
-  ## long vector of possible levels in hierarchical data
-  levels <- c("L1", "L2", "L3", "L4", "L5", "L6", "L7", "L8", "L9", "L10", "L11", "L12", "L13", "L14", "L15")
-  
-  ## count number of splits (+1) in hierarchical data by "|" symbol
-  num_levels <- max(stringr::str_count(input$clade_name, "\\|"))
-  levels <- levels[1:(num_levels + 1)]
+  max_levels <- max(input[["depth"]])
+  ## start at 2 to ignore taxa_tree depth (meaningless node)
+  levels <- c(1:max_levels)
   
   ## split raw data by pipe symbol into number of expected parts
-  hData_summary <- input %>%
-    dplyr::relocate(., "clade_name") %>%
-    tidyr::separate(., col = "clade_name", into = levels, sep = "\\|", extra = "merge", remove = FALSE) %>%
-    dplyr::mutate(., level = ((stringr::str_count(input$clade_name, "\\|")) + 1))
   
   count = 1
-  for (i in seq(length(levels))) {
-    
+  for (i in seq(levels)) {
+    if (i == 1) {
+      next
+    }
     ## select different levels and write them to file
-    file_summary <- hData_summary %>%
-      dplyr::filter(., level == i) %>%
-      dplyr::select(., -level, -dplyr::any_of(levels)) %>%
-      tibble::column_to_rownames(., var = "clade_name") %>%
+    file_summary <- input %>%
+      dplyr::filter(., depth == i & passed_prevelance == TRUE & passed_abundance == TRUE) %>%
+      dplyr::select(., name, 10:dplyr::last_col()) %>%
+      tibble::remove_rownames() %>%
+      tibble::column_to_rownames(., var = "name") %>%
       t() %>%
       as.data.frame() %>%
       tibble::rownames_to_column(., var = "subject_id") %>%
@@ -111,9 +153,54 @@ write_summary_files <- function(input, output) {
     file_merge <- merge(metadata, file_summary, by = "subject_id")
     
     filename <- paste0("_level_", count, ".csv")
-    readr::write_csv(x = file_merge, file = paste0(tools::file_path_sans_ext(output), filename))
+    readr::write_delim(x = file_merge, file = paste0(tools::file_path_sans_ext(output), filename), delim = ",")
     count = count + 1
   }
+  
+}
+
+## write files for old_HFE =====================================================
+# write old files for the Oudah program
+write_old_hfe <- function(input, output) {
+  
+  max_levels <- max(input[["depth"]])
+  ## start at 2 to ignore taxa_tree depth (meaningless node)
+  levels <- c(1:max_levels)
+  
+  ## split raw data by pathString backslash into number of expected parts
+
+  taxonomy <- input %>% 
+    dplyr::filter(., depth == max_levels & passed_prevelance == TRUE & passed_abundance == TRUE) %>%
+    dplyr::select(., pathString) %>%
+    tidyr::separate(., col = "pathString", into = c(unlist(paste0("L", c(1:max_levels)))),
+                    extra = "drop", sep = "\\/") %>%
+    dplyr::select(., -L1) %>%
+    tibble::remove_rownames()
+
+  abundance <- input %>%
+    dplyr::filter(., depth == max_levels & passed_prevelance == TRUE & passed_abundance == TRUE) %>%
+    dplyr::select(., name, 10:dplyr::last_col()) %>%
+    tibble::remove_rownames()
+    
+  taxonomy <- taxonomy[taxonomy[,ncol(taxonomy)] %in% abundance$name, ]
+  input_taxa_merge <- merge(taxonomy, abundance, by.x = paste0("L", max_levels), by.y = "name")
+  
+  input_taxa_merge$index <- (1001:(NROW(input_taxa_merge) + 1000))
+  input_taxa_merge$L2 <- "k__Bacteria"
+  
+  input_taxa_merge <- input_taxa_merge %>%
+    dplyr::relocate(., index, dplyr::any_of(c(unlist(paste0("L", c(1:max_levels))))))
+  
+  readr::write_delim(x = input_taxa_merge[1:(max_levels)], file = paste0(tools::file_path_sans_ext(output), "_old_hfe_taxa.txt"), col_names = FALSE, delim = "\t")
+  readr::write_delim(x = input_taxa_merge %>% dplyr::select(., 1,(max_levels+1):dplyr::last_col()), file = paste0(tools::file_path_sans_ext(output), "_old_hfe_otu.txt"), col_names = FALSE, delim = "\t")
+  
+  metadata_order <- colnames(input_taxa_merge[,9:NCOL(input_taxa_merge)])
+  
+  metadata_list <- metadata %>% dplyr::arrange(match(subject_id, metadata_order)) %>%
+    pull(., feature_of_interest)
+  
+  metadata_list <- as.data.frame(c("label", metadata_list))
+  readr::write_delim(x = as.data.frame(t(metadata_list)), file = paste0(tools::file_path_sans_ext(output), "_old_hfe_label.txt"), col_names = FALSE, delim = "\t")
   
 }
 
@@ -155,7 +242,7 @@ initial_leaf_values <- function(node, row_num, row_df, filter_prevalence, filter
   node$abundance <- row_df
   # indicates if the prevalence filter was passed
   node$passed_prevalence_filter <-
-    rowSums(node$abundance != 0) > (NCOL(node$abundance) * filter_prevalence)
+    rowSums(node$abundance != 0) > (NCOL(node$abundance) * as.numeric(filter_prevalence))
   # indicates if the mean abundance filter was passed
   node$passed_mean_abundance_filter <-
     mean(unlist(node$abundance), trim = trim) > filter_mean_abundance
@@ -169,45 +256,6 @@ initial_leaf_values <- function(node, row_num, row_df, filter_prevalence, filter
   node$id <- row_num
 }
 
-## convert to metaphlan  =======================================================
-# convert an input data to approximate a metaphlan input
-# this speeds up tree building dramatically
-
-convert_to_hData <- function(input) {
-  
-  ## long vector of possible levels in hierarchical data
-  levels <- c("L1", "L2", "L3", "L4", "L5", "L6", "L7", "L8", "L9", "L10", "L11", "L12", "L13", "L14", "L15")
-  
-  ## count number of splits (+1) in hierarchical data by "|" symbol
-  num_levels <- max(stringr::str_count(input$clade_name, "\\|"))
-  levels <- levels[1:(num_levels + 1)]
-  
-  cat("\n\n", "Attempting to convert to metaphlan-style input...")
-  
-  ## split raw data by pipe symbol into number of expected parts
-  input <- input %>%
-    dplyr::relocate(., clade_name) %>%
-    tidyr::separate(., col = clade_name, into = levels, sep = "\\|", extra = "merge")
-  
-  ## summarize each level into its own dataframe
-  ## use ultra fast data.table processesing
-  for (level in seq(length(levels))) {
-    
-    summarize_level <- paste0("hData_L", level)
-    hData_tmp <- input %>%
-      dplyr::select(., 1:level, (length(levels) + 1):dplyr::last_col()) %>%
-      tidyr::unite(., "clade_name", L1:levels[level], sep = "|", remove = F, na.rm = T) %>%
-      dplyr::select(., -c( L1:levels[level])) %>%
-      dtplyr::lazy_dt()
-    hData_tmp <- hData_tmp %>%
-      group_by(., clade_name) %>%
-      summarise_all(base::sum) %>%
-      as.data.frame() %>%
-      dplyr::filter(., !grepl(pattern = "NA", clade_name))
-    assign(summarize_level, hData_tmp, envir = .GlobalEnv)
-  }
-}
-
 ## fix unpopulated node ========================================================
 # generates abundance, and other values, for clade nodes that were missing a row in the input data
 # uses the sum of the child abundances for the abundance data
@@ -215,45 +263,18 @@ convert_to_hData <- function(input) {
 # node: current node, passed in by the tree traversal function
 # zeros_df: a single row df of zeros that matches the original dataframe
 # next_row_id: the next id after the last row in the original dataframe
-# fix_unpopulated_node <- function(node, zeros_df, next_row_id, filter_prevalence, filter_mean_abundance) {
-#   # ignore nodes with abundance or no children
-#   if (!is.null(node$abundance)) {
-#     return()
-#   }
-# 
-# 
-#   # generate abundance from children abundances
-#   # skip all children missing abundance
-#   df <- zeros_df
-#   for (child in node$children) {
-#     if (is.null(child$abundance)) next
-# 
-#     df <- rbind(df, child$abundance)
-#   }
-# 
-#   # create a bottom row with the sums and grab it out to be assigned to the node
-#   # if there are no children abundances (what??), the single zeros row will be summed and still be zero
-#   df <- df %>% dplyr::bind_rows(dplyr::summarise(., dplyr::across(tidyselect::where(is.numeric), sum)))
-# 
-#   # grab the last row from df for the node's abundances
-#   # either the sum of child abundances or a row of zeros
-#   new_row <- df[nrow(df), ]
-#   # assign unique id to row name
-#   rownames(new_row) <- next_row_id
-#   # populate values now that the summed abundance exists
-#   initial_leaf_values(node, next_row_id, new_row, filter_prevalence, filter_mean_abundance)
-# }
 
 fix_unpopulated_node <- function(node, zeros_df, next_row_id, filter_prevalence, filter_mean_abundance) {
   # Ignore nodes with abundance or no children
   if (!is.null(node$abundance)) {
     return()
   }
-
+  print(paste0("Adding nodes to populate tree for: ", node$name))
+  
   # Collect non-null child abundances
   child_abundances <- lapply(node$children, function(child) child$abundance)
   child_abundances <- Filter(function(abundance) !is.null(abundance), child_abundances)
-
+  
   if (length(child_abundances) == 0) {
     # No child abundances, use a row of zeros
     new_row <- as.data.table(zeros_df)[, lapply(.SD, sum)]
@@ -262,7 +283,7 @@ fix_unpopulated_node <- function(node, zeros_df, next_row_id, filter_prevalence,
     combined_abundances <- rbindlist(child_abundances)
     new_row <- combined_abundances[, lapply(.SD, sum)]
   }
-
+  
   # Assign unique id to row name
   rownames(new_row) <- next_row_id
 
@@ -308,6 +329,7 @@ build_tree <- function(df, filter_prevalence, filter_mean_abundance) {
     # after iterating the levels, node is assigned to the leaf of this row
     # add in the row data and other supporting information
     initial_leaf_values(node, row, df[row, 2:ncol(df)], filter_prevalence, filter_mean_abundance)
+    
   }
   
   # now that the tree is built, handle unpopulated leaves with the fix_unpopulated_node
@@ -327,7 +349,7 @@ build_tree <- function(df, filter_prevalence, filter_mean_abundance) {
     # <<- ensures that we assign to the next_row_id var outside this closure loop
     next_row_id <<- next_row_id + 1
   }, traversal = "post-order")
-  
+
   return(taxa_tree)
 }
 
@@ -648,12 +670,50 @@ flatten_tree_with_metadata <- function(node) {
     abundance = node$abundance,
     stringsAsFactors = FALSE
   )
-  
+
   if (length(node$children) > 0) {
     children_df <- do.call(rbind, lapply(node$children, flatten_tree_with_metadata))
     df <- rbind(df, children_df)
   }
-  
   return(df)
 }
 
+## super filter ================================================================
+
+rf_competition_sf <- function(df, metadata, 
+                              feature_of_interest = "feature_of_interest", 
+                              subject_identifier = "subject_id", 
+                              feature_type = feature_type, 
+                              sample_fraction = calc_class_frequencies(), 
+                              ncores = ncores, nperm = nperm,
+                              output) {
+
+  # determine if rf regression or classification should be run
+  if (feature_type == "factor") {
+    response_formula <- as.formula(paste("as.factor(", feature_of_interest, ") ~ .", sep = ""))
+  } else {
+    response_formula <- as.formula(paste("as.numeric(", feature_of_interest, ") ~ .", sep = ""))
+  }
+  
+  # run ranger, setting parameters such as
+  # random seed
+  # sample.fraction (acquired from class frequencies function)
+  # num.threads number of threads to five ranger
+  run_ranger <- function(seed) {
+    ranger::ranger(response_formula, data = df, importance = "impurity_corrected", seed = seed, sample.fraction = sample_fraction, replace = TRUE, num.threads = as.numeric(ncores))$variable.importance %>%
+      as.data.frame() %>%
+      dplyr::rename(., "importance" = ".") %>%
+      tibble::rownames_to_column(var = "taxa")
+  }
+  
+  # run the above function across 10 random seeds and average the vip scores
+  model_importance <- purrr::map_df(sample(1:1000, nperm), run_ranger) %>%
+    dplyr::group_by(taxa) %>%
+    dplyr::summarise(., average = mean(importance))
+  
+  model_importance_list <- model_importance %>% dplyr::filter(., average > mean(average)) %>% dplyr::filter(., average > 0) %>% dplyr::pull(., taxa)
+  output_sf <- df %>% dplyr::select(., subject_id, feature_of_interest, all_of(model_importance_list))
+
+  return(output_sf)
+  
+}
