@@ -19,7 +19,7 @@ setwd("/home/docker")
 library(docopt)
 'Hierarchical feature engineering (HFE) for the reduction of features with respects to a factor or regressor
 Usage:
-    taxaHFE.R [--subject_identifier=<subject_colname> --label=<label> --feature_type=<feature_type> --sample_fraction=<proportion> --standardized=<TRUE/FALSE> --abundance=<decimal> --prevalence=<decimal> --cor_level=<correlation_level> --format_metaphlan=<TRUE/FALSE> --write_old_files=<TRUE/FALSE> --lowest_level=<integer> --ncores=<ncores>] <input_metadata> <input> <output>
+    taxaHFE.R [--subject_identifier=<subject_colname> --label=<label> --feature_type=<feature_type> --sample_fraction=<proportion> --standardized=<TRUE/FALSE> --abundance=<decimal> --prevalence=<decimal> --cor_level=<correlation_level> --format_metaphlan=<TRUE/FALSE> --write_old_files=<TRUE/FALSE> --lowest_level=<integer> --max_depth=<integer> --ncores=<ncores>] <input_metadata> <input> <output>
     
 Options:
     -h --help  Show this screen.
@@ -32,6 +32,7 @@ Options:
     --abundance pre taxaHFE abundance filter [default: 0.0001]
     --prevalence pre taxaHFE prevalence filter [default: 0.01]
     --lowest_level is the most general level allowed to compete [default: 2]
+    --max_depth how deep should comparisons be allowed to go [default: 1000]
     --cor_level level of initial correlation filter [default: 0.95]
     --format_metaphlan tells program to expect the desired hData style format, otherwise it attempts to coerce into format [default: FALSE]
     --write_old_files write individual level files and old HFE files [default: TRUE]
@@ -63,12 +64,13 @@ source("/home/docker/tree.R")
 #                   write_old_files = character(),
 #                   format_metaphlan=character(),
 #                   lowest_level = numeric(),
+#                   max_depth = numeric(),
 #                   input_metadata = character(),
 #                   input = character(),
 #                   output = character())
 # opt <- opt %>% tibble::add_row(
 #   subject_identifier = "subject_id",
-#   label = "cluster",
+#   label = "lbp_quartile",
 #   feature_type = "factor",
 #   write_old_files = "TRUE",
 #   abundance = 0.0001,
@@ -76,12 +78,13 @@ source("/home/docker/tree.R")
 #   standardized = "TRUE",
 #   sample_fraction = 1,
 #   cor_level = 0.95,
-#   format_metaphlan = "TRUE",
+#   format_metaphlan = "FALSE",
 #   lowest_level = 2,
+#   max_depth = 1000
 #   ncores = 4,
-#   input_metadata = "/home/docker/example_inputs/metadata.txt",
-#   input = "/home/docker/example_inputs/microbiome_data.txt",
-#   output = "/home/docker/example_inputs/output.csv"
+#   input_metadata = "/home/docker/example_inputs/metadata_LBP_quartile.txt",
+#   input = "/home/docker/example_inputs/input_file_relabund_CLEAN.csv",
+#   output = "/home/docker/example_inputs/stephanie.csv"
 # )
 
 ## Run main ====================================================================
@@ -125,7 +128,7 @@ cat("\n\n", "###########################\n", "Competing Tree...\n", "###########
 competed_tree <- compete_tree(
   hTree,
   lowest_level = opt$lowest_level,
-  max_depth = 1000,
+  max_depth = as.numeric(opt$max_depth), # allows for all levels to be competed. Change to 1 for pairwise comparisons
   corr_threshold = opt$cor_level,
   metadata = metadata,
   ncores = opt$ncores,

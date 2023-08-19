@@ -21,7 +21,9 @@ library(lineprof, quietly = T, verbose = F, warn.conflicts = F)
 
 
 ## set random seed if needed
-set.seed(Sys.time())
+#set.seed(Sys.time())
+## set random seed for testing
+set.seed(42)
 nperm <- 20 # permute the random forest this many times
 trim <- 0.02 # trim outliers from mean feature abundance calc
 
@@ -73,6 +75,9 @@ read_in_microbiome <- function(input, meta = metadata, abundance, format_metaphl
   ## only select columns that are in metadata file, reduce computation
   hData <- hData %>% 
     dplyr::select(., dplyr::any_of(c("clade_name", metadata$subject_id)))
+  
+  ## try and remove weird symbols in feature names
+  hData$clade_name <- stringr::str_replace_all(hData$clade_name, "[^_|[:alnum:]]", "")
   
   ## check and make sure clade_name is the first column in hData
   if ("clade_name" %!in% colnames(hData)) {
@@ -128,6 +133,17 @@ read_in_microbiome <- function(input, meta = metadata, abundance, format_metaphl
 # write summarized abundance files for each level except taxa_tree
 write_summary_files <- function(input, metadata, output) {
   
+  ## write file for TaxaHFE version 1
+  version1 <- input %>%
+    dplyr::filter(., name != "taxaTree") %>%
+    dplyr::select(., pathString, 10:dplyr::last_col()) %>%
+    dplyr::rename(., "clade_name" = "pathString") %>%
+    tibble::remove_rownames()
+  version1$clade_name <- gsub(pattern = "taxaTree\\/", replacement = "", x = version1$clade_name)
+  version1$clade_name <- gsub(pattern = "\\/", replacement = "\\|", x = version1$clade_name)
+  readr::write_delim(x = version1, file = paste0(tools::file_path_sans_ext(output), "v1_input.csv"), delim = ",")
+  
+  ## write files for all the individual levels
   max_levels <- max(input[["depth"]])
   ## start at 2 to ignore taxa_tree depth (meaningless node)
   levels <- c(1:max_levels)
