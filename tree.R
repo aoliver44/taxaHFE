@@ -23,7 +23,8 @@ library(lineprof, quietly = T, verbose = F, warn.conflicts = F)
 ## set random seed if needed
 #set.seed(Sys.time())
 ## set random seed for testing
-set.seed(42)
+
+set.seed(Sys.time())
 nperm <- 20 # permute the random forest this many times
 trim <- 0.02 # trim outliers from mean feature abundance calc
 
@@ -37,11 +38,16 @@ options(warn = -1)
 
 ## read in metadata  ===========================================================
 read_in_metadata <- function(input, subject_identifier, label) {
+  
+  # read extension to determine file delim
   if (strsplit(basename(input), split = "\\.")[[1]][2] %in% c("tsv","txt")) {
     delim = "\t"
   } else {
     delim = ","
   }
+  
+  # read in metadata, and select only the subject identifier and
+  # feature of interest. Drop NA samples.
   metadata <- suppressMessages(readr::read_delim(file = input, delim = delim)) %>%
     dplyr::select(., subject_identifier, label) %>%
     dplyr::rename(., "subject_id" = subject_identifier) %>%
@@ -59,19 +65,24 @@ read_in_metadata <- function(input, subject_identifier, label) {
 ## read in microbiome data =====================================================
 read_in_microbiome <- function(input, meta = metadata, abundance, format_metaphlan, cores = opt$ncores) {
   
-  ## read in txt, tsv, or csv microbiome data
+  # read extension to determine file delim
   if (strsplit(basename(input), split = "\\.")[[1]][2] %in% c("tsv","txt")) {
     delim = "\t"
   } else {
     delim = ","
   }
   
+  # read in hierarchical data, using fast read-in package Vroom.
+  # Useful for large datasets.
   hData <- suppressMessages(vroom::vroom(file = input, delim = delim, skip = 0, 
                                          .name_repair = "minimal", 
                                          num_threads = as.numeric(cores)) %>% 
                               dplyr::select(., -any_of(c("NCBI_tax_id", 
                                                          "clade_taxid"))) %>%
+                              # clean names so they match metadata and remove
+                              # symbols.
                               janitor::clean_names(use_make_names = F))
+  
   ## only select columns that are in metadata file, reduce computation
   hData <- hData %>% 
     dplyr::select(., dplyr::any_of(c("clade_name", metadata$subject_id)))
@@ -86,6 +97,8 @@ read_in_microbiome <- function(input, meta = metadata, abundance, format_metaphl
   if (colnames(hData)[1] != "clade_name") {
     hData <- hData %>% dplyr::relocate(., "clade_name")
   }
+  
+  ########## ABUNDANCE AND PREVALENCE FILTERS ###########
   
   ## Applying initial abundance cutoffs. This will vastly shrink the dataset usually
   cat("\nApplying initial abundance filters...\n")
