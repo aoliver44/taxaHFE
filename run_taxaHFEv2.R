@@ -19,7 +19,7 @@ setwd("/home/docker")
 library(docopt)
 'Hierarchical feature engineering (HFE) for the reduction of features with respects to a factor or regressor
 Usage:
-    taxaHFE.R [--subject_identifier=<subject_colname> --label=<label> --feature_type=<feature_type> --sample_fraction=<proportion> --standardized=<TRUE/FALSE> --abundance=<decimal> --prevalence=<decimal> --cor_level=<correlation_level> --format_metaphlan=<TRUE/FALSE> --write_old_files=<TRUE/FALSE> --lowest_level=<integer> --max_depth=<integer> --ncores=<ncores>] <input_metadata> <input> <output>
+    taxaHFE.R [--subject_identifier=<subject_colname> --label=<label> --feature_type=<feature_type> --sample_fraction=<proportion> --abundance=<decimal> --prevalence=<decimal> --cor_level=<correlation_level> --format_metaphlan=<TRUE/FALSE> --write_old_files=<TRUE/FALSE> --lowest_level=<integer> --max_depth=<integer> --ncores=<ncores>] <input_metadata> <input> <output>
     
 Options:
     -h --help  Show this screen.
@@ -60,7 +60,6 @@ source("/home/docker/tree.R")
 #                   sample_fraction = numeric(),
 #                   abundance = numeric(),
 #                   prevalence = numeric(),
-#                   standardized = character(),
 #                   write_old_files = character(),
 #                   format_metaphlan=character(),
 #                   lowest_level = numeric(),
@@ -69,22 +68,21 @@ source("/home/docker/tree.R")
 #                   input = character(),
 #                   output = character())
 # opt <- opt %>% tibble::add_row(
-#   subject_identifier = "subject_id",
-#   label = "lbp_quartile",
+#   subject_identifier = "Sample",
+#   label = "Category",
 #   feature_type = "factor",
 #   write_old_files = "TRUE",
 #   abundance = 0.0001,
 #   prevalence = 0.01,
-#   standardized = "TRUE",
 #   sample_fraction = 1,
 #   cor_level = 0.95,
-#   format_metaphlan = "FALSE",
+#   format_metaphlan = "TRUE", # can remove if matts filter works fast
 #   lowest_level = 2,
-#   max_depth = 1000
+#   max_depth = 1000,
 #   ncores = 4,
-#   input_metadata = "/home/docker/example_inputs/metadata_LBP_quartile.txt",
-#   input = "/home/docker/example_inputs/input_file_relabund_CLEAN.csv",
-#   output = "/home/docker/example_inputs/stephanie.csv"
+#   input_metadata = "/home/docker/example_inputs/metadata.txt",
+#   input = "/home/docker/example_inputs/microbiome_data.txt",
+#   output = "/home/docker/example_inputs/test/"
 # )
 
 ## Run main ====================================================================
