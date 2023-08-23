@@ -177,3 +177,9 @@ example_inputs/WANG/WANGv1_plot.pdf
 example_inputs/WANG/WANGv1_taxa_list.txt
 example_inputs/WANG/WANGv1_taxa_list_no_sf.txt
 example_inputs/WANG/WANGv1no_sf.txt
+example_inputs/hfe_comparisons_v2.csv
+example_inputs/tmp_collect.txt
+example_inputs/playground.R
+example_inputs/Butyrate/merged_metaphlan_v4-0-6.txt
+example_inputs/Butyrate/fecal_scfas.csv
+example_inputs/Butyrate/_no_sf.csv
