@@ -263,18 +263,18 @@ get_descendant_winners <- function(node, max_depth) {
 # modifies the passed-in node
 # node: current leaf node
 # row_num: unique row number from original df
-# row_df: single row dataframe of abundances for this leaf node
+# row_vecotr: vector of the numeric data from a single row
 # filter_prevalence: passed in filter cutoff for prevalence percentage
 # filter_mean_abundance: passed in filter cutoff for mean abundance
-initial_leaf_values <- function(node, row_num, row_df, filter_prevalence, filter_mean_abundance) {
+initial_leaf_values <- function(node, row_num, row_vector, filter_prevalence, filter_mean_abundance) {
   # a single row dataframe of the abundance data for this row of the df
-  node$abundance <- row_df
+  node$abundance <- row_vector
   # indicates if the prevalence filter was passed
   node$passed_prevalence_filter <-
-    rowSums(node$abundance != 0) > (NCOL(node$abundance) * as.numeric(filter_prevalence))
+    length(node$abundance[node$abundance != 0]) > (length(node$abundance) * as.numeric(filter_prevalence))
   # indicates if the mean abundance filter was passed
   node$passed_mean_abundance_filter <-
-    mean(unlist(node$abundance), trim = trim) > filter_mean_abundance
+    mean(node$abundance, trim = trim) > filter_mean_abundance
   # defaults to be modified later
   node$winner <- FALSE
   node$highly_correlated <- FALSE
@@ -290,34 +290,25 @@ initial_leaf_values <- function(node, row_num, row_df, filter_prevalence, filter
 # uses the sum of the child abundances for the abundance data
 # if no child abundances are available, uses all zeros
 # node: current node, passed in by the tree traversal function
-# zeros_df: a single row df of zeros that matches the original dataframe
+# row_len: length of an abundance vector in the data
 # next_row_id: the next id after the last row in the original dataframe
-
-fix_unpopulated_node <- function(node, zeros_df, next_row_id, filter_prevalence, filter_mean_abundance) {
+fix_unpopulated_node <- function(node, row_len, next_row_id, filter_prevalence, filter_mean_abundance) {
   # Ignore nodes with abundance or no children
   if (!is.null(node$abundance)) {
     return()
   }
-  print(paste0("Adding nodes to populate tree for: ", node$name))
   
-  # Collect non-null child abundances
-  child_abundances <- lapply(node$children, function(child) child$abundance)
-  child_abundances <- Filter(function(abundance) !is.null(abundance), child_abundances)
-  
-  if (length(child_abundances) == 0) {
-    # No child abundances, use a row of zeros
-    new_row <- as.data.table(zeros_df)[, lapply(.SD, sum)]
-  } else {
-    # Combine child abundances and calculate row sums
-    combined_abundances <- rbindlist(child_abundances)
-    new_row <- combined_abundances[, lapply(.SD, sum)]
+  # sum non-null child abundance vectors
+  # if no child abundances are found, the result will be a zero abundance vector
+  abundance <- numeric(row_len)
+  for (child in node$children) {
+    if (is.null(child$abundance)) next
+
+    abundance <- abundance + child$abundance
   }
-  
-  # Assign unique id to row name
-  rownames(new_row) <- next_row_id
 
   # Populate values now that the summed abundance exists
-  initial_leaf_values(node, next_row_id, new_row, filter_prevalence, filter_mean_abundance)
+  initial_leaf_values(node, next_row_id, abundance, filter_prevalence, filter_mean_abundance)
 }
 
 ## build tree from df ==========================================================
@@ -331,7 +322,7 @@ build_tree <- function(df, filter_prevalence, filter_mean_abundance) {
   taxa_tree <- data.tree::Node$new("taxaTree", id = 0)
   
   ## progress bar
-  pb <- progress_bar$new( format = " Adding nodes to tree [:bar] :percent in :elapsed", total = nrow(df), clear = FALSE, width = 60)
+  pb <- progress::progress_bar$new(format = " Adding nodes to tree [:bar] :percent in :elapsed", total = nrow(df), clear = FALSE, width = 60)
   
   for (row in seq_len(nrow(df))) {
     ## progress bar
@@ -357,22 +348,20 @@ build_tree <- function(df, filter_prevalence, filter_mean_abundance) {
     
     # after iterating the levels, node is assigned to the leaf of this row
     # add in the row data and other supporting information
-    initial_leaf_values(node, row, df[row, 2:ncol(df)], filter_prevalence, filter_mean_abundance)
+    initial_leaf_values(node, row, as.numeric(df[row, 2:ncol(df)]), filter_prevalence, filter_mean_abundance)
     
   }
   
   # now that the tree is built, handle unpopulated leaves with the fix_unpopulated_node
-  # generate a single row zeros df for a default abundance in the case of no child data to sum
-  # matches other abundance by no including clade_name column
-  zeros_df <- df[1, 2:ncol(df)]
-  zeros_df[zeros_df != 0] <- 0
-  
   # start the unique id counter at 1 greater than the original df size
   next_row_id <- nrow(df) + 1
   
+  pb2 <- progress::progress_bar$new(format = " Fixing unpopulated nodes [:bar] :percent in :elapsed", total = taxa_tree$totalCount, clear = FALSE, width = 60)
+
   # traverse the tree and fix the unpopulated nodes
   taxa_tree$Do(function(node) {
-    fix_unpopulated_node(node, zeros_df, next_row_id, filter_prevalence, filter_mean_abundance)
+    pb2$tick()
+    fix_unpopulated_node(node, ncol(df) - 1, next_row_id, filter_prevalence, filter_mean_abundance)
     # this loop handles that by incrementing next_row_id for every node, ensuring a unique id if needed
     # they are NOT guaranteed to be sequential since the current node may or may not need it
     # <<- ensures that we assign to the next_row_id var outside this closure loop
@@ -388,7 +377,7 @@ build_tree <- function(df, filter_prevalence, filter_mean_abundance) {
 # for this node, evaluates correlation and rf against all descendants that have won previous rounds
 # modifies the node indicating if it is a winner against those descendants
 # OR which of 1:n descendants are winners
-compete_node <- function(node, lowest_level, max_depth, corr_threshold, metadata, sample_fraction, ncores, feature_type, nperm) {
+compete_node <- function(node, col_names, lowest_level, max_depth, corr_threshold, metadata, sample_fraction, ncores, feature_type, nperm) {
   # skip anything lower than the lowest level (exclusive)
   if (node$level < lowest_level) {
     return()
@@ -409,7 +398,8 @@ compete_node <- function(node, lowest_level, max_depth, corr_threshold, metadata
   
   # build dataframe of parent and descendant winners
   # parent is always row 1
-  df <- as.data.frame(node$abundance, check.names = FALSE)
+  df <- rbind(data.frame(), node$abundance)
+  colnames(df) <- col_names
   
   descendant_winners <- get_descendant_winners(node, max_depth)
   # if no descendant winners, the parent is the winner
@@ -558,6 +548,7 @@ compete_all_winners <- function(tree, metadata, sample_fraction, ncores) {
 # competes an entries tree
 # takes a data.tree root node as input
 # modify_tree: determines if the input tree will be modified in place
+# col_names: vector of column names from the input df
 # lowest_level: lowest level of the tree to consider during operations
 #   this level will be compared in a final all-vs-all random forest after the main tree competition
 #   defaults to skipping the lowest level (all abundances)
@@ -567,13 +558,19 @@ compete_all_winners <- function(tree, metadata, sample_fraction, ncores) {
 # metadata: the metadata associated with the input df that generated the tree
 # sample_fraction: fraction of data to use in rf to help prevent data leakage
 # ncores: the number of cores to use when running the random forest
-compete_tree <- function(tree, modify_tree = TRUE, lowest_level = 2, max_depth = 1000, corr_threshold, metadata, sample_fraction, ncores, feature_type, nperm) {
+compete_tree <- function(tree, modify_tree = TRUE, col_names, lowest_level = 2, max_depth = 1000, corr_threshold, metadata, sample_fraction, ncores, feature_type, nperm) {
   # if not modifying the input tree, create a copy of the tree to perform the competition
   if (!modify_tree) tree <- data.tree::Clone(tree)
+
+   pb <- progress::progress_bar$new(format = " Competing tree [:bar] :percent in :elapsed", total = tree$totalCount, clear = FALSE, width = 60)
   
   # perform the competition, modifying the tree (which may or may not be a clone of the input)
   tree$Do(
-    compete_node,
+    function(node, col_names, lowest_level, max_depth, corr_threshold, metadata, sample_fraction, ncores, feature_type, nperm) {
+      pb$tick()
+      compete_node(node, col_names, lowest_level, max_depth, corr_threshold, metadata, sample_fraction, ncores, feature_type, nperm)
+    },
+    col_names = col_names,
     lowest_level = lowest_level,
     max_depth = max_depth,
     corr_threshold = corr_threshold,
