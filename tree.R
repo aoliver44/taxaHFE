@@ -548,6 +548,7 @@ compete_all_winners <- function(tree, metadata, sample_fraction, ncores) {
 # competes an entries tree
 # takes a data.tree root node as input
 # modify_tree: determines if the input tree will be modified in place
+# col_names: vector of column names from the input df
 # lowest_level: lowest level of the tree to consider during operations
 #   this level will be compared in a final all-vs-all random forest after the main tree competition
 #   defaults to skipping the lowest level (all abundances)
