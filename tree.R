@@ -564,10 +564,11 @@ compete_tree <- function(tree, modify_tree = TRUE, col_names, lowest_level = 2, 
    pb <- progress::progress_bar$new(format = " Competing tree [:bar] :percent in :elapsed", total = tree$totalCount, clear = FALSE, width = 60)
   
   # perform the competition, modifying the tree (which may or may not be a clone of the input)
-  tree$Do(function(node, col_names, lowest_level, max_depth, corr_threshold, metadata, sample_fraction, ncores, feature_type, nperm) {
-    pb$tick()
-    compete_node(node, col_names, lowest_level, max_depth, corr_threshold, metadata, sample_fraction, ncores, feature_type, nperm)
-  },
+  tree$Do(
+    function(node, col_names, lowest_level, max_depth, corr_threshold, metadata, sample_fraction, ncores, feature_type, nperm) {
+      pb$tick()
+      compete_node(node, col_names, lowest_level, max_depth, corr_threshold, metadata, sample_fraction, ncores, feature_type, nperm)
+    },
     col_names = col_names,
     lowest_level = lowest_level,
     max_depth = max_depth,
