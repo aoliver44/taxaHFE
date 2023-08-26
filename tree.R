@@ -421,8 +421,18 @@ compete_node <- function(node, col_names, lowest_level, max_depth, corr_threshol
     dplyr::select(., -dplyr::any_of(correlated_ids))
   
   # run the random forest on the remaining parent + descendants
-  rf_winners <- rf_competition(transposed, metadata, "feature_of_interest", "subject_id", feature_type, sample_fraction, ncores, nperm)
-  
+  rf_winners <- rf_competition(
+    transposed,
+    metadata,
+    parent_descendent_competition = TRUE,
+    "feature_of_interest",
+    "subject_id",
+    feature_type,
+    sample_fraction,
+    ncores,
+    nperm
+  )
+
   # generate winner and loser name lists from the competitors (parent and non-correlated descendants), using the outcome
   # build ahead of time so that a summary can be provided in outcomes
   # this can be sped up and done in a single loop if outcomes are not needed
@@ -458,7 +468,7 @@ compete_node <- function(node, col_names, lowest_level, max_depth, corr_threshol
 ## compete all winners (final RF) ==============================================
 # compete all winners, updating the tree in the process
 # TODO: combine the overlaps in this code with the code in the function above
-compete_all_winners <- function(tree, col_names, metadata, sample_fraction, feature_type, nperm, ncores) {
+compete_all_winners <- function(tree, metadata, col_names, sample_fraction, feature_type, nperm, ncores) {
   # all vs all competition with winners
   # skipped rows have winner = FALSE so won't appear in this list
   competitors <- get_descendant_winners(tree, tree$height)
@@ -471,26 +481,26 @@ compete_all_winners <- function(tree, col_names, metadata, sample_fraction, feat
   row_names <- c()
   for (winner in competitors) {
     df <- rbind(df, winner$abundance)
-    row_names <- append(values = winner$id, x = row_names)
+    row_names <- append(row_names, winner$id)
   }
   
   rownames(df) <- row_names
   colnames(df) <- col_names
   transposed <- as.data.frame(t(df))
   
-  ## merge transposed with metadata
-  transposed <- merge(metadata, transposed, by.x = "subject_id", by.y = "row.names")
-  
   ## return list of winner ids
-  rf_winners <- rf_competition_sf(df = transposed, 
-                                 feature_of_interest = "feature_of_interest", 
-                                 subject_identifier = "subject_id", feature_type = feature_type, 
-                                 ncores = ncores, nperm = nperm, 
-                                 sample_fraction = 
-                                   calc_class_frequencies(metadata, feature_type, 
-                                                          feature = "feature_of_interest", 
-                                                          sample_fraction = sample_fraction))
-  
+  rf_winners <- rf_competition(
+    transposed,
+    metadata,
+    parent_descendent_competition = FALSE,
+    feature_of_interest = "feature_of_interest",
+    subject_identifier = "subject_id",
+    feature_type = feature_type,
+    ncores = ncores, nperm = nperm,
+    sample_fraction = sample_fraction
+  )
+
+
   # TODO: so much duplication below
   
   # generate winner and loser name lists from the competitors (parent and non-correlated descendants), using the outcome
@@ -561,7 +571,16 @@ compete_tree <- function(tree, modify_tree = TRUE, col_names, lowest_level = 2, 
   )
   
   # compete all winners
-  compete_all_winners(tree, metadata, sample_fraction, feature_type, ncores, nperm = nperm + 230)
+  # increasing nperm by a factor of 10 to further reduce the variability in the final rf importance scores
+  compete_all_winners(
+    tree,
+    metadata,
+    col_names = col_names,
+    sample_fraction = sample_fraction,
+    feature_type = feature_type,
+    nperm = nperm * 10,
+    ncores = ncores
+  )
   
   # return the tree
   return(tree)
@@ -608,7 +627,8 @@ calc_class_frequencies <- function(input, feature_type, feature = "feature_of_in
 }
 
 ## rf competition function =====================================================
-rf_competition <- function(df, metadata, feature_of_interest = "feature_of_interest", subject_identifier = "subject_id", feature_type = feature_type, sample_fraction = calc_class_frequencies(), ncores = ncores, nperm = nperm) {
+# TODO: document these inputs
+rf_competition <- function(df, metadata, parent_descendent_competition, feature_of_interest = "feature_of_interest", subject_identifier = "subject_id", feature_type = feature_type, sample_fraction = calc_class_frequencies(), ncores = ncores, nperm = nperm) {
   # merge node abundance + children abundance with metadata
   merged_data <- merge(df, metadata, by.x = "row.names", by.y = "subject_id")
   # clean node names so ranger doesnt throw an error
@@ -622,12 +642,18 @@ rf_competition <- function(df, metadata, feature_of_interest = "feature_of_inter
   } else {
     response_formula <- as.formula(paste("as.numeric(", feature_of_interest, ") ~ .", sep = ""))
   }
+
+  # progress bar for the final rf competition
+  # will only be incremented/shown if parent_descendent_competition == FALSE
+  pb <- progress::progress_bar$new(format = " Competing final winners [:bar] :percent in :elapsed", total = nperm, clear = FALSE, width = 60)
   
   # run ranger, setting parameters such as
   # random seed
   # sample.fraction (acquired from class frequencies function)
   # num.threads number of threads to five ranger
   run_ranger <- function(seed) {
+    if (!parent_descendent_competition) pb$tick()
+
     ranger::ranger(response_formula, data = merged_data, importance = "impurity_corrected", seed = seed, sample.fraction = sample_fraction, replace = TRUE, num.threads = as.numeric(ncores))$variable.importance %>%
       as.data.frame() %>%
       dplyr::rename(., "importance" = ".") %>%
@@ -639,11 +665,26 @@ rf_competition <- function(df, metadata, feature_of_interest = "feature_of_inter
     dplyr::group_by(taxa) %>%
     dplyr::summarise(., average = mean(importance))
   
-  # specify the parent column, which is the vip score to beat
+  # if this is not a parent vs descendent competition
+  # return the ids of competitors whose scores meet the following thresholds:
+  #   - greater than the average score
+  #   - greater than zero
+  if (!parent_descendent_competition) {
+    return(
+      gsub(pattern = "x", replacement = "", x = model_importance %>%
+        dplyr::filter(., average > mean(average)) %>%
+        dplyr::filter(., average > 0) %>%
+        dplyr::pull(., taxa)
+      )
+    )
+  }
+
+  # otherwise
+  # if top score is the parent, parent wins, else grab the children who
+  # beat the parent's score
+  # specify the parent column, which is the score to beat
   parentColumn <- janitor::make_clean_names(colnames(df)[1])
   
-  # if top vip score is the parent, parent wins, else grab the children who 
-  # beat the parent's VIP score
   if ((model_importance %>% arrange(desc(average)) %>% pull(taxa))[1] == parentColumn) {
     return(gsub(pattern = "x", replacement = "", x = parentColumn))
   } else {
@@ -658,45 +699,6 @@ rf_competition <- function(df, metadata, feature_of_interest = "feature_of_inter
   }
 }
 
-## super filter ================================================================
-
-rf_competition_sf <- function(df, 
-                              feature_of_interest = "feature_of_interest", 
-                              subject_identifier = "subject_id", 
-                              feature_type = feature_type, 
-                              sample_fraction = calc_class_frequencies(), 
-                              ncores = ncores, nperm = nperm,
-                              output) {
-  
-  # determine if rf regression or classification should be run
-  if (feature_type == "factor") {
-    response_formula <- as.formula(paste("as.factor(", feature_of_interest, ") ~ .", sep = ""))
-  } else {
-    response_formula <- as.formula(paste("as.numeric(", feature_of_interest, ") ~ .", sep = ""))
-  }
-  
-  # run ranger, setting parameters such as
-  # random seed
-  # sample.fraction (acquired from class frequencies function)
-  # num.threads number of threads to five ranger
-  run_ranger <- function(seed) {
-    ranger::ranger(response_formula, data = df, importance = "impurity_corrected", seed = seed, sample.fraction = sample_fraction, replace = TRUE, num.threads = as.numeric(ncores))$variable.importance %>%
-      as.data.frame() %>%
-      dplyr::rename(., "importance" = ".") %>%
-      tibble::rownames_to_column(var = "taxa")
-  }
-  
-  ## run the above function across 250 random seeds (if set to default nperm = 20) 
-  ## and average the vip scores
-  model_importance <- purrr::map_df(sample(1:1000, nperm), run_ranger) %>%
-    dplyr::group_by(taxa) %>%
-    dplyr::summarise(., average = mean(importance))
-  
-  ## return a list of winners
-  model_importance_list <- model_importance %>% dplyr::filter(., average > mean(average)) %>% dplyr::filter(., average > 0) %>% dplyr::pull(., taxa)
-  return(model_importance_list)
-  
-}
 
 ## Flatten tree to data frame ==================================================
 ## exports tree as dataframe with tons of info on how the competition went
