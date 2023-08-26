@@ -360,8 +360,8 @@ compete_node <- function(node, col_names, lowest_level, max_depth, corr_threshol
   
   # build dataframe of parent and descendant winners
   # parent is always row 1
-  df <- rbind(data.frame(row.names = node$id), node$abundance)
-  colnames(df) <- col_names
+  df <- rbind(data.frame(), node$abundance)
+  row_names <- c(node$id)
   
   descendant_winners <- get_descendant_winners(node, max_depth)
   # if no descendant winners, the parent is the winner
@@ -375,7 +375,11 @@ compete_node <- function(node, col_names, lowest_level, max_depth, corr_threshol
   # add the descendant's abundance dataframe row to df
   for (descendant in descendant_winners) {
     df <- rbind(df, descendant$abundance)
+    row_names <- append(row_names, descendant$id)
   }
+
+  rownames(df) <- row_names
+  colnames(df) <- col_names
   
   # transpose the dataframe to fit the input format for the correlation and ml
   transposed <- as.data.frame(t(df))
