@@ -4,8 +4,6 @@
 library(janitor, quietly = T, verbose = F, warn.conflicts = F)
 library(tidyr, quietly = T, verbose = F, warn.conflicts = F)
 library(tibble, quietly = T, verbose = F, warn.conflicts = F)
-library(ggplot2, quietly = T, verbose = F, warn.conflicts = F)
-library(ggsci, quietly = T, verbose = F, warn.conflicts = F)
 library(progress, quietly = T, verbose = F, warn.conflicts = F)
 library(data.tree, quietly = T, verbose = F, warn.conflicts = F)
 library(dplyr, quietly = T, verbose = F, warn.conflicts = F)
@@ -15,16 +13,14 @@ library(purrr, quietly = T, verbose = F, warn.conflicts = F)
 library(ranger, quietly = T, verbose = F, warn.conflicts = F)
 library(vroom, quietly = T, verbose = F, warn.conflicts = F)
 library(tidyselect, quietly = T, verbose = F, warn.conflicts = F)
-library(data.table, quietly = T, verbose = F, warn.conflicts = F)
-library(dtplyr, quietly = T, verbose = F, warn.conflicts = F)
-library(lineprof, quietly = T, verbose = F, warn.conflicts = F)
 
 
 ## set random seed if needed
-#set.seed(Sys.time())
-## set random seed for testing
-
 set.seed(Sys.time())
+
+## set random seed for testing
+#set.seed(42)
+
 nperm <- 20 # permute the random forest this many times
 trim <- 0.02 # trim outliers from mean feature abundance calc
 
@@ -55,9 +51,6 @@ read_in_metadata <- function(input, subject_identifier, label) {
     tidyr::drop_na()
   ## this is an effort to clean names for the RF later, which will complain big time
   ## if there are symbols or just numbers in your subject IDs
-  cat("\n\nIF your subject_identifiers are just numerics OR have weird symbols\nin them, there's a chance this program crashes. The RF engine,\nranger, is a little picky and very stubborn with names.\n")
-  cat("TaxaHFE will do its best to handle the names initially...\n")
-  cat("(we <3 ranger though)\n")
   metadata$subject_id <- metadata$subject_id %>% janitor::make_clean_names(use_make_names = F)
   return(metadata)
 }
@@ -65,15 +58,15 @@ read_in_metadata <- function(input, subject_identifier, label) {
 ## read in microbiome data =====================================================
 read_in_microbiome <- function(input, meta = metadata, abundance, format_metaphlan, cores = opt$ncores) {
   
-  # read extension to determine file delim
+  ## read extension to determine file delim
   if (strsplit(basename(input), split = "\\.")[[1]][2] %in% c("tsv","txt")) {
     delim = "\t"
   } else {
     delim = ","
   }
   
-  # read in hierarchical data, using fast read-in package Vroom.
-  # Useful for large datasets.
+  ## read in hierarchical data, using fast read-in package Vroom.
+  ## Useful for large datasets.
   hData <- suppressMessages(vroom::vroom(file = input, delim = delim, skip = 0, 
                                          .name_repair = "minimal", 
                                          num_threads = as.numeric(cores)) %>% 
@@ -83,7 +76,12 @@ read_in_microbiome <- function(input, meta = metadata, abundance, format_metaphl
                               # symbols.
                               janitor::clean_names(use_make_names = F))
   
-  ## only select columns that are in metadata file, reduce computation
+  ## only select columns that are in metadata file, reduce computation if
+  ## you have a lot more data than metadata
+  
+  ## To:do - is this necessary? When we merge to do RF, it will only use the info
+  ## that we have metadata for...but abundance and correlation will use all features.
+  ## Thought - throwing away samples is ~probably~ not causing a drop in features.
   hData <- hData %>% 
     dplyr::select(., dplyr::any_of(c("clade_name", metadata$subject_id)))
   
@@ -98,51 +96,12 @@ read_in_microbiome <- function(input, meta = metadata, abundance, format_metaphl
     hData <- hData %>% dplyr::relocate(., "clade_name")
   }
   
-  ########## ABUNDANCE AND PREVALENCE FILTERS ###########
-  
-  ## Applying initial abundance cutoffs. This will vastly shrink the dataset usually
-  cat("\nApplying initial abundance filters...\n")
-  ## count number of splits (+1) in hierarchical data by "|" symbol
-  
-  #3 get the base level sums per sample
-  num_levels <- max(stringr::str_count(hData$clade_name, "\\|"))
-  levels <- paste0("L", seq(1:(num_levels + 1)))
-  
-  if (format_metaphlan == TRUE) {
-    hData_total_abundance <- hData %>% 
-      dplyr::filter(., !grepl("\\|", clade_name)) %>% 
-      tibble::column_to_rownames(., var = "clade_name") %>% 
-      summarise_all(sum) %>% t() %>% as.data.frame() %>% rename(., "row_sums" = "V1")
-  } else {
-  hData_total_abundance <- hData %>% 
-    tidyr::separate(., col = "clade_name", into = levels,
-                    extra = "drop", sep = "\\|") %>%
-    dplyr::select(., tidyselect::where(is.numeric)) %>%
-    summarise_all(sum) %>% t() %>% as.data.frame() %>% rename(., "row_sums" = "V1")
-  }
-  
-  ## divide those base level sums by all the features in the dataset
-  ## this is a sample by sample relative abundance
-  hData_rel_abundance <- sweep((hData %>% tibble::column_to_rownames(., var = "clade_name") 
-                                %>% as.matrix), 2, hData_total_abundance$row_sums, "/")
-  
-  ## filter features with mean abundance that is above the threshold
-  high_abundant_taxa <- hData_rel_abundance %>% 
-    as.data.frame() %>% 
-    tibble::rownames_to_column(., var = "clade_name") %>% 
-    dplyr::rowwise() %>% 
-    dplyr::mutate(., resistant_row_means = mean(dplyr::c_across(2:NCOL(hData_rel_abundance)), trim = trim, na.rm = T)) %>% 
-    dplyr::filter(., resistant_row_means > as.numeric(abundance)) %>% 
-    dplyr::pull(., clade_name)
-  
-  ## select those features from the original dataset, back to original counts
-  hData <- hData %>% dplyr::filter(., clade_name %in% high_abundant_taxa)
-  
   ## write input to file
   return(as.data.frame(hData))
 }
 
 ## write separate files to test summary levels =================================
+## takes in input from Flatten tree to df function output
 # write summarized abundance files for each level except taxa_tree
 write_summary_files <- function(input, metadata, output) {
   
@@ -162,13 +121,14 @@ write_summary_files <- function(input, metadata, output) {
   levels <- c(1:max_levels)
   
   ## split raw data by pipe symbol into number of expected parts
-  
   count = 1
   for (i in seq(levels)) {
     if (i == 1) {
       next
     }
-    ## select different levels and write them to file
+    
+    ## select different levels 1>i and write them to file
+    ## only select features that passed prevalence and abundance thresholds
     file_summary <- input %>%
       dplyr::filter(., depth == i & passed_prevelance == TRUE & passed_abundance == TRUE) %>%
       dplyr::select(., name, 10:dplyr::last_col()) %>%
@@ -197,7 +157,6 @@ write_old_hfe <- function(input, output) {
   levels <- c(1:max_levels)
   
   ## split raw data by pathString backslash into number of expected parts
-
   taxonomy <- input %>% 
     dplyr::filter(., depth == max_levels & passed_prevelance == TRUE & passed_abundance == TRUE) %>%
     dplyr::select(., pathString) %>%
@@ -205,12 +164,14 @@ write_old_hfe <- function(input, output) {
                     extra = "drop", sep = "\\/") %>%
     dplyr::select(., -L1) %>%
     tibble::remove_rownames()
-
+  
+  ## get the raw abundance data for the otu.tab input file
   abundance <- input %>%
     dplyr::filter(., depth == max_levels & passed_prevelance == TRUE & passed_abundance == TRUE) %>%
     dplyr::select(., name, 10:dplyr::last_col()) %>%
     tibble::remove_rownames()
-    
+  
+  ## start writing the taxonomy.tab input file for Oudah HFE  
   taxonomy <- taxonomy[taxonomy[,ncol(taxonomy)] %in% abundance$name, ]
   input_taxa_merge <- merge(taxonomy, abundance, by.x = paste0("L", max_levels), by.y = "name")
   
@@ -220,14 +181,15 @@ write_old_hfe <- function(input, output) {
   input_taxa_merge <- input_taxa_merge %>%
     dplyr::relocate(., index, dplyr::any_of(c(unlist(paste0("L", c(1:max_levels))))))
   
+  ## write OTU to file
   readr::write_delim(x = input_taxa_merge[1:(max_levels)], file = paste0(tools::file_path_sans_ext(output), "_old_hfe_taxa.txt"), col_names = FALSE, delim = "\t")
   readr::write_delim(x = input_taxa_merge %>% dplyr::select(., 1,(max_levels+1):dplyr::last_col()), file = paste0(tools::file_path_sans_ext(output), "_old_hfe_otu.txt"), col_names = FALSE, delim = "\t")
   
+  ## write the metadata input for oudah HFE (labels.tab)
   metadata_order <- colnames(input_taxa_merge[,9:NCOL(input_taxa_merge)])
-  
   metadata_list <- metadata %>% dplyr::arrange(match(subject_id, metadata_order)) %>%
     pull(., feature_of_interest)
-  
+  ## the first item in that tab seperated list has to be "label
   metadata_list <- as.data.frame(c("label", metadata_list))
   readr::write_delim(x = as.data.frame(t(metadata_list)), file = paste0(tools::file_path_sans_ext(output), "_old_hfe_label.txt"), col_names = FALSE, delim = "\t")
   
@@ -399,7 +361,7 @@ compete_node <- function(node, col_names, lowest_level, max_depth, corr_threshol
   # build dataframe of parent and descendant winners
   # parent is always row 1
   df <- rbind(data.frame(), node$abundance)
-  colnames(df) <- col_names
+  row_names <- c(node$id)
   
   descendant_winners <- get_descendant_winners(node, max_depth)
   # if no descendant winners, the parent is the winner
@@ -413,7 +375,11 @@ compete_node <- function(node, col_names, lowest_level, max_depth, corr_threshol
   # add the descendant's abundance dataframe row to df
   for (descendant in descendant_winners) {
     df <- rbind(df, descendant$abundance)
+    row_names <- append(row_names, descendant$id)
   }
+
+  rownames(df) <- row_names
+  colnames(df) <- col_names
   
   # transpose the dataframe to fit the input format for the correlation and ml
   transposed <- as.data.frame(t(df))
@@ -455,9 +421,18 @@ compete_node <- function(node, col_names, lowest_level, max_depth, corr_threshol
     dplyr::select(., -dplyr::any_of(correlated_ids))
   
   # run the random forest on the remaining parent + descendants
-  # TODO: do the baked-in values need to be modifiable?
-  rf_winners <- rf_competition(transposed, metadata, "feature_of_interest", "subject_id", feature_type, sample_fraction, ncores, nperm)
-  
+  rf_winners <- rf_competition(
+    transposed,
+    metadata,
+    parent_descendent_competition = TRUE,
+    "feature_of_interest",
+    "subject_id",
+    feature_type,
+    sample_fraction,
+    ncores,
+    nperm
+  )
+
   # generate winner and loser name lists from the competitors (parent and non-correlated descendants), using the outcome
   # build ahead of time so that a summary can be provided in outcomes
   # this can be sped up and done in a single loop if outcomes are not needed
@@ -493,7 +468,7 @@ compete_node <- function(node, col_names, lowest_level, max_depth, corr_threshol
 ## compete all winners (final RF) ==============================================
 # compete all winners, updating the tree in the process
 # TODO: combine the overlaps in this code with the code in the function above
-compete_all_winners <- function(tree, metadata, sample_fraction, ncores) {
+compete_all_winners <- function(tree, metadata, col_names, sample_fraction, feature_type, nperm, ncores) {
   # all vs all competition with winners
   # skipped rows have winner = FALSE so won't appear in this list
   competitors <- get_descendant_winners(tree, tree$height)
@@ -503,16 +478,29 @@ compete_all_winners <- function(tree, metadata, sample_fraction, ncores) {
   
   # all winners into a transposed data frame
   df <- data.frame()
+  row_names <- c()
   for (winner in competitors) {
     df <- rbind(df, winner$abundance)
+    row_names <- append(row_names, winner$id)
   }
+  
+  rownames(df) <- row_names
+  colnames(df) <- col_names
   transposed <- as.data.frame(t(df))
   
-  # compete here
-  # return list of winner ids
-  # right now does nothing, all are marked as winners
-  rf_winners <- lapply(competitors, function(node) node$id)
-  
+  ## return list of winner ids
+  rf_winners <- rf_competition(
+    transposed,
+    metadata,
+    parent_descendent_competition = FALSE,
+    feature_of_interest = "feature_of_interest",
+    subject_identifier = "subject_id",
+    feature_type = feature_type,
+    ncores = ncores, nperm = nperm,
+    sample_fraction = sample_fraction
+  )
+
+
   # TODO: so much duplication below
   
   # generate winner and loser name lists from the competitors (parent and non-correlated descendants), using the outcome
@@ -583,7 +571,16 @@ compete_tree <- function(tree, modify_tree = TRUE, col_names, lowest_level = 2, 
   )
   
   # compete all winners
-  compete_all_winners(tree, metadata, sample_fraction, ncores)
+  # increasing nperm by a factor of 10 to further reduce the variability in the final rf importance scores
+  compete_all_winners(
+    tree,
+    metadata,
+    col_names = col_names,
+    sample_fraction = sample_fraction,
+    feature_type = feature_type,
+    nperm = nperm * 10,
+    ncores = ncores
+  )
   
   # return the tree
   return(tree)
@@ -630,7 +627,8 @@ calc_class_frequencies <- function(input, feature_type, feature = "feature_of_in
 }
 
 ## rf competition function =====================================================
-rf_competition <- function(df, metadata, feature_of_interest = "feature_of_interest", subject_identifier = "subject_id", feature_type = feature_type, sample_fraction = calc_class_frequencies(), ncores = ncores, nperm = nperm) {
+# TODO: document these inputs
+rf_competition <- function(df, metadata, parent_descendent_competition, feature_of_interest = "feature_of_interest", subject_identifier = "subject_id", feature_type = feature_type, sample_fraction = calc_class_frequencies(), ncores = ncores, nperm = nperm) {
   # merge node abundance + children abundance with metadata
   merged_data <- merge(df, metadata, by.x = "row.names", by.y = "subject_id")
   # clean node names so ranger doesnt throw an error
@@ -644,12 +642,18 @@ rf_competition <- function(df, metadata, feature_of_interest = "feature_of_inter
   } else {
     response_formula <- as.formula(paste("as.numeric(", feature_of_interest, ") ~ .", sep = ""))
   }
+
+  # progress bar for the final rf competition
+  # will only be incremented/shown if parent_descendent_competition == FALSE
+  pb <- progress::progress_bar$new(format = " Competing final winners [:bar] :percent in :elapsed", total = nperm, clear = FALSE, width = 60)
   
   # run ranger, setting parameters such as
   # random seed
   # sample.fraction (acquired from class frequencies function)
   # num.threads number of threads to five ranger
   run_ranger <- function(seed) {
+    if (!parent_descendent_competition) pb$tick()
+
     ranger::ranger(response_formula, data = merged_data, importance = "impurity_corrected", seed = seed, sample.fraction = sample_fraction, replace = TRUE, num.threads = as.numeric(ncores))$variable.importance %>%
       as.data.frame() %>%
       dplyr::rename(., "importance" = ".") %>%
@@ -661,11 +665,26 @@ rf_competition <- function(df, metadata, feature_of_interest = "feature_of_inter
     dplyr::group_by(taxa) %>%
     dplyr::summarise(., average = mean(importance))
   
-  # specify the parent column, which is the vip score to beat
+  # if this is not a parent vs descendent competition
+  # return the ids of competitors whose scores meet the following thresholds:
+  #   - greater than the average score
+  #   - greater than zero
+  if (!parent_descendent_competition) {
+    return(
+      gsub(pattern = "x", replacement = "", x = model_importance %>%
+        dplyr::filter(., average > mean(average)) %>%
+        dplyr::filter(., average > 0) %>%
+        dplyr::pull(., taxa)
+      )
+    )
+  }
+
+  # otherwise
+  # if top score is the parent, parent wins, else grab the children who
+  # beat the parent's score
+  # specify the parent column, which is the score to beat
   parentColumn <- janitor::make_clean_names(colnames(df)[1])
   
-  # if top vip score is the parent, parent wins, else grab the children who 
-  # beat the parent's VIP score
   if ((model_importance %>% arrange(desc(average)) %>% pull(taxa))[1] == parentColumn) {
     return(gsub(pattern = "x", replacement = "", x = parentColumn))
   } else {
@@ -679,6 +698,7 @@ rf_competition <- function(df, metadata, feature_of_interest = "feature_of_inter
     return(gsub(pattern = "x", replacement = "", x = children_winners))
   }
 }
+
 
 ## Flatten tree to data frame ==================================================
 ## exports tree as dataframe with tons of info on how the competition went
@@ -702,44 +722,4 @@ flatten_tree_with_metadata <- function(node) {
     df <- rbind(df, children_df)
   }
   return(df)
-}
-
-## super filter ================================================================
-
-rf_competition_sf <- function(df, metadata, 
-                              feature_of_interest = "feature_of_interest", 
-                              subject_identifier = "subject_id", 
-                              feature_type = feature_type, 
-                              sample_fraction = calc_class_frequencies(), 
-                              ncores = ncores, nperm = nperm,
-                              output) {
-
-  # determine if rf regression or classification should be run
-  if (feature_type == "factor") {
-    response_formula <- as.formula(paste("as.factor(", feature_of_interest, ") ~ .", sep = ""))
-  } else {
-    response_formula <- as.formula(paste("as.numeric(", feature_of_interest, ") ~ .", sep = ""))
-  }
-  
-  # run ranger, setting parameters such as
-  # random seed
-  # sample.fraction (acquired from class frequencies function)
-  # num.threads number of threads to five ranger
-  run_ranger <- function(seed) {
-    ranger::ranger(response_formula, data = df, importance = "impurity_corrected", seed = seed, sample.fraction = sample_fraction, replace = TRUE, num.threads = as.numeric(ncores))$variable.importance %>%
-      as.data.frame() %>%
-      dplyr::rename(., "importance" = ".") %>%
-      tibble::rownames_to_column(var = "taxa")
-  }
-  
-  # run the above function across 10 random seeds and average the vip scores
-  model_importance <- purrr::map_df(sample(1:1000, nperm), run_ranger) %>%
-    dplyr::group_by(taxa) %>%
-    dplyr::summarise(., average = mean(importance))
-  
-  model_importance_list <- model_importance %>% dplyr::filter(., average > mean(average)) %>% dplyr::filter(., average > 0) %>% dplyr::pull(., taxa)
-  output_sf <- df %>% dplyr::select(., subject_id, feature_of_interest, all_of(model_importance_list))
-
-  return(output_sf)
-  
 }
