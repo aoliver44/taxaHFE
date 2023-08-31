@@ -56,7 +56,7 @@ read_in_metadata <- function(input, subject_identifier, label) {
 }
 
 ## read in microbiome data =====================================================
-read_in_microbiome <- function(input, meta = metadata, abundance, format_metaphlan, cores = opt$ncores) {
+read_in_microbiome <- function(input, meta = metadata, abundance, cores = opt$ncores) {
   
   ## read extension to determine file delim
   if (strsplit(basename(input), split = "\\.")[[1]][2] %in% c("tsv","txt")) {
@@ -108,7 +108,7 @@ write_summary_files <- function(input, metadata, output) {
   ## write file for TaxaHFE version 1
   version1 <- input %>%
     dplyr::filter(., name != "taxaTree") %>%
-    dplyr::select(., pathString, 10:dplyr::last_col()) %>%
+    dplyr::select(., pathString, 11:dplyr::last_col()) %>%
     dplyr::rename(., "clade_name" = "pathString") %>%
     tibble::remove_rownames()
   version1$clade_name <- gsub(pattern = "taxaTree\\/", replacement = "", x = version1$clade_name)
@@ -131,7 +131,7 @@ write_summary_files <- function(input, metadata, output) {
     ## only select features that passed prevalence and abundance thresholds
     file_summary <- input %>%
       dplyr::filter(., depth == i & passed_prevelance == TRUE & passed_abundance == TRUE) %>%
-      dplyr::select(., name, 10:dplyr::last_col()) %>%
+      dplyr::select(., name, 11:dplyr::last_col()) %>%
       tibble::remove_rownames() %>%
       tibble::column_to_rownames(., var = "name") %>%
       t() %>%
@@ -168,7 +168,7 @@ write_old_hfe <- function(input, output) {
   ## get the raw abundance data for the otu.tab input file
   abundance <- input %>%
     dplyr::filter(., depth == max_levels & passed_prevelance == TRUE & passed_abundance == TRUE) %>%
-    dplyr::select(., name, 10:dplyr::last_col()) %>%
+    dplyr::select(., name, 11:dplyr::last_col()) %>%
     tibble::remove_rownames()
   
   ## start writing the taxonomy.tab input file for Oudah HFE  
@@ -238,6 +238,7 @@ initial_leaf_values <- function(node, row_num, row_vector, filter_prevalence, fi
   node$passed_mean_abundance_filter <-
     mean(node$abundance, trim = trim) > filter_mean_abundance
   # defaults to be modified later
+  node$SF_winner <- FALSE
   node$winner <- FALSE
   node$highly_correlated <- FALSE
   node$lost_rf <- FALSE
@@ -522,12 +523,11 @@ compete_all_winners <- function(tree, metadata, col_names, sample_fraction, feat
   # also mark the non-winners as rf losers
   for (competitor in competitors) {
     if (competitor$id %in% rf_winners) {
-      competitor$outcomes <- append(competitor$outcomes, sprintf("win: rf winner, %s", outcome_str))
-      competitor$winner <- TRUE
+      competitor$outcomes <- append(competitor$outcomes, sprintf("win: final rf winner, %s", outcome_str))
+      competitor$SF_winner <- TRUE
     } else {
-      competitor$outcomes <- append(competitor$outcomes, sprintf("loss: rf loser, %s", outcome_str))
-      competitor$winner <- FALSE
-      competitor$lost_rf <- TRUE
+      competitor$outcomes <- append(competitor$outcomes, sprintf("loss: final rf loser, %s", outcome_str))
+      competitor$SF_winner <- FALSE
     }
   }
 }
@@ -703,23 +703,28 @@ rf_competition <- function(df, metadata, parent_descendent_competition, feature_
 ## Flatten tree to data frame ==================================================
 ## exports tree as dataframe with tons of info on how the competition went
 flatten_tree_with_metadata <- function(node) {
+  
   df <- data.frame(
     name = node$name,
     depth = node$level,
     pathString = node$pathString,
     outcomes = paste(node$outcomes, collapse = "|\n"),
     winner = node$winner,
+    sf_winner = node$SF_winner,
     rf_loss = node$lost_rf,
     highly_cor = node$highly_correlated,
     passed_prevelance = node$passed_prevalence_filter,
     passed_abundance = node$passed_mean_abundance_filter,
-    abundance = node$abundance,
+    abundance = data.frame(t(sapply(node$abundance,c))),
     stringsAsFactors = FALSE
   )
 
+  
+  
   if (length(node$children) > 0) {
     children_df <- do.call(rbind, lapply(node$children, flatten_tree_with_metadata))
     df <- rbind(df, children_df)
   }
+  
   return(df)
 }
