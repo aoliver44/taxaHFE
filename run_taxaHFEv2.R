@@ -49,7 +49,7 @@ opt <- docopt::docopt(doc, version =
 
 ## load functions ==============================================================
 
-source("/home/docker/tree.R")
+source("/scripts/utilities/tree.R")
 
 ## arg tests ===================================================================
 # opt <- data.frame(subject_identifier = character(),
@@ -165,7 +165,7 @@ output_nosf <- flattened_noSF_winners %>%
   tibble::rownames_to_column(var = "subject_id")
 
 output_nosf <- merge(metadata, output_nosf, by = "subject_id")
-readr::write_delim(file = paste0(tools::file_path_sans_ext(opt$output), "_no_sf.csv"), x = output_nosf, delim = ",")
+readr::write_delim(file = paste0(tools::file_path_sans_ext(opt$OUTPUT), "_no_sf.csv"), x = output_nosf, delim = ",")
 
 ## write SF output
 output_sf <- flattened_noSF_winners %>%
@@ -190,8 +190,8 @@ cat("\n Features (super filter): ", (NCOL(output_sf) - 2), "\n\n")
 if (opt$write_old_files == TRUE) {
   cat("\n\n", "###########################\n", "Writing old files...\n", "###########################\n\n")
   
-  write_summary_files(input = flattened_df, metadata = metadata, output = opt$output)
-  write_old_hfe(input = flattened_df, output = opt$output)
+  write_summary_files(input = flattened_df, metadata = metadata, output = opt$OUTPUT)
+  write_old_hfe(input = flattened_df, output = opt$OUTPUT)
 }
 
-save.image(file = paste0(tools::file_path_sans_ext(opt$output), ".RData"), safe = TRUE)
+save.image(file = paste0(tools::file_path_sans_ext(opt$OUTPUT), ".RData"), safe = TRUE)
