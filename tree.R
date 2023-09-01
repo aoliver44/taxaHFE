@@ -15,11 +15,12 @@ library(vroom, quietly = T, verbose = F, warn.conflicts = F)
 library(tidyselect, quietly = T, verbose = F, warn.conflicts = F)
 
 
-## set random seed if needed
-set.seed(Sys.time())
-
-## set random seed for testing
-#set.seed(42)
+## set random seed if desired
+if (is.numeric(opt$seed) & !is.na(opt$seed)) {
+  set.seed(as.numeric(opt$seed))
+} else {
+  set.seed(Sys.time())
+}
 
 nperm <- 20 # permute the random forest this many times
 trim <- 0.02 # trim outliers from mean feature abundance calc
