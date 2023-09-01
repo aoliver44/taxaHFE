@@ -1,1 +1,5 @@
 .Rproj.user/
+.RData
+.bash_history
+.DS_Store
+/example_inputs/.DS_Store

@@ -6,7 +6,7 @@
 FROM rocker/r-base:4.2.0
 
 ## RENV version
-ENV RENV_VERSION=0.17.3
+ENV RENV_VERSION=0.16.0
 
 RUN apt update
 # install some things that R needs
@@ -22,8 +22,8 @@ RUN R -e 'renv::consent(provided = TRUE)'
 RUN R -e 'renv::restore()'
 
 # copy in scripts so they are part of container
-COPY taxaHFE.R ./scripts/taxaHFE
-COPY taxaHFE_functions.R ./scripts/utilities/taxaHFE_functions.R
+COPY run_taxaHFEv2.R ./scripts/taxaHFE
+COPY tree.R ./scripts/utilities/tree.R
 
 ENV PATH="${PATH}:/scripts/"
 
