@@ -1,6 +1,17 @@
 
  # **taxaHFE**
  
+ ## VERSION 2 RELEASE: 
+ Version 2 of this algorthim makes numerous advances over Version 1. Version 2 can be found on the [development branch](https://github.com/aoliver44/taxaHFE/tree/development). While it is reasonably stable, please report any issues! We suggest you use Version 2! 
+
+ Change log:
+- convert to using a tree-based data structure
+- allow children competitions past the immediate parent (!!)
+- speed and memory enhancements
+- generally as good of performance (model performance) as version 1, but utilizes significantly fewer features.
+
+-----------------------------------
+
  A program to perform hierarchical feature engineering on data with taxonomic organization (i.e., microbiome data, dietary data)
 
 ## Table of Contents
