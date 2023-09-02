@@ -30,13 +30,13 @@
 Option 1: The easiest way to get started is pulling the docker image. Please [install docker](https://www.docker.com/) you go this route. 
 
 ```
-docker pull aoliver44/taxa_hfe:latest
+docker pull aoliver44/taxa_hfe:2.0
 ```
 
 Option 2: Alternatively, you can pull this image using Singularity:
 
 ```
-singularity pull taxaHFE.sif docker://aoliver44/taxa_hfe:latest
+singularity pull taxaHFE.sif docker://aoliver44/taxa_hfe:2.0
 ```
 
 Option 3: Finally, it's possible to build the image yourself:
@@ -46,7 +46,7 @@ Option 3: Finally, it's possible to build the image yourself:
 3. Run the command:
 
 ```
-docker build -t taxa_hfe:latest .
+docker build -t taxa_hfe:2.0 .
 ```
 </br>
 
@@ -56,7 +56,7 @@ docker build -t taxa_hfe:latest .
 Option 1: Run taxaHFE with **YOUR** data:
 1. Navigate to the directory containing your data, and start the docker image!
 ```
-docker run --rm -it -v `pwd`:/home/docker -w /home/docker aoliver44/taxa_hfe:latest bash
+docker run --rm -it -v `pwd`:/home/docker -w /home/docker aoliver44/taxa_hfe:2.0 bash
 
 ## or with singularity
 singularity run -W `pwd` --bind `pwd`:/home/docker taxaHFE.sif bash
@@ -74,7 +74,7 @@ Option 2: Run taxaHFE on **EXAMPLE** data provided:
 git clone https://github.com/aoliver44/taxaHFE.git && cd taxaHFE
 
 ## STEP 2: RUN THE CONTAINER
-docker run --rm -it -v `pwd`:/home/docker -w /home/docker aoliver44/taxa_hfe:latest bash
+docker run --rm -it -v `pwd`:/home/docker -w /home/docker aoliver44/taxa_hfe:2.0 bash
 
 ## STEP 3: RUN TAXAHFE 
 taxaHFE --subject_identifier Sample --label Category --lowest_level 3 --ncores 2 --seed 42 /home/docker/example_inputs/metadata.txt /home/docker/example_inputs/microbiome_data.txt /home/docker/example_inputs/output.csv
