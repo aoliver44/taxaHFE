@@ -25,18 +25,18 @@ Usage:
 Options:
     -h --help  Show this screen.
     -v --version  Show version.
-    --subject_identifier name of columns with subject IDs [default: subject_id]
-    --label response feature of interest for classification [default: cluster]
-    --feature_type of response i.e. numeric or factor [default: factor]
-    --sample_fraction only let rf see a fraction of total data [default: 1]
-    --standardized sum feature abundance across subjects equal [default: TRUE]
-    --abundance pre taxaHFE abundance filter [default: 0.0001]
-    --prevalence pre taxaHFE prevalence filter [default: 0.01]
-    --lowest_level is the most general level allowed to compete [default: 2]
-    --max_depth how deep should comparisons be allowed to go [default: 1000]
-    --cor_level level of initial correlation filter [default: 0.95]
-    --write_old_files write individual level files and old HFE files [default: TRUE]
-    --ncores number of cpu cores to use [default: 2]
+    -s --subject_identifier metadata column name containing subject IDs [default: subject_id]
+    -l --label metadata column name of interest for ML [default: cluster]
+    -t --feature_type is the ML label a factor or numeric [default: factor]
+    -f --sample_fraction only let rf see a fraction of total data [default: 1]
+    -a --abundance feature abundance filter [default: 0.0001]
+    -p --prevalence feature prevalence filter [default: 0.01]
+    -L --lowest_level most general level allowed to compete [default: 2]
+    -m --max_depth how many hierarchical levels should be allowed to compete [default: 1000]
+    -c --cor_level initial pearson correlation filter [default: 0.95]
+    -w --write_old_files write individual level files and old HFE files [default: TRUE]
+    -n --ncores number of cpu cores to use [default: 2]
+    --seed set a random seed, default is to use system time
 Arguments:
     METADATA path to metadata input (txt | tsv | csv)
     DATA path to input file from hierarchical data (i.e. hData data) (txt | tsv | csv)
@@ -45,11 +45,11 @@ Arguments:
 ' -> doc
 
 opt <- docopt::docopt(doc, version = 
-                        'taxaHFE.R v2\n\n')
+                        'taxaHFE.R v2.0\n\n')
 
 ## load functions ==============================================================
 
-source("/scripts/utilities/tree.R")
+source("/home/docker/tree.R")
 
 ## arg tests ===================================================================
 # opt <- data.frame(subject_identifier = character(),
@@ -63,6 +63,7 @@ source("/scripts/utilities/tree.R")
 #                   write_old_files = character(),
 #                   lowest_level = numeric(),
 #                   max_depth = numeric(),
+#                   seed = numeric(),
 #                   METADATA = character(),
 #                   DATA = character(),
 #                   OUTPUT = character())
@@ -78,6 +79,7 @@ source("/scripts/utilities/tree.R")
 #   lowest_level = 2,
 #   max_depth = 1000,
 #   ncores = 4,
+#   seed = 42,
 #   METADATA = "/home/docker/example_inputs/metadata.txt",
 #   DATA = "/home/docker/example_inputs/microbiome_data.txt",
 #   OUTPUT = "/home/docker/example_inputs/test/output.csv"
@@ -121,7 +123,7 @@ hTree <- build_tree(hData, filter_prevalence = opt$prevalence, filter_mean_abund
 
 ## Main competition ============================================================
 
-cat("\n\n", "###########################\n", "Competing Tree...\n", "###########################\n\n")
+cat("\n", "###########################\n", "Competing Tree...\n", "###########################\n\n")
 
 competed_tree <- compete_tree(
   hTree,
@@ -142,7 +144,7 @@ competed_tree <- compete_tree(
 
 ## Extract information from tree  ==============================================
 # Flatten the tree and tree decisions
-cat("\n\n", "############################################\n", "Flattening tree and writing final output...\n", "############################################\n\n")
+cat("\n", "############################################\n", "Flattening tree and writing final output...\n", "############################################\n\n")
 
 col_names = colnames(hData)[2:NCOL(hData)]
 flattened_df <- flatten_tree_with_metadata(node = competed_tree)
@@ -188,7 +190,7 @@ cat("\n Features (super filter): ", (NCOL(output_sf) - 2), "\n\n")
 
 ## write old files  ============================================================
 if (opt$write_old_files == TRUE) {
-  cat("\n\n", "###########################\n", "Writing old files...\n", "###########################\n\n")
+  cat("\n", "###########################\n", "Writing old files...\n", "###########################\n\n")
   
   write_summary_files(input = flattened_df, metadata = metadata, output = opt$OUTPUT)
   write_old_hfe(input = flattened_df, output = opt$OUTPUT)
