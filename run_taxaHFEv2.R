@@ -49,7 +49,7 @@ opt <- docopt::docopt(doc, version =
 
 ## load functions ==============================================================
 
-source("/home/docker/tree.R")
+source("/scripts/utilities/tree.R")
 
 ## arg tests ===================================================================
 # opt <- data.frame(subject_identifier = character(),
@@ -76,7 +76,7 @@ source("/home/docker/tree.R")
 #   prevalence = 0.01,
 #   sample_fraction = 1,
 #   cor_level = 0.95,
-#   lowest_level = 2,
+#   lowest_level = 3,
 #   max_depth = 1000,
 #   ncores = 4,
 #   seed = 42,
