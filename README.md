@@ -82,6 +82,33 @@ taxaHFE --subject_identifier Sample --label Category --lowest_level 3 --ncores 2
 
 </br>
 
+### Running taxaHFE on Windows
+
+taxaHFE can run on Windows through [Powershell](https://aka.ms/PSWindows) and [Docker Desktop for Windows](https://docs.docker.com/desktop/install/windows-install/). In order for the program to run smoothly, several adjustments are recommended beforehand:
+
+ 1) **Prepare wsl (Windows Subsystem for Linux)**
+
+    In Powershell, set the default wsl to Ubuntu. The default will only need to be set once, but wsl will need to be turned on with every taxaHFE run. 
+    
+    *Note*: Error without setting default, "VS Code Server for WSL closed unexpectedly"
+
+```  
+## Powershell       
+## change default wsl to Ubuntu
+wsl --set-default Ubuntu 
+
+## turn on wsl
+wsl                      
+```
+
+2) **Enable Ubuntu in Docker Desktop App**
+
+    *Note*: Error without setting adjustment, Directory files do not read in when docker is initiated
+
+-   Settings \> Resources \> WSL Integration \> Enable Ubuntu
+
+</br>
+
 ------------------------------
 ## Information about the flags
 
