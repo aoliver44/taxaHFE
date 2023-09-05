@@ -1,9 +1,9 @@
 
- # **taxaHFE**
- 
- A program to perform hierarchical feature engineering on data with taxonomic organization (i.e., microbiome data, dietary data)
+ # **TaxaHFE**
+Version 2.0
 
 ## Table of Contents
+- [Description](https://github.com/aoliver44/taxaHFE#description)
 - [Download taxaHFE](https://github.com/aoliver44/taxaHFE#download-taxahfe)
 - [Quickstart](https://github.com/aoliver44/taxaHFE#quickstart)
 - [Flag information](https://github.com/aoliver44/taxaHFE#information-about-the-flags)
@@ -14,7 +14,19 @@
 
 -----------------------------
 
+ ## **Description:** 
+ A program to perform hierarchical feature engineering on data with taxonomic organization (i.e., microbiome data, dietary data). TaxaHFE takes in a dataset of abundances for every hierarchical level, and then uses correlation and machine learning to determine the optimum taxonomic level which contains the most information relative to a metadata covariate of interest. This is a not a new idea; however, few implementations exist in the wild. For some reading on these ideas, please follow the links below!
 
+[TaxaHFE: A machine learning approach to collapse microbiome datasets using taxonomic structure.](https://www.biorxiv.org/content/10.1101/2023.06.06.543755v1)
+Andrew Oliver & Danielle G. Lemay. 2023. *BioRxiv*. 
+
+[Taxonomy-aware feature engineering for microbiome classification.](https://bmcbioinformatics.biomedcentral.com/articles/10.1186/s12859-018-2205-3)
+Mai Oudah & Andreas Henschel. 2018. *BMC Bioinformatics*.
+
+[Feature Selection in Hierarchical Feature Spaces.](https://link.springer.com/chapter/10.1007/978-3-319-11812-3_25)
+Petar Ristoski & Heiko Paulheim. 2014. *International Conference on Discovery Science*.
+
+ -----------------------------
 
 ## **Outline of taxaHFE**
 
