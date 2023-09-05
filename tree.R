@@ -16,7 +16,6 @@ library(tidyselect, quietly = T, verbose = F, warn.conflicts = F)
 
 
 ## set random seed if desired
-## set random seed if desired
 tryCatch(expr = set.seed(as.numeric(opt$seed)), 
          error = function(e){
            message('No random seed set. Using system time!') },
