@@ -16,10 +16,12 @@ library(tidyselect, quietly = T, verbose = F, warn.conflicts = F)
 
 
 ## set random seed if desired
-if (is.numeric(opt$seed) & !is.na(opt$seed)) {
+if (opt$seed == "random") {
+  set.seed(Sys.time())
+} else if (is.numeric(opt$seed) & !is.na(opt$seed)) {
   set.seed(as.numeric(opt$seed))
 } else {
-  set.seed(Sys.time())
+  stop("Unrecognized set seed parameter.")
 }
 
 nperm <- 20 # permute the random forest this many times
