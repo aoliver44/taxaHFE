@@ -36,7 +36,7 @@ Options:
     -c --cor_level initial pearson correlation filter [default: 0.95]
     -w --write_old_files write individual level files and old HFE files [default: TRUE]
     -n --ncores number of cpu cores to use [default: 2]
-    --seed set a random numeric seed, default is to use system time [default: random]
+    --seed set a random numeric seed, default is to use system time
 Arguments:
     METADATA path to metadata input (txt | tsv | csv)
     DATA path to input file from hierarchical data (i.e. hData data) (txt | tsv | csv)
@@ -79,7 +79,7 @@ source("/scripts/utilities/tree.R")
 #   lowest_level = 3,
 #   max_depth = 1000,
 #   ncores = 4,
-#   seed = "random",
+#   seed = 42,
 #   METADATA = "/home/docker/example_inputs/metadata.txt",
 #   DATA = "/home/docker/example_inputs/microbiome_data.txt",
 #   OUTPUT = "/home/docker/example_inputs/test/output.csv"
