@@ -16,13 +16,12 @@ library(tidyselect, quietly = T, verbose = F, warn.conflicts = F)
 
 
 ## set random seed if desired
-if (opt$seed == "random") {
-  set.seed(Sys.time())
-} else if (is.numeric(opt$seed) & !is.na(opt$seed)) {
-  set.seed(as.numeric(opt$seed))
-} else {
-  stop("Unrecognized set seed parameter.")
-}
+tryCatch(expr = set.seed(as.numeric(opt$seed)), 
+         error = function(e){
+           message('No random seed set. Using system time!') },
+         finally = function(f){
+           set.seed(as.numeric(Sys.time())) }
+         )
 
 nperm <- 20 # permute the random forest this many times
 trim <- 0.02 # trim outliers from mean feature abundance calc
