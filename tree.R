@@ -102,6 +102,28 @@ read_in_microbiome <- function(input, meta = metadata, abundance, cores) {
   return(as.data.frame(hData))
 }
 
+## read in covariates file =====================================================
+
+read_in_covariates <- function(input, subject_identifier) {
+  
+  # read extension to determine file delim
+  if (strsplit(basename(input), split = "\\.")[[1]][2] %in% c("tsv","txt")) {
+    delim = "\t"
+  } else {
+    delim = ","
+  }
+  
+  # read in metadata, and select only the subject identifier and
+  # feature of interest. Drop NA samples.
+  covariates <- suppressMessages(readr::read_delim(file = input, delim = delim)) %>%
+    dplyr::rename(., "subject_id" = subject_identifier) %>%
+    tidyr::drop_na()
+  ## this is an effort to clean names for the RF later, which will complain big time
+  ## if there are symbols or just numbers in your subject IDs
+  covariates$subject_id <- metadata$subject_id %>% janitor::make_clean_names(use_make_names = F)
+  
+  return(covariates)
+}
 ## write separate files to test summary levels =================================
 ## takes in input from Flatten tree to df function output
 # write summarized abundance files for each level except taxa_tree

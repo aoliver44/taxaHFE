@@ -66,7 +66,8 @@ source("/scripts/utilities/tree.R")
 #                   lowest_level = numeric(),
 #                   max_depth = numeric(),
 #                   nperm = numeric(),
-#                   seed = character(),
+#                   seed = numeric(),
+#                   covariates = character(),
 #                   METADATA = character(),
 #                   DATA = character(),
 #                   OUTPUT = character())
@@ -84,6 +85,7 @@ source("/scripts/utilities/tree.R")
 #   ncores = 4,
 #   nperm = 40,
 #   seed = 42,
+#   covariates = "FALSE",
 #   METADATA = "/home/docker/example_inputs/metadata.txt",
 #   DATA = "/home/docker/example_inputs/microbiome_data.txt",
 #   OUTPUT = "/home/docker/example_inputs/test/output.csv"
@@ -98,13 +100,24 @@ cat("\n\n", "###########################\n", "Reading in data...\n", "##########
 cat("\n\n","Checking for METADATA")
 if (file.exists(opt$METADATA)) {
   cat("\n",paste0("Using ", opt$METADATA, " as input")) 
-} else { stop("Metadata input not found.") }
+} else { stop("Metadata input not found. Please check path.") }
 
 ## check for input file (hierarchical data)
 cat("\n","Checking for for input...")
 if (file.exists(opt$DATA)) {
   cat("\n",paste0("Using ", opt$DATA, " as input")) 
-} else { stop("Input not found.") }
+} else { stop("Input not found. Please check path.") }
+
+## check for covariates file 
+cat("\n","Checking for for covariates...")
+if (opt$covariates != FALSE & file.exists(opt$covariates)) {
+  cat("\n",paste0("Using ", opt$covariates, " as covariates")) 
+  } else if (opt$covariates != FALSE) {
+  stop("Covariates file not found. Please check path.")
+  } else {
+    cat("No covariates file supplied.")
+  }
+
 
 ## read in metadata file =======================================================
 
@@ -119,6 +132,12 @@ metadata <- read_in_metadata(input = opt$METADATA,
 
 ## read in data, should be in tab or comma separated format
 hData <- read_in_microbiome(input = opt$DATA, meta = metadata, abundance = opt$abundance, cores = opt$ncores)
+
+## read in covariates if present ===============================================
+
+if (opt$covariates != FALSE & file.exists(opt$covariates)) {
+  covariates = read_in_covariates(input = opt$covariates, subject_identifier = opt$subject_identifier)
+}
 
 ## Build tree ==================================================================
 cat("\n\n", "###########################\n", "Building Tree...\n", "###########################\n\n")
