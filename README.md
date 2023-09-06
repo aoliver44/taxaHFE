@@ -152,7 +152,8 @@ Options:
  -m --max_depth how many hierarchical levels should be allowed to compete [default: 1000]    
  -c --cor_level initial pearson correlation filter [default: 0.95]    
  -w --write_old_files write individual level files and old HFE files [default: TRUE]    
- -n --ncores number of cpu cores to use [default: 2]   
+ -n --ncores number of cpu cores to use [default: 2]
+ --nperm number of RF permutations [default: 40]
  --seed set a random seed, default is to use system time 
  
  Arguments:    
@@ -183,6 +184,8 @@ Options:
 --write_old_files: should files summarized at each taxa level be written to file? The old HFE program files are written to for use in the Oudah et al. algorithm
 
 --ncores: number of cores to let the random forest use. Not a huge speed up, but if you have the cores available, it can't hurt.
+
+--nperm: number of RF permutations to make to average out the Gini impurity score. More permutations may decrease run to run variability in the number of features output, but at a cost of run time.
 
 --seed: the default behavior is to use ```Sys.time()``` to generate a random seed each time taxaHFE is run. If you set it to a number, it will likely return the same results across repeated runs (though this assumption has not been thoroughly tested).
 

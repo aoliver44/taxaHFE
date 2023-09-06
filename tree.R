@@ -23,7 +23,7 @@ tryCatch(expr = set.seed(as.numeric(opt$seed)),
            set.seed(as.numeric(Sys.time())) }
 )
 
-nperm <- 20 # permute the random forest this many times
+nperm <- as.numeric(opt$nperm) # permute the random forest this many times
 trim <- 0.02 # trim outliers from mean feature abundance calc
 
 ## helper functions ============================================================
@@ -58,7 +58,7 @@ read_in_metadata <- function(input, subject_identifier, label) {
 }
 
 ## read in microbiome data =====================================================
-read_in_microbiome <- function(input, meta = metadata, abundance, cores = opt$ncores) {
+read_in_microbiome <- function(input, meta = metadata, abundance, cores) {
   
   ## read extension to determine file delim
   if (strsplit(basename(input), split = "\\.")[[1]][2] %in% c("tsv","txt")) {
