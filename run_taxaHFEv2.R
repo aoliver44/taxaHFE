@@ -36,6 +36,7 @@ Options:
     -c --cor_level initial pearson correlation filter [default: 0.95]
     -w --write_old_files write individual level files and old HFE files [default: TRUE]
     -n --ncores number of cpu cores to use [default: 2]
+    --nperm number of RF permutations [default: 40]
     --seed set a random numeric seed, default is to use system time
 Arguments:
     METADATA path to metadata input (txt | tsv | csv)
@@ -50,6 +51,7 @@ opt <- docopt::docopt(doc, version =
 ## load functions ==============================================================
 
 source("/scripts/utilities/tree.R")
+#source("/home/docker/tree.R")
 
 ## arg tests ===================================================================
 # opt <- data.frame(subject_identifier = character(),
@@ -63,6 +65,7 @@ source("/scripts/utilities/tree.R")
 #                   write_old_files = character(),
 #                   lowest_level = numeric(),
 #                   max_depth = numeric(),
+#                   nperm = numeric(),
 #                   seed = character(),
 #                   METADATA = character(),
 #                   DATA = character(),
@@ -79,6 +82,7 @@ source("/scripts/utilities/tree.R")
 #   lowest_level = 3,
 #   max_depth = 1000,
 #   ncores = 4,
+#   nperm = 40,
 #   seed = 42,
 #   METADATA = "/home/docker/example_inputs/metadata.txt",
 #   DATA = "/home/docker/example_inputs/microbiome_data.txt",
