@@ -66,7 +66,7 @@ source("/scripts/utilities/tree.R")
 #                   lowest_level = numeric(),
 #                   max_depth = numeric(),
 #                   nperm = numeric(),
-#                   seed = character(),
+#                   seed = numeric(),
 #                   METADATA = character(),
 #                   DATA = character(),
 #                   OUTPUT = character())

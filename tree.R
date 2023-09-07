@@ -133,7 +133,14 @@ write_summary_files <- function(input, metadata, output) {
     ## only select features that passed prevalence and abundance thresholds
     file_summary <- input %>%
       dplyr::filter(., depth == i & passed_prevelance == TRUE & passed_abundance == TRUE) %>%
-      dplyr::select(., name, 11:dplyr::last_col()) %>%
+      dplyr::select(., name, 11:dplyr::last_col())
+    
+    ## there are fringe cases where some levels are named the same but
+    ## are part of different clades ie
+    ## k_bacteria|p_firmicutes|c_CFG_10299
+    ## k_bacteria|p_actinobacteria|c_CFG_10299
+    file_summary$name <- file_summary$name %>% janitor::make_clean_names()
+    file_summary <- file_summary %>%
       tibble::remove_rownames() %>%
       tibble::column_to_rownames(., var = "name") %>%
       t() %>%
@@ -141,6 +148,7 @@ write_summary_files <- function(input, metadata, output) {
       tibble::rownames_to_column(., var = "subject_id") %>%
       janitor::clean_names()
     
+    ## merge with metadata
     file_merge <- merge(metadata, file_summary, by = "subject_id")
     
     filename <- paste0("_level_", count, ".csv")
