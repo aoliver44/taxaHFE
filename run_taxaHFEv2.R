@@ -118,12 +118,16 @@ metadata <- read_in_metadata(input = opt$METADATA,
 ## read in microbiome ==========================================================
 
 ## read in data, should be in tab or comma separated format
-hData <- read_in_microbiome(input = opt$DATA, meta = metadata, abundance = opt$abundance, cores = opt$ncores)
+hData <- read_in_microbiome(input = opt$DATA, 
+                            meta = metadata, 
+                            cores = opt$ncores)
 
 ## Build tree ==================================================================
 cat("\n\n", "###########################\n", "Building Tree...\n", "###########################\n\n")
 cat("This may take a few minutes depending on how many features you have.\n")
-hTree <- build_tree(hData, filter_prevalence = opt$prevalence, filter_mean_abundance = opt$abundance)
+hTree <- build_tree(hData, 
+                    filter_prevalence = as.numeric(opt$prevalence), 
+                    filter_mean_abundance = as.numeric(opt$abundance))
 
 ## Main competition ============================================================
 

@@ -58,7 +58,7 @@ read_in_metadata <- function(input, subject_identifier, label) {
 }
 
 ## read in microbiome data =====================================================
-read_in_microbiome <- function(input, meta = metadata, abundance, cores) {
+read_in_microbiome <- function(input, meta = metadata, cores) {
   
   ## read extension to determine file delim
   if (strsplit(basename(input), split = "\\.")[[1]][2] %in% c("tsv","txt")) {
@@ -670,7 +670,7 @@ rf_competition <- function(df, metadata, parent_descendent_competition, feature_
       tibble::rownames_to_column(var = "taxa")
   }
   
-  # run the above function across 10 random seeds and average the vip scores
+  # run the above function across nperm random seeds and average the vip scores
   model_importance <- purrr::map_df(sample(1:1000, nperm), run_ranger) %>%
     dplyr::group_by(taxa) %>%
     dplyr::summarise(., average = mean(importance))
