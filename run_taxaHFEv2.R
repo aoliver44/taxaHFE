@@ -82,14 +82,17 @@ source("/scripts/utilities/tree.R")
 #   lowest_level = 3,
 #   max_depth = 1000,
 #   ncores = 4,
-#   nperm = 40,
+#   nperm = 10,
 #   seed = 42,
 #   METADATA = "/home/docker/example_inputs/metadata.txt",
 #   DATA = "/home/docker/example_inputs/microbiome_data.txt",
-#   OUTPUT = "/home/docker/example_inputs/test/output.csv"
+#   OUTPUT = "/home/docker/example_inputs/output.csv"
 # )
 
 ## Run main ====================================================================
+
+## set random seed
+set_seed_func(seed = as.numeric(opt$seed))
 
 ## check for inputs ============================================================
 cat("\n\n", "###########################\n", "Reading in data...\n", "###########################")
@@ -190,11 +193,8 @@ output_sf <- flattened_noSF_winners %>%
 output_sf <- merge(metadata, output_sf, by = "subject_id")
 readr::write_delim(file = opt$OUTPUT, x = output_sf, delim = ",")
 
-## message to user outputs
-cat("\n\n", " Outputs written! \n")
-
-cat("\n\n Features (no super filter): ", (ncol(output_nosf) - 2))
-cat("\n Features (super filter): ", (NCOL(output_sf) - 2), "\n\n")
+cat(" Features (no super filter): ", (ncol(output_nosf) - 2))
+cat("\n Features (super filter): ", (NCOL(output_sf) - 2), "\n")
 
 ## write old files  ============================================================
 if (opt$write_old_files == TRUE) {
@@ -204,4 +204,11 @@ if (opt$write_old_files == TRUE) {
   write_old_hfe(input = flattened_df, output = opt$OUTPUT)
 }
 
-save.image(file = paste0(tools::file_path_sans_ext(opt$OUTPUT), ".RData"), safe = TRUE)
+## save flattened DF to come back to
+vroom::vroom_write(x = flattened_df, 
+                   file =  paste0(tools::file_path_sans_ext(opt$OUTPUT), "_raw_data.tsv.gz"), 
+                   num_threads = as.numeric(opt$ncores))
+
+## message to user finish
+cat(" Outputs written! TaxaHFE completed. \n")
+

@@ -16,12 +16,14 @@ library(tidyselect, quietly = T, verbose = F, warn.conflicts = F)
 
 
 ## set random seed if desired
-tryCatch(expr = set.seed(as.numeric(opt$seed)), 
-         error = function(e){
-           message('No random seed set. Using system time!') },
-         finally = function(f){
-           set.seed(as.numeric(Sys.time())) }
-)
+set_seed_func <- function(seed) {
+  tryCatch(expr = set.seed(as.numeric(opt$seed)), 
+           error = function(e){
+             message('No random seed set. Using system time!') },
+           finally = function(f){
+             set.seed(as.numeric(Sys.time())) }
+  )
+}
 
 nperm <- as.numeric(opt$nperm) # permute the random forest this many times
 trim <- 0.02 # trim outliers from mean feature abundance calc
