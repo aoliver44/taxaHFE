@@ -109,6 +109,22 @@ if (file.exists(opt$DATA)) {
   cat("\n",paste0("Using ", opt$DATA, " as input")) 
 } else { stop("Input not found.") }
 
+## parameters specified
+cat("\n","Parameters specified: \n")
+cat(paste0("--subject_identifier: ", opt$subject_identifier), "\n")
+cat(paste0("--label: ", opt$label), "\n")
+cat(paste0("--feature_type: ", opt$feature_type), "\n")
+cat(paste0("--sample_fraction: ", opt$sample_fraction), "\n")
+cat(paste0("--abundance: ", opt$abundance), "\n")
+cat(paste0("--prevalence: ", opt$prevalence), "\n")
+cat(paste0("--lowest_level: ", opt$lowest_level), "\n")
+cat(paste0("--max_depth: ", opt$max_depth), "\n")
+cat(paste0("--cor_level: ", opt$cor_level), "\n")
+cat(paste0("--write_old_files: ", opt$write_old_files), "\n")
+cat(paste0("--ncores: ", opt$ncores), "\n")
+cat(paste0("--nperm: ", opt$nperm), "\n")
+cat(paste0("OUTPUT: ", opt$OUTPUT))
+
 ## read in metadata file =======================================================
 
 ## rename the subject_identifier to subject_id and
