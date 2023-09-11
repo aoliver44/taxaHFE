@@ -141,6 +141,13 @@ hData <- read_in_microbiome(input = opt$DATA,
                             meta = metadata, 
                             cores = opt$ncores)
 
+# sample hData if provided, saving the chosen columns
+# sample is a vector of sample names (columns) of hData
+# TODO: this needs to be a flag
+sample_percentage <- 0.3
+samples <- sample(colnames(df), size = ncol(df) * sample_percentage)
+hData <- hData[sample_columns]
+
 ## Build tree ==================================================================
 cat("\n\n", "###########################\n", "Building Tree...\n", "###########################\n\n")
 cat("This may take a few minutes depending on how many features you have.\n")
