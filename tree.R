@@ -840,6 +840,7 @@ load_docopt <- function(doc_string, version, to_convert) {
         if (is.na(numeric_option)) {
           stop(paste(option, "must be a numeric value"))
         }
+        return(numeric_option)
       }
       # otherwise return the value as before
       return(opt[[option]])
