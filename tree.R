@@ -835,7 +835,10 @@ load_docopt <- function(doc_string, version, to_convert) {
     function(option) {
       # if the option if in to_convert, return the converted value
       if (option %in% to_convert) { 
-        return(as.numeric(opt[[option]]))
+        numeric_option <- as.numeric(opt[[option]])
+        if (is.na(numeric_option)) {
+          stop(paste(option, "must be a numeric value"))
+        }
       }
       # otherwise return the value as before
       return(opt[[option]])
