@@ -13,6 +13,7 @@ library(purrr, quietly = T, verbose = F, warn.conflicts = F)
 library(ranger, quietly = T, verbose = F, warn.conflicts = F)
 library(vroom, quietly = T, verbose = F, warn.conflicts = F)
 library(tidyselect, quietly = T, verbose = F, warn.conflicts = F)
+library(docopt, quietly = T, verbose = F, warn.conflicts = F)
 
 
 ## set random seed, defaults to system time

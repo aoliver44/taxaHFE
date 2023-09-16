@@ -16,7 +16,6 @@
 setwd("/home/docker")
 
 ## load libraries =====================================================
-library(docopt)
 source("/home/docker/tree.R")
 # source("/scripts/utilities/tree.R")
 
