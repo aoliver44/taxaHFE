@@ -67,9 +67,9 @@ read_in_metadata <- function(input, subject_identifier, label) {
   return(metadata)
 }
 
-## read in microbiome data =====================================================
+## read in hierarchical data =====================================================
 ## read in data, should be in tab or comma separated format
-read_in_microbiome <- function(input, metadata, cores) {
+read_in_hierarchical_data <- function(input, metadata, cores) {
   cat("\n", "Checking for DATA...")
   if (file.exists(input) == FALSE) {
     stop("DATA input not found.")
@@ -685,7 +685,7 @@ rf_competition <- function(df, metadata, parent_descendent_competition, feature_
   run_ranger <- function(seed) {
     if (!parent_descendent_competition) pb$tick()
 
-    ranger::ranger(response_formula, data = merged_data, importance = "impurity_corrected", seed = seed, sample.fraction = sample_fraction, replace = TRUE, num.threads = as.numeric(ncores))$variable.importance %>%
+    ranger::ranger(response_formula, data = merged_data, importance = "impurity_corrected", seed = seed, sample.fraction = sample_fraction, replace = TRUE, num.threads = ncores)$variable.importance %>%
       as.data.frame() %>%
       dplyr::rename(., "importance" = ".") %>%
       tibble::rownames_to_column(var = "taxa")
@@ -759,7 +759,7 @@ flatten_tree_with_metadata <- function(node) {
 
 # write an output file containing the HFE results
 write_output_file <- function(flattened_df, metadata, output_location, file_suffix) {
-  output_nosf <- flattened_df %>%
+  output <- flattened_df %>%
     dplyr::select(., name, 11:dplyr::last_col()) %>%
     tibble::remove_rownames() %>%
     tibble::column_to_rownames(., var = "name") %>%
@@ -767,8 +767,8 @@ write_output_file <- function(flattened_df, metadata, output_location, file_suff
     as.data.frame() %>%
     tibble::rownames_to_column(var = "subject_id")
 
-  output_nosf <- merge(metadata, output_nosf, by = "subject_id")
-  readr::write_delim(file = paste0(tools::file_path_sans_ext(output_location), file_suffix), x = output_nosf, delim = ",")
+  output <- merge(metadata, output, by = "subject_id")
+  readr::write_delim(file = paste0(tools::file_path_sans_ext(output_location), file_suffix), x = output, delim = ",")
 }
 
 # generate the outputs
