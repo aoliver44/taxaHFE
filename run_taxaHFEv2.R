@@ -16,8 +16,8 @@
 setwd("/home/docker")
 
 ## load libraries =====================================================
-source("/home/docker/tree.R")
-# source("/scripts/utilities/tree.R")
+# source("/home/docker/tree.R")
+source("/scripts/utilities/tree.R")
 
 ## add commandline options =====================================================
 
