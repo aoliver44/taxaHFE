@@ -13,19 +13,19 @@ library(purrr, quietly = T, verbose = F, warn.conflicts = F)
 library(ranger, quietly = T, verbose = F, warn.conflicts = F)
 library(vroom, quietly = T, verbose = F, warn.conflicts = F)
 library(tidyselect, quietly = T, verbose = F, warn.conflicts = F)
+library(docopt, quietly = T, verbose = F, warn.conflicts = F)
 
 
-## set random seed if desired
+## set random seed, defaults to system time
 set_seed_func <- function(seed) {
-  tryCatch(expr = set.seed(as.numeric(opt$seed)), 
-           error = function(e){
-             message('No random seed set. Using system time!') },
-           finally = function(f){
-             set.seed(as.numeric(Sys.time())) }
-  )
+  if (!is.null(seed)) {
+    set.seed(seed)
+  } else {
+    message('No random seed set. Using system time!')
+    set.seed(as.numeric(Sys.time()))
+  }
 }
 
-nperm <- as.numeric(opt$nperm) # permute the random forest this many times
 trim <- 0.02 # trim outliers from mean feature abundance calc
 
 ## helper functions ============================================================
@@ -37,8 +37,16 @@ trim <- 0.02 # trim outliers from mean feature abundance calc
 options(warn = -1)
 
 ## read in metadata  ===========================================================
+## rename the subject_identifier to subject_id and
+## rename the label to feature_of_interest
+## metadata, should be in tab or comma separated format
 read_in_metadata <- function(input, subject_identifier, label) {
-  
+  cat("\n\n", "Checking for METADATA")
+  if (file.exists(input) == FALSE) {
+    stop("METADATA input not found.")
+  }
+  cat("\n", paste0("Using ", input, " as METADATA"), "\n")
+
   # read extension to determine file delim
   if (strsplit(basename(input), split = "\\.")[[1]][2] %in% c("tsv","txt")) {
     delim = "\t"
@@ -60,8 +68,14 @@ read_in_metadata <- function(input, subject_identifier, label) {
 }
 
 ## read in microbiome data =====================================================
-read_in_microbiome <- function(input, meta = metadata, cores) {
-  
+## read in data, should be in tab or comma separated format
+read_in_microbiome <- function(input, metadata, cores) {
+  cat("\n", "Checking for DATA...")
+  if (file.exists(input) == FALSE) {
+    stop("DATA input not found.")
+  }
+  cat("\n", paste0("Using ", input, " as DATA"), "\n") 
+
   ## read extension to determine file delim
   if (strsplit(basename(input), split = "\\.")[[1]][2] %in% c("tsv","txt")) {
     delim = "\t"
@@ -73,7 +87,7 @@ read_in_microbiome <- function(input, meta = metadata, cores) {
   ## Useful for large datasets.
   hData <- suppressMessages(vroom::vroom(file = input, delim = delim, skip = 0, 
                                          .name_repair = "minimal", 
-                                         num_threads = as.numeric(cores)) %>% 
+                                         num_threads = cores) %>% 
                               dplyr::select(., -any_of(c("NCBI_tax_id", 
                                                          "clade_taxid"))) %>%
                               # clean names so they match metadata and remove
@@ -125,7 +139,7 @@ write_summary_files <- function(input, metadata, output) {
   levels <- c(1:max_levels)
   
   ## split raw data by pipe symbol into number of expected parts
-  count = 1
+  count <- 1
   for (i in seq(levels)) {
     if (i == 1) {
       next
@@ -155,7 +169,7 @@ write_summary_files <- function(input, metadata, output) {
     
     filename <- paste0("_level_", count, ".csv")
     readr::write_delim(x = file_merge, file = paste0(tools::file_path_sans_ext(output), filename), delim = ",")
-    count = count + 1
+    count <- count + 1
   }
   
 }
@@ -245,12 +259,12 @@ initial_leaf_values <- function(node, row_num, row_vector, filter_prevalence, fi
   node$abundance <- row_vector
   # indicates if the prevalence filter was passed
   node$passed_prevalence_filter <-
-    length(node$abundance[node$abundance != 0]) > (length(node$abundance) * as.numeric(filter_prevalence))
+    length(node$abundance[node$abundance != 0]) > (length(node$abundance) * filter_prevalence)
   # indicates if the mean abundance filter was passed
   node$passed_mean_abundance_filter <-
     mean(node$abundance, trim = trim) > filter_mean_abundance
   # defaults to be modified later
-  node$SF_winner <- FALSE
+  node$sf_winner <- FALSE
   node$winner <- FALSE
   node$highly_correlated <- FALSE
   node$lost_rf <- FALSE
@@ -536,10 +550,10 @@ compete_all_winners <- function(tree, metadata, col_names, sample_fraction, feat
   for (competitor in competitors) {
     if (competitor$id %in% rf_winners) {
       competitor$outcomes <- append(competitor$outcomes, sprintf("win: final rf winner, %s", outcome_str))
-      competitor$SF_winner <- TRUE
+      competitor$sf_winner <- TRUE
     } else {
       competitor$outcomes <- append(competitor$outcomes, sprintf("loss: final rf loser, %s", outcome_str))
-      competitor$SF_winner <- FALSE
+      competitor$sf_winner <- FALSE
     }
   }
 }
@@ -558,7 +572,8 @@ compete_all_winners <- function(tree, metadata, col_names, sample_fraction, feat
 # metadata: the metadata associated with the input df that generated the tree
 # sample_fraction: fraction of data to use in rf to help prevent data leakage
 # ncores: the number of cores to use when running the random forest
-compete_tree <- function(tree, modify_tree = TRUE, col_names, lowest_level = 2, max_depth = 1000, corr_threshold, metadata, sample_fraction, ncores, feature_type, nperm) {
+# disable_super_filter: disables running the final competition
+compete_tree <- function(tree, modify_tree = TRUE, col_names, lowest_level = 2, max_depth = 1000, corr_threshold, metadata, sample_fraction, ncores, feature_type, nperm, disable_super_filter) {
   # if not modifying the input tree, create a copy of the tree to perform the competition
   if (!modify_tree) tree <- data.tree::Clone(tree)
 
@@ -584,16 +599,20 @@ compete_tree <- function(tree, modify_tree = TRUE, col_names, lowest_level = 2, 
   
   # compete all winners
   # increasing nperm by a factor of 10 to further reduce the variability in the final rf importance scores
-  compete_all_winners(
-    tree,
-    metadata,
-    col_names = col_names,
-    sample_fraction = sample_fraction,
-    feature_type = feature_type,
-    nperm = nperm * 10,
-    ncores = ncores
-  )
-  
+  if (disable_super_filter == FALSE) {
+    compete_all_winners(
+      tree,
+      metadata,
+      col_names = col_names,
+      sample_fraction = sample_fraction,
+      feature_type = feature_type,
+      nperm = nperm * 10,
+      ncores = ncores
+    )
+  } else {
+    cat(" Skipping super filter\n")
+  }
+
   # return the tree
   return(tree)
 }
@@ -605,7 +624,7 @@ calculate_correlation <- function(df, corrThreshold) {
   return(
     suppressMessages(corrr::correlate(df)) %>%
       corrr::focus(., parentColumn) %>%
-      dplyr::filter(., .[[2]] >= as.numeric(corrThreshold)) %>%
+      dplyr::filter(., .[[2]] >= corrThreshold) %>%
       dplyr::pull(., term)
   )
 }
@@ -631,16 +650,16 @@ calc_class_frequencies <- function(input, feature_type, feature = "feature_of_in
     ## scores maybe its best to use all the data. Not ideal, but because
     ## sample sizes are usually a little small i think its better to use all
     ## data??
-    class_frequencies <- class_frequencies * as.numeric(sample_fraction)
+    class_frequencies <- class_frequencies * sample_fraction
     return(class_frequencies)
   } else {
-    return(as.numeric(sample_fraction))
+    return(sample_fraction)
   }
 }
 
 ## rf competition function =====================================================
 # TODO: document these inputs
-rf_competition <- function(df, metadata, parent_descendent_competition, feature_of_interest = "feature_of_interest", subject_identifier = "subject_id", feature_type = feature_type, sample_fraction = calc_class_frequencies(), ncores = ncores, nperm = nperm) {
+rf_competition <- function(df, metadata, parent_descendent_competition, feature_of_interest = "feature_of_interest", subject_identifier = "subject_id", feature_type, sample_fraction, ncores, nperm) {
   # merge node abundance + children abundance with metadata
   merged_data <- merge(df, metadata, by.x = "row.names", by.y = "subject_id")
   # clean node names so ranger doesnt throw an error
@@ -715,14 +734,13 @@ rf_competition <- function(df, metadata, parent_descendent_competition, feature_
 ## Flatten tree to data frame ==================================================
 ## exports tree as dataframe with tons of info on how the competition went
 flatten_tree_with_metadata <- function(node) {
-  
   df <- data.frame(
     name = node$name,
     depth = node$level,
     pathString = node$pathString,
     outcomes = paste(node$outcomes, collapse = "|\n"),
     winner = node$winner,
-    sf_winner = node$SF_winner,
+    sf_winner = node$sf_winner,
     rf_loss = node$lost_rf,
     highly_cor = node$highly_correlated,
     passed_prevelance = node$passed_prevalence_filter,
@@ -731,12 +749,103 @@ flatten_tree_with_metadata <- function(node) {
     stringsAsFactors = FALSE
   )
 
-  
-  
   if (length(node$children) > 0) {
     children_df <- do.call(rbind, lapply(node$children, flatten_tree_with_metadata))
     df <- rbind(df, children_df)
   }
   
   return(df)
+}
+
+# write an output file containing the HFE results
+write_output_file <- function(flattened_df, metadata, output_location, file_suffix) {
+  output_nosf <- flattened_df %>%
+    dplyr::select(., name, 11:dplyr::last_col()) %>%
+    tibble::remove_rownames() %>%
+    tibble::column_to_rownames(., var = "name") %>%
+    t() %>%
+    as.data.frame() %>%
+    tibble::rownames_to_column(var = "subject_id")
+
+  output_nosf <- merge(metadata, output_nosf, by = "subject_id")
+  readr::write_delim(file = paste0(tools::file_path_sans_ext(output_location), file_suffix), x = output_nosf, delim = ",")
+}
+
+# generate the outputs
+# if disable_super_filter is TRUE, the super filter competition wasn't run, and only one output will be generated
+# if both_outputs is FALSE, one file will be produced with the final level of competition that occurred
+generate_outputs <- function(tree, metadata, col_names, output_location, disable_super_filter, write_both_outputs, write_old_files, write_flattened_df_backup, ncores) {
+  # flatten tree back into metadata, and assign original column names from hData to the sample columns
+  flattened_df <- flatten_tree_with_metadata(tree)
+  colnames(flattened_df)[11:NCOL(flattened_df)] <- col_names
+
+  ## filter to only winners and clean names in case of duplicate
+  ## also further filtering for sf winners
+  flattened_winners <- flattened_df %>% 
+    dplyr::filter(., winner == TRUE)
+
+  flattened_winners$name <- janitor::make_clean_names(flattened_winners$name)
+
+  flattened_sf_winners <- flattened_winners %>%
+    dplyr::filter(., sf_winner == TRUE)
+
+  ## if super filter is disabled, write the flattened_winners as standard output
+  ## otherwise write the super filter winners as standard output
+  if (disable_super_filter == TRUE) {
+    write_output_file(flattened_winners, metadata, output_location, ".csv")
+  } else {
+    write_output_file(flattened_sf_winners, metadata, output_location, ".csv")
+  }
+
+  ## also write the non-sf output if both outputs are requested
+  if (write_both_outputs == TRUE && disable_super_filter == FALSE) {
+    write_output_file(flattened_winners, metadata, output_location, "_no_sf.csv")
+  }
+
+  cat(" Features (no super filter): ", (nrow(flattened_winners) - 2), "\n")
+  if (disable_super_filter != TRUE) {
+    cat("\n Features (super filter): ", (nrow(flattened_sf_winners) - 2), "\n")
+  }
+
+  ## write old files  ============================================================
+  if (write_old_files == TRUE) {
+    cat("\n", "###########################\n", "Writing old files...\n", "###########################\n\n")
+
+    write_summary_files(input = flattened_df, metadata = metadata, output = output_location)
+    write_old_hfe(input = flattened_df, output = output_location)
+  }
+
+  ## save flattened DF to come back to
+  if (write_flattened_df_backup == TRUE) {
+    vroom::vroom_write(x = flattened_df,
+                      file =  paste0(tools::file_path_sans_ext(output_location), "_raw_data.tsv.gz"),
+                      num_threads = ncores)
+  }
+}
+
+## loads docopt using the built in func and then converts the specified values to numeric
+## converts the docopt arguments to numeric if the opt name is in the provided vector
+## returns the updated docopt object
+## uses sapply to iterate of the names if the options, returning the converted value if found in to_convert
+## overloading commandArgs() to return an arbitrary string allows this to be run in rstudio
+load_docopt <- function(doc_string, version, to_convert) {
+  opt <- docopt::docopt(doc_string, commandArgs(TRUE), version = version)
+  
+  return(sapply(
+    names(opt), # names of the options
+    function(option) {
+      # if the option if in to_convert, return the converted value
+      if (option %in% to_convert) { 
+        numeric_option <- as.numeric(opt[[option]])
+        if (is.na(numeric_option)) {
+          stop(paste(option, "must be a numeric value"))
+        }
+        return(numeric_option)
+      }
+      # otherwise return the value as before
+      return(opt[[option]])
+    },
+    # this ensure that sapply will keep the names
+    simplify = FALSE
+  ))
 }

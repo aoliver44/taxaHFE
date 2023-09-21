@@ -134,33 +134,34 @@ wsl
 
 
 ```
-Hierarchical feature engineering (HFE) for the reduction of features with respects to a factor or regressor
+'Hierarchical feature engineering (HFE) for the reduction of features with respects to a factor or regressor
+Usage:
+    taxaHFE.R [options] <METADATA> <DATA> <OUTPUT>
+    
+Options:
+    -h --help                         Show help text.
+    -v --version                      Show version.
+    -s --subject_identifier <string>  Metadata column name containing subject IDs [default: subject_id]
+    -l --label <string>               Metadata column name of interest for ML [default: cluster]
+    -t --feature_type <string>        Is the ML label a factor or numeric [default: factor]
+    -f --sample_fraction <float>      Only let rf see a fraction of total data [default: 1]
+    -a --abundance <float>            Feature abundance filter [default: 0.0001]
+    -p --prevalence <float>           Feature prevalence filter [default: 0.01]
+    -L --lowest_level <int>           Most general level allowed to compete [default: 2]
+    -m --max_depth <int>              How many hierarchical levels should be allowed to compete [default: 1000]
+    -c --cor_level <float>            Initial pearson correlation filter [default: 0.95]
+    -n --ncores <int>                 Number of cpu cores to use [default: 2]
+    -d --disable_super_filter         Disable running of the super filter (final forest competition)
+    -w --write_old_files              Write individual level files and old HFE files
+    -W --write_flattened_tree         Write a compressed backup of the entire competed tree
+    -D --write_both_outputs           Write an output for pre and post super filter results, overridden by --disable_super_filter
+    --nperm <int>                     Number of RF permutations [default: 40]
+    --seed <numeric>                  Set a random numeric seed, default is to use system time
 
-usage:    
-taxaHFE.R [options] <METADATA> <DATA> <OUTPUT>    
-
-Options:   
- -h --help  Show this screen.    
- -v --version  Show version.    
- -s --subject_identifier metadata column name containing subject IDs [default: subject_id]    
- -l --label metadata column name of interest for ML [default: cluster]    
- -t --feature_type is the ML label a factor or numeric [default: factor]    
- -f --sample_fraction only let rf see a fraction of total data [default: 1]    
- -a --abundance feature abundance filter [default: 0.0001]    
- -p --prevalence feature prevalence filter [default: 0.01]    
- -L --lowest_level most general level allowed to compete [default: 2]    
- -m --max_depth how many hierarchical levels should be allowed to compete [default: 1000]    
- -c --cor_level initial pearson correlation filter [default: 0.95]    
- -w --write_old_files write individual level files and old HFE files [default: TRUE]    
- -n --ncores number of cpu cores to use [default: 2]
- --nperm number of RF permutations [default: 40]
- --seed set a random seed, default is to use system time 
- 
- Arguments:    
- 
- METADATA path to metadata input (txt | tsv | csv)
- DATA path to input file from hierarchical data (i.e. hData data) (txt | tsv | csv)
- OUTPUT output file name (csv)
+Arguments:
+    METADATA path to metadata input (txt | tsv | csv)
+    DATA path to input file from hierarchical data (i.e. hData data) (txt | tsv | csv)
+    OUTPUT output file name (csv)
 ```
 
 --subject_identifier: this is a column that identifies the sample or subject ID in the input metadata. All subjectIDs should be unique. They will be coerced to unique values (and simplified snake_case alpha-numerics) using ```janitor::make_clean_names()```
@@ -188,6 +189,12 @@ Options:
 --nperm: number of RF permutations to make to average out the Gini impurity score. More permutations may decrease run to run variability in the number of features output, but at a cost of run time.
 
 --seed: the default behavior is to use ```Sys.time()``` to generate a random seed each time taxaHFE is run. If you set it to a number, it will likely return the same results across repeated runs (though this assumption has not been thoroughly tested).
+
+--disable_super_filter: if provided, will not run the final competition (super filter) against all the winning features
+
+--write_flattened_tree: if provided, will write a gzip backup of the entire flattened competed tree
+
+--write_both_outputs: if provided, will write the pre and post final competition (super filter) output files
 
 [METADATA]: A **full path** to the file that contains the metadata column you wish to predict with your hierarchical data. This file should contain BOTH your subject_identifier and your metadata label
 

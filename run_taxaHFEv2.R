@@ -15,29 +15,36 @@
 ## set working dir to /home for the docker container
 setwd("/home/docker")
 
+## load libraries =====================================================
+source("/home/docker/tree.R")
+# source("/scripts/utilities/tree.R")
+
 ## add commandline options =====================================================
 
-library(docopt)
 'Hierarchical feature engineering (HFE) for the reduction of features with respects to a factor or regressor
 Usage:
     taxaHFE.R [options] <METADATA> <DATA> <OUTPUT>
     
 Options:
-    -h --help  Show this screen.
-    -v --version  Show version.
-    -s --subject_identifier metadata column name containing subject IDs [default: subject_id]
-    -l --label metadata column name of interest for ML [default: cluster]
-    -t --feature_type is the ML label a factor or numeric [default: factor]
-    -f --sample_fraction only let rf see a fraction of total data [default: 1]
-    -a --abundance feature abundance filter [default: 0.0001]
-    -p --prevalence feature prevalence filter [default: 0.01]
-    -L --lowest_level most general level allowed to compete [default: 2]
-    -m --max_depth how many hierarchical levels should be allowed to compete [default: 1000]
-    -c --cor_level initial pearson correlation filter [default: 0.95]
-    -w --write_old_files write individual level files and old HFE files [default: TRUE]
-    -n --ncores number of cpu cores to use [default: 2]
-    --nperm number of RF permutations [default: 40]
-    --seed set a random numeric seed, default is to use system time
+    -h --help                         Show help text.
+    -v --version                      Show version.
+    -s --subject_identifier <string>  Metadata column name containing subject IDs [default: subject_id]
+    -l --label <string>               Metadata column name of interest for ML [default: cluster]
+    -t --feature_type <string>        Is the ML label a factor or numeric [default: factor]
+    -f --sample_fraction <float>      Only let rf see a fraction of total data [default: 1]
+    -a --abundance <float>            Feature abundance filter [default: 0.0001]
+    -p --prevalence <float>           Feature prevalence filter [default: 0.01]
+    -L --lowest_level <int>           Most general level allowed to compete [default: 2]
+    -m --max_depth <int>              How many hierarchical levels should be allowed to compete [default: 1000]
+    -c --cor_level <float>            Initial pearson correlation filter [default: 0.95]
+    -n --ncores <int>                 Number of cpu cores to use [default: 2]
+    -d --disable_super_filter         Disable running of the super filter (final forest competition)
+    -w --write_old_files              Write individual level files and old HFE files
+    -W --write_flattened_tree         Write a compressed backup of the entire competed tree
+    -D --write_both_outputs           Write an output for pre and post super filter results, overridden by --disable_super_filter
+    --nperm <int>                     Number of RF permutations [default: 40]
+    --seed <numeric>                  Set a random numeric seed, default is to use system time
+
 Arguments:
     METADATA path to metadata input (txt | tsv | csv)
     DATA path to input file from hierarchical data (i.e. hData data) (txt | tsv | csv)
@@ -45,69 +52,17 @@ Arguments:
 
 ' -> doc
 
-opt <- docopt::docopt(doc, version = 
-                        'taxaHFE.R v2.0\n\n')
-
-## load functions ==============================================================
-
-source("/scripts/utilities/tree.R")
-#source("/home/docker/tree.R")
-
-## arg tests ===================================================================
-# opt <- data.frame(subject_identifier = character(),
-#                   label = character(),
-#                   feature_type = character(),
-#                   ncores = numeric(),
-#                   cor_level = numeric(),
-#                   sample_fraction = numeric(),
-#                   abundance = numeric(),
-#                   prevalence = numeric(),
-#                   write_old_files = character(),
-#                   lowest_level = numeric(),
-#                   max_depth = numeric(),
-#                   nperm = numeric(),
-#                   seed = numeric(),
-#                   METADATA = character(),
-#                   DATA = character(),
-#                   OUTPUT = character())
-# opt <- opt %>% tibble::add_row(
-#   subject_identifier = "Sample",
-#   label = "Category",
-#   feature_type = "factor",
-#   write_old_files = "TRUE",
-#   abundance = 0.0001,
-#   prevalence = 0.01,
-#   sample_fraction = 1,
-#   cor_level = 0.95,
-#   lowest_level = 3,
-#   max_depth = 1000,
-#   ncores = 4,
-#   nperm = 10,
-#   seed = 42,
-#   METADATA = "/home/docker/example_inputs/metadata.txt",
-#   DATA = "/home/docker/example_inputs/microbiome_data.txt",
-#   OUTPUT = "/home/docker/example_inputs/output.csv"
-# )
+# these options will be converted to numeric by load_docopt
+numeric_options <- c("sample_fraction", "abundance", "prevalence", "lowest_level", "max_depth", "cor_level", "ncores", "nperm")
+# to use this code line-by-line in the Rstudio context, commandArgs can be overloaded to specify the desired flags
+# ex. commandArgs <- function(x) { "-s Sample -l Category -L 3 example_inputs/metadata.txt example_inputs/microbiome_data.txt example_inputs/out.txt" }
+# these will be used by the options loader
+opt <- load_docopt(doc, version = 'taxaHFE.R v2.0\n\n', to_convert = numeric_options)
 
 ## Run main ====================================================================
 
 ## set random seed
-set_seed_func(seed = as.numeric(opt$seed))
-
-## check for inputs ============================================================
-cat("\n\n", "###########################\n", "Reading in data...\n", "###########################")
-
-## check and see if clean_files directory exists
-cat("\n\n","Checking for METADATA")
-if (file.exists(opt$METADATA)) {
-  cat("\n",paste0("Using ", opt$METADATA, " as input")) 
-} else { stop("Metadata input not found.") }
-
-## check for input file (hierarchical data)
-cat("\n","Checking for for input...")
-if (file.exists(opt$DATA)) {
-  cat("\n",paste0("Using ", opt$DATA, " as input")) 
-} else { stop("Input not found.") }
+set_seed_func(opt$seed)
 
 ## parameters specified
 cat("\n","Parameters specified: \n")
@@ -125,18 +80,15 @@ cat(paste0("--ncores: ", opt$ncores), "\n")
 cat(paste0("--nperm: ", opt$nperm), "\n")
 cat(paste0("OUTPUT: ", opt$OUTPUT))
 
-## read in metadata file =======================================================
+## check for inputs and read in read in =======================================================
+cat("\n\n", "###########################\n", "Reading in data...\n", "###########################")
 
-## rename the subject_identifier to subject_id and
-## rename the label to feature_of_interest
-## metadata, should be in tab or comma separated format
+## metadata file
 metadata <- read_in_metadata(input = opt$METADATA, 
                              subject_identifier = opt$subject_identifier, 
                              label = opt$label)
 
-## read in microbiome ==========================================================
-
-## read in data, should be in tab or comma separated format
+## (hierarchical) microbiome file ==========================================================
 hData <- read_in_microbiome(input = opt$DATA, 
                             meta = metadata, 
                             cores = opt$ncores)
@@ -145,86 +97,44 @@ hData <- read_in_microbiome(input = opt$DATA,
 cat("\n\n", "###########################\n", "Building Tree...\n", "###########################\n\n")
 cat("This may take a few minutes depending on how many features you have.\n")
 hTree <- build_tree(hData, 
-                    filter_prevalence = as.numeric(opt$prevalence), 
-                    filter_mean_abundance = as.numeric(opt$abundance))
+                    filter_prevalence = opt$prevalence,
+                    filter_mean_abundance = opt$abundance)
 
 ## Main competition ============================================================
-
 cat("\n", "###########################\n", "Competing Tree...\n", "###########################\n\n")
 
 competed_tree <- compete_tree(
   hTree,
   lowest_level = opt$lowest_level,
-  max_depth = as.numeric(opt$max_depth), # allows for all levels to be competed. Change to 1 for pairwise comparisons
+  max_depth = opt$max_depth, # allows for all levels to be competed. Change to 1 for pairwise comparisons
   col_names = colnames(hData)[2:NCOL(hData)],
   corr_threshold = opt$cor_level,
   metadata = metadata,
   ncores = opt$ncores,
   feature_type = opt$feature_type,
-  nperm = nperm,
+  nperm = opt$nperm,
   sample_fraction = calc_class_frequencies(
     input = metadata,
     feature_type = opt$feature_type,
     sample_fraction = opt$sample_fraction
   ),
+  disable_super_filter = opt$disable_super_filter
 )
 
 ## Extract information from tree  ==============================================
 # Flatten the tree and tree decisions
 cat("\n", "############################################\n", "Flattening tree and writing final output...\n", "############################################\n\n")
 
-col_names = colnames(hData)[2:NCOL(hData)]
-flattened_df <- flatten_tree_with_metadata(node = competed_tree)
-colnames(flattened_df)[11:NCOL(flattened_df)] <- col_names
-
-## filter to only winners
-flattened_noSF_winners <- flattened_df %>% 
-  dplyr::filter(., winner == TRUE)
-
-## clean names in case of duplicates
-flattened_noSF_winners$name <- janitor::make_clean_names(flattened_noSF_winners$name)
-
-## write noSF output
-output_nosf <- flattened_noSF_winners %>%
-  dplyr::select(., name, 11:dplyr::last_col()) %>%
-  tibble::remove_rownames() %>%
-  tibble::column_to_rownames(., var = "name") %>%
-  t() %>%
-  as.data.frame() %>%
-  tibble::rownames_to_column(var = "subject_id")
-
-output_nosf <- merge(metadata, output_nosf, by = "subject_id")
-readr::write_delim(file = paste0(tools::file_path_sans_ext(opt$OUTPUT), "_no_sf.csv"), x = output_nosf, delim = ",")
-
-## write SF output
-output_sf <- flattened_noSF_winners %>%
-  dplyr::filter(., sf_winner == TRUE) %>%
-  dplyr::select(., name, 11:dplyr::last_col()) %>%
-  tibble::remove_rownames() %>%
-  tibble::column_to_rownames(., var = "name") %>%
-  t() %>%
-  as.data.frame() %>%
-  tibble::rownames_to_column(var = "subject_id")
-
-output_sf <- merge(metadata, output_sf, by = "subject_id")
-readr::write_delim(file = opt$OUTPUT, x = output_sf, delim = ",")
-
-cat(" Features (no super filter): ", (ncol(output_nosf) - 2))
-cat("\n Features (super filter): ", (NCOL(output_sf) - 2), "\n")
-
-## write old files  ============================================================
-if (opt$write_old_files == TRUE) {
-  cat("\n", "###########################\n", "Writing old files...\n", "###########################\n\n")
-  
-  write_summary_files(input = flattened_df, metadata = metadata, output = opt$OUTPUT)
-  write_old_hfe(input = flattened_df, output = opt$OUTPUT)
-}
-
-## save flattened DF to come back to
-vroom::vroom_write(x = flattened_df, 
-                   file =  paste0(tools::file_path_sans_ext(opt$OUTPUT), "_raw_data.tsv.gz"), 
-                   num_threads = as.numeric(opt$ncores))
+generate_outputs(
+  competed_tree,
+  metadata,
+  colnames(hData)[2:NCOL(hData)],
+  opt$OUTPUT, opt$disable_super_filter,
+  opt$write_both_outputs,
+  opt$write_old_files,
+  opt$write_flattened_tree,
+  opt$ncores
+)
 
 ## message to user finish
 cat(" Outputs written! TaxaHFE completed. \n")
-
