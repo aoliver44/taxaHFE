@@ -41,7 +41,7 @@ options(warn = -1)
 ## rename the label to feature_of_interest
 ## metadata, should be in tab or comma separated format
 read_in_metadata <- function(input, subject_identifier, label) {
-  cat("\n\n", "Checking for METADATA")
+  cat("\n\n", "Checking for METADATA...", "\n")
   if (file.exists(input) == FALSE) {
     stop("METADATA input not found.")
   }
@@ -70,7 +70,7 @@ read_in_metadata <- function(input, subject_identifier, label) {
 ## read in hierarchical data =====================================================
 ## read in data, should be in tab or comma separated format
 read_in_hierarchical_data <- function(input, metadata, cores) {
-  cat("\n", "Checking for DATA...")
+  cat("\n", "Checking for DATA...", "\n")
   if (file.exists(input) == FALSE) {
     stop("DATA input not found.")
   }
