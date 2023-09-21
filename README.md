@@ -83,7 +83,7 @@ singularity run -W `pwd` --bind `pwd`:/home/docker taxaHFE.sif bash
 ```
 2. Run taxaHFE
 ```
-taxaHFE.R [options] <METADATA> <DATA> <OUTPUT>
+taxaHFE [options] <METADATA> <DATA> <OUTPUT>
 ```
 OR
 
@@ -136,7 +136,7 @@ wsl
 ```
 Hierarchical feature engineering (HFE) for the reduction of features with respects to a factor or regressor
 Usage:
-    taxaHFE.R [options] <METADATA> <DATA> <OUTPUT>
+    taxaHFE [options] <METADATA> <DATA> <OUTPUT>
 
 Options:
     -h --help                         Show help text.
