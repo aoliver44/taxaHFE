@@ -5,7 +5,20 @@
 - TaxaHFE v2 selects far less features than TaxaHFE v1, for the same or better model performance.
 - TaxaHFE v2 can replicate TaxaHFE v1 by setting the flat ```--max_depth 1```
 
- ------------ 
+ # **taxaHFE**
+ 
+ ## VERSION 2 RELEASE: 
+ Version 2 of this algorthim makes numerous advances over Version 1. Version 2 can be found on the [development branch](https://github.com/aoliver44/taxaHFE/tree/development). While it is reasonably stable, please report any issues! We suggest you use Version 2! 
+
+ Change log:
+- convert to using a tree-based data structure
+- allow children competitions past the immediate parent (!!)
+- speed and memory enhancements
+- generally as good of performance (model performance) as version 1, but utilizes significantly fewer features.
+
+-----------------------------------
+
+ A program to perform hierarchical feature engineering on data with taxonomic organization (i.e., microbiome data, dietary data)
 
 ## **Table of Contents**
 - [Description](https://github.com/aoliver44/taxaHFE#description)
@@ -83,7 +96,7 @@ singularity run -W `pwd` --bind `pwd`:/home/docker taxaHFE.sif bash
 ```
 2. Run taxaHFE
 ```
-taxaHFE.R [options] <METADATA> <DATA> <OUTPUT>
+taxaHFE [options] <METADATA> <DATA> <OUTPUT>
 ```
 OR
 
@@ -136,8 +149,8 @@ wsl
 ```
 'Hierarchical feature engineering (HFE) for the reduction of features with respects to a factor or regressor
 Usage:
-    taxaHFE.R [options] <METADATA> <DATA> <OUTPUT>
-    
+    taxaHFE [options] <METADATA> <DATA> <OUTPUT>
+
 Options:
     -h --help                         Show help text.
     -v --version                      Show version.
