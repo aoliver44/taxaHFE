@@ -16,14 +16,14 @@
 setwd("/home/docker")
 
 ## load libraries =====================================================
-source("/home/docker/tree.R")
-# source("/scripts/utilities/tree.R")
+# source("/home/docker/tree.R")
+source("/scripts/utilities/tree.R")
 
 ## add commandline options =====================================================
 
 'Hierarchical feature engineering (HFE) for the reduction of features with respects to a factor or regressor
 Usage:
-    taxaHFE.R [options] <METADATA> <DATA> <OUTPUT>
+    taxaHFE [options] <METADATA> <DATA> <OUTPUT>
     
 Options:
     -h --help                         Show help text.
@@ -32,8 +32,8 @@ Options:
     -l --label <string>               Metadata column name of interest for ML [default: cluster]
     -t --feature_type <string>        Is the ML label a factor or numeric [default: factor]
     -f --sample_fraction <float>      Only let rf see a fraction of total data [default: 1]
-    -a --abundance <float>            Feature abundance filter [default: 0.0001]
-    -p --prevalence <float>           Feature prevalence filter [default: 0.01]
+    -a --abundance <float>            Minimum mean abundance of feature [default: 0.0001]
+    -p --prevalence <float>           Minimum prevalence of feature [default: 0.01]
     -L --lowest_level <int>           Most general level allowed to compete [default: 2]
     -m --max_depth <int>              How many hierarchical levels should be allowed to compete [default: 1000]
     -c --cor_level <float>            Initial pearson correlation filter [default: 0.95]
@@ -88,10 +88,8 @@ metadata <- read_in_metadata(input = opt$METADATA,
                              subject_identifier = opt$subject_identifier, 
                              label = opt$label)
 
-## (hierarchical) microbiome file ==========================================================
-hData <- read_in_microbiome(input = opt$DATA, 
-                            meta = metadata, 
-                            cores = opt$ncores)
+## hierarchical data file ==========================================================
+hData <- read_in_hierarchical_data(input = opt$DATA, 
 
 ## Build tree ==================================================================
 cat("\n\n", "###########################\n", "Building Tree...\n", "###########################\n\n")
