@@ -90,8 +90,6 @@ metadata <- read_in_metadata(input = opt$METADATA,
 
 ## hierarchical data file ==========================================================
 hData <- read_in_hierarchical_data(input = opt$DATA, 
-                            meta = metadata, 
-                            cores = opt$ncores)
 
 ## Build tree ==================================================================
 cat("\n\n", "###########################\n", "Building Tree...\n", "###########################\n\n")

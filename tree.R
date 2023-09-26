@@ -41,6 +41,7 @@ options(warn = -1)
 ## rename the label to feature_of_interest
 ## metadata, should be in tab or comma separated format
 read_in_metadata <- function(input, subject_identifier, label) {
+  
   cat("\n\n", "Checking for METADATA...", "\n")
   if (file.exists(input) == FALSE) {
     stop("METADATA input not found.")
@@ -67,9 +68,11 @@ read_in_metadata <- function(input, subject_identifier, label) {
   return(metadata)
 }
 
+
 ## read in hierarchical data =====================================================
 ## read in data, should be in tab or comma separated format
-read_in_hierarchical_data <- function(input, metadata, cores) {
+read_in_hierarchical_data <- function(input, metadata, cores) 
+  
   cat("\n", "Checking for DATA...", "\n")
   if (file.exists(input) == FALSE) {
     stop("DATA input not found.")
@@ -759,6 +762,7 @@ flatten_tree_with_metadata <- function(node) {
 
 # write an output file containing the HFE results
 write_output_file <- function(flattened_df, metadata, output_location, file_suffix) {
+  
   output <- flattened_df %>%
     dplyr::select(., name, 11:dplyr::last_col()) %>%
     tibble::remove_rownames() %>%
@@ -769,6 +773,7 @@ write_output_file <- function(flattened_df, metadata, output_location, file_suff
 
   output <- merge(metadata, output, by = "subject_id")
   readr::write_delim(file = paste0(tools::file_path_sans_ext(output_location), file_suffix), x = output, delim = ",")
+
 }
 
 # generate the outputs

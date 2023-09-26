@@ -147,7 +147,7 @@ wsl
 
 
 ```
-'Hierarchical feature engineering (HFE) for the reduction of features with respects to a factor or regressor
+Hierarchical feature engineering (HFE) for the reduction of features with respects to a factor or regressor
 Usage:
     taxaHFE [options] <METADATA> <DATA> <OUTPUT>
 
