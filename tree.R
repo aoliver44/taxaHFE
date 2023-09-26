@@ -807,9 +807,9 @@ generate_outputs <- function(tree, metadata, col_names, output_location, disable
     write_output_file(flattened_winners, metadata, output_location, "_no_sf.csv")
   }
 
-  cat(" Features (no super filter): ", (nrow(flattened_winners) - 2), "\n")
+  cat(" Features (no super filter): ", nrow(flattened_winners), "\n")
   if (disable_super_filter != TRUE) {
-    cat("\n Features (super filter): ", (nrow(flattened_sf_winners) - 2), "\n")
+    cat("\n Features (super filter): ", nrow(flattened_sf_winners), "\n")
   }
 
   ## write old files  ============================================================
