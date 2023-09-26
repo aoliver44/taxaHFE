@@ -22,9 +22,13 @@ RUN R -e 'renv::consent(provided = TRUE)'
 RUN R -e 'renv::restore()'
 
 # copy in scripts so they are part of container
-COPY run_taxaHFEv2.R ./scripts/taxaHFE
-COPY tree.R ./scripts/utilities/tree.R
+COPY run_taxaHFEv2.R /scripts/taxaHFE
+COPY tree.R /scripts/utilities/tree.R
 
 ENV PATH="${PATH}:/scripts/"
 
+ENTRYPOINT ["Rscript", "/scripts/taxaHFE"]
+CMD ["Rscript", "/scripts/taxaHFE", "-h"]
+
+WORKDIR /home/docker
 USER docker

@@ -86,31 +86,37 @@ docker build -t taxa_hfe:2.0 .
 ------------------------------
 ## **Quickstart**
 
-Option 1: Run taxaHFE with **YOUR** data:
-1. Navigate to the directory containing your data, and start the docker image!
+### Option 1: Run taxaHFE with **YOUR** data, using the prebuilt docker image:
+Run the docker image, mounting the absolute path of your data
 ```
-docker run --rm -it -v `pwd`:/home/docker -w /home/docker aoliver44/taxa_hfe:2.0 bash
+docker run --rm -it -v /location/of/your/data:/data aoliver44/taxa_hfe:2.0 --subject_identifier Sample --label Category --lowest_level 3 --ncores 2 --seed 42 /data/metadata_file.txt /data/microbiome_data_file.txt /data/output_file.csv
+```
+*Note: your data will be be mounted in the `/data` directory, so all input/output paths must originate there, seen in the example above*
 
-## or with singularity
+### Option 2: Run taxaHFE on **EXAMPLE** data provided:
+1. Clone the repository
+```
+git clone https://github.com/aoliver44/taxaHFE.git && cd taxaHFE
+```
+
+2. Navigate to the repository directory
+```
+cd taxaHFE
+```
+
+3. Run the container with the `example_data/` directory mounted to `/data`
+```
+docker run --rm -it -v `pwd`/example_data:/home/docker aoliver44/taxa_hfe:2.0 --subject_identifier Sample --label Category --lowest_level 3 --ncores 2 --seed 42 /data/metadata.txt /data/microbiome_data.txt /data/output.csv
+```
+
+### Option 3: Run taxaHFE with singularity
+1. Navigate to the directory containing your data, and start the singularity image
+```
 singularity run -W `pwd` --bind `pwd`:/home/docker taxaHFE.sif bash
 ```
 2. Run taxaHFE
 ```
 taxaHFE [options] <METADATA> <DATA> <OUTPUT>
-```
-OR
-
-Option 2: Run taxaHFE on **EXAMPLE** data provided:
-
-```
-## STEP 1: CLONE THE REPOSITORY
-git clone https://github.com/aoliver44/taxaHFE.git && cd taxaHFE
-
-## STEP 2: RUN THE CONTAINER
-docker run --rm -it -v `pwd`:/home/docker -w /home/docker aoliver44/taxa_hfe:2.0 bash
-
-## STEP 3: RUN TAXAHFE 
-taxaHFE --subject_identifier Sample --label Category --lowest_level 3 --ncores 2 --seed 42 /home/docker/example_inputs/metadata.txt /home/docker/example_inputs/microbiome_data.txt /home/docker/example_inputs/output.csv
 ```
 
 </br>
