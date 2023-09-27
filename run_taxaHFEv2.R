@@ -91,6 +91,11 @@ metadata <- read_in_metadata(input = opt$METADATA,
 ## hierarchical data file ==========================================================
 hData <- read_in_hierarchical_data(input = opt$DATA, 
 
+# sample hData if provided, saving the chosen columns
+# sample is a vector of sample names (columns) of hData
+samples <- sample(colnames(df), size = ncol(df) * opt$sample_fraction)
+hData <- hData[sample_columns]
+
 ## Build tree ==================================================================
 cat("\n\n", "###########################\n", "Building Tree...\n", "###########################\n\n")
 cat("This may take a few minutes depending on how many features you have.\n")
