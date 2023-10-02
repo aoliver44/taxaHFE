@@ -16,7 +16,6 @@
 setwd("/home/docker")
 
 ## load libraries =====================================================
-# source("/home/docker/tree.R")
 source("/scripts/utilities/tree.R")
 
 ## add commandline options =====================================================
@@ -55,7 +54,7 @@ Arguments:
 # these options will be converted to numeric by load_docopt
 numeric_options <- c("sample_fraction", "abundance", "prevalence", "lowest_level", "max_depth", "cor_level", "ncores", "nperm")
 # to use this code line-by-line in the Rstudio context, commandArgs can be overloaded to specify the desired flags
-# ex. commandArgs <- function(x) { "-s Sample -l Category -L 3 example_inputs/metadata.txt example_inputs/microbiome_data.txt example_inputs/out.txt" }
+# ex. commandArgs <- function(x) { "-s Sample -l Category -L 3 -n 4 -wWD --seed 42 example_inputs/metadata.txt example_inputs/microbiome_data.txt example_inputs/out.txt" }
 # these will be used by the options loader
 opt <- load_docopt(doc, version = 'taxaHFE.R v2.0\n\n', to_convert = numeric_options)
 
@@ -90,6 +89,8 @@ metadata <- read_in_metadata(input = opt$METADATA,
 
 ## hierarchical data file ==========================================================
 hData <- read_in_hierarchical_data(input = opt$DATA, 
+                                   metadata = metadata, 
+                                   cores = opt$ncores)
 
 ## Build tree ==================================================================
 cat("\n\n", "###########################\n", "Building Tree...\n", "###########################\n\n")
