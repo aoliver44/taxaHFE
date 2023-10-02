@@ -41,7 +41,8 @@ options(warn = -1)
 ## rename the label to feature_of_interest
 ## metadata, should be in tab or comma separated format
 read_in_metadata <- function(input, subject_identifier, label) {
-  cat("\n\n", "Checking for METADATA")
+  
+  cat("\n\n", "Checking for METADATA...", "\n")
   if (file.exists(input) == FALSE) {
     stop("METADATA input not found.")
   }
@@ -67,10 +68,12 @@ read_in_metadata <- function(input, subject_identifier, label) {
   return(metadata)
 }
 
-## read in microbiome data =====================================================
+
+## read in hierarchical data =====================================================
 ## read in data, should be in tab or comma separated format
-read_in_microbiome <- function(input, metadata, cores) {
-  cat("\n", "Checking for DATA...")
+read_in_hierarchical_data <- function(input, metadata, cores) 
+  
+  cat("\n", "Checking for DATA...", "\n")
   if (file.exists(input) == FALSE) {
     stop("DATA input not found.")
   }
@@ -685,7 +688,7 @@ rf_competition <- function(df, metadata, parent_descendent_competition, feature_
   run_ranger <- function(seed) {
     if (!parent_descendent_competition) pb$tick()
 
-    ranger::ranger(response_formula, data = merged_data, importance = "impurity_corrected", seed = seed, sample.fraction = sample_fraction, replace = TRUE, num.threads = as.numeric(ncores))$variable.importance %>%
+    ranger::ranger(response_formula, data = merged_data, importance = "impurity_corrected", seed = seed, sample.fraction = sample_fraction, replace = TRUE, num.threads = ncores)$variable.importance %>%
       as.data.frame() %>%
       dplyr::rename(., "importance" = ".") %>%
       tibble::rownames_to_column(var = "taxa")
@@ -759,7 +762,8 @@ flatten_tree_with_metadata <- function(node) {
 
 # write an output file containing the HFE results
 write_output_file <- function(flattened_df, metadata, output_location, file_suffix) {
-  output_nosf <- flattened_df %>%
+  
+  output <- flattened_df %>%
     dplyr::select(., name, 11:dplyr::last_col()) %>%
     tibble::remove_rownames() %>%
     tibble::column_to_rownames(., var = "name") %>%
@@ -767,8 +771,9 @@ write_output_file <- function(flattened_df, metadata, output_location, file_suff
     as.data.frame() %>%
     tibble::rownames_to_column(var = "subject_id")
 
-  output_nosf <- merge(metadata, output_nosf, by = "subject_id")
-  readr::write_delim(file = paste0(tools::file_path_sans_ext(output_location), file_suffix), x = output_nosf, delim = ",")
+  output <- merge(metadata, output, by = "subject_id")
+  readr::write_delim(file = paste0(tools::file_path_sans_ext(output_location), file_suffix), x = output, delim = ",")
+
 }
 
 # generate the outputs
@@ -802,9 +807,9 @@ generate_outputs <- function(tree, metadata, col_names, output_location, disable
     write_output_file(flattened_winners, metadata, output_location, "_no_sf.csv")
   }
 
-  cat(" Features (no super filter): ", (nrow(flattened_winners) - 2), "\n")
+  cat(" Features (no super filter): ", nrow(flattened_winners), "\n")
   if (disable_super_filter != TRUE) {
-    cat("\n Features (super filter): ", (nrow(flattened_sf_winners) - 2), "\n")
+    cat("\n Features (super filter): ", nrow(flattened_sf_winners), "\n")
   }
 
   ## write old files  ============================================================
