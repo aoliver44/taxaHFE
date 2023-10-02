@@ -71,7 +71,7 @@ read_in_metadata <- function(input, subject_identifier, label) {
 
 ## read in hierarchical data =====================================================
 ## read in data, should be in tab or comma separated format
-read_in_hierarchical_data <- function(input, metadata, cores) 
+read_in_hierarchical_data <- function(input, metadata, cores) {
   
   cat("\n", "Checking for DATA...", "\n")
   if (file.exists(input) == FALSE) {
