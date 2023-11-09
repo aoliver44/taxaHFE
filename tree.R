@@ -692,6 +692,7 @@ rf_competition <- function(df, metadata, parent_descendent_competition, feature_
     colnames()
   # merge node abundance + children abundance with metadata
   merged_data <- merge(df, metadata, by.x = "row.names", by.y = "subject_id")
+  merged_data <- merged_data %>% tidyr::drop_na()
   # clean node names so ranger doesnt throw an error
   merged_data <- tibble::column_to_rownames(merged_data, var = "Row.names")
   data_colnames <- colnames(merged_data)
