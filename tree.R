@@ -64,9 +64,9 @@ read_in_metadata <- function(input, subject_identifier, label) {
     janitor::clean_names()
   
   ## check and make sure there are not too many metadata columns
-  ## we will allow 10 total columns (8 columns of additional covariates)
-  if (ncol(metadata) > 10) {
-    stop("Please only provide subject, label, and up to 8 additional covariates in the metadata file.")
+  ## we will allow 200 total columns (200 columns of additional covariates for jules)
+  if (ncol(metadata) > 200) {
+    stop("Please only provide subject, label, and up to 200 additional covariates in the metadata file.")
   }
   
   ## notify user what covariates we find, if any
