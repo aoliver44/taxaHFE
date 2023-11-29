@@ -1,8 +1,9 @@
- # **TaxaHFE**
+ # **TaxaHFE** <a><img src='logo.jpg' align="right" height="139" /></a>
 ## **Version 2.0 is now available!** 
 - Now using ```data.tree``` to analyze hierarchical data using a tree-traversal strategy.
 - Children are allowed to compete against all ancestors as long as they keep winning hierarchical competitions.
 - TaxaHFE v2 selects far less features than TaxaHFE v1, for the same or better model performance.
+- Covariates can be considered in the RF models
 - TaxaHFE v2 can replicate TaxaHFE v1 by setting the flat ```--max_depth 1```
 
  # **taxaHFE**
@@ -35,8 +36,8 @@
  ## **Description:** 
  A program to perform hierarchical feature engineering on data with taxonomic organization (i.e., microbiome data, dietary data). TaxaHFE takes in a dataset of abundances for every hierarchical level, and then uses correlation and machine learning to determine the optimum taxonomic level which contains the most information relative to a metadata covariate of interest. This is not a new idea; however, few implementations exist in the wild. For some reading on these ideas, please follow the links below!
 
-[TaxaHFE: A machine learning approach to collapse microbiome datasets using taxonomic structure.](https://www.biorxiv.org/content/10.1101/2023.06.06.543755v1)
-Andrew Oliver & Danielle G. Lemay. 2023. *BioRxiv*. 
+[TaxaHFE: A machine learning approach to collapse microbiome datasets using taxonomic structure.](https://doi.org/10.1093/bioadv/vbad165)
+Andrew Oliver, Matthew Kay, Danielle G. Lemay. 2023. *Bioinformatics Advances*. 
 
 [Taxonomy-aware feature engineering for microbiome classification.](https://bmcbioinformatics.biomedcentral.com/articles/10.1186/s12859-018-2205-3)
 Mai Oudah & Andreas Henschel. 2018. *BMC Bioinformatics*.
@@ -237,6 +238,7 @@ Arguments:
 
 We developed software, called TaxaHFE (Hierarchical Feature Engineering), which works by first considering the pairwise correlation structure between a taxon and its descendants to prune descendants above a correlation threshold. Next it permutes a random forest on the taxon and remaining descendants to determine how important each is at explaining an intervention or clinical covariate. If, on average, the taxon is the most important feature in the model, the descendants are dropped, otherwise only the descendants more important than the taxon are kept. Last, an optional final filter step considers all features remaining, and again permutes a random forest. Any features which are either below the average importance of all remaining features or have a negative or zero average importance are dropped.  
 
+Special thanks to Stephanie M.G. Wilson for the logo.
 </br>
 
 ------------------------------
