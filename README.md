@@ -9,7 +9,7 @@
 - Children are allowed to compete against all ancestors as long as they keep winning hierarchical competitions.
 - TaxaHFE v2 selects far less features than TaxaHFE v1, for the same or better model performance.
 - Covariates can be considered in the RF models
-- TaxaHFE v2 can replicate TaxaHFE v1 by setting the flat ```--max_depth 1``
+- TaxaHFE v2 can replicate TaxaHFE v1 by setting the flat ```--max_depth 1```
 
 -----------------------------------
 
