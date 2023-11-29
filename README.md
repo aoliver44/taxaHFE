@@ -1,25 +1,17 @@
- # **TaxaHFE** <a><img src='logo.png' align="right" height="200" /></a>
+ # **TaxaHFE** <a><img src='logo.png' align="right" height="240" /></a>
+  A program to perform hierarchical feature engineering on data with taxonomic organization (i.e., microbiome data, dietary data)
 ## **Version 2.0 is now available!** 
+
+ Version 2 of this algorthim makes numerous advances over Version 1. While it is reasonably stable, please report any issues! We suggest you use Version 2! 
+
+ Change log:
 - Now using ```data.tree``` to analyze hierarchical data using a tree-traversal strategy.
 - Children are allowed to compete against all ancestors as long as they keep winning hierarchical competitions.
 - TaxaHFE v2 selects far less features than TaxaHFE v1, for the same or better model performance.
 - Covariates can be considered in the RF models
-- TaxaHFE v2 can replicate TaxaHFE v1 by setting the flat ```--max_depth 1```
-
- # **taxaHFE**
- 
- ## VERSION 2 RELEASE: 
- Version 2 of this algorthim makes numerous advances over Version 1. While it is reasonably stable, please report any issues! We suggest you use Version 2! 
-
- Change log:
-- convert to using a tree-based data structure
-- allow children competitions past the immediate parent (!!)
-- speed and memory enhancements
-- generally as good of performance (model performance) as version 1, but utilizes significantly fewer features.
+- TaxaHFE v2 can replicate TaxaHFE v1 by setting the flat ```--max_depth 1``
 
 -----------------------------------
-
- A program to perform hierarchical feature engineering on data with taxonomic organization (i.e., microbiome data, dietary data)
 
 ## **Table of Contents**
 - [Description](https://github.com/aoliver44/taxaHFE#description)
