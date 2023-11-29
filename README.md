@@ -1,4 +1,4 @@
- # **TaxaHFE** <a><img src='logo.jpg' align="right" height="139" /></a>
+ # **TaxaHFE** <a><img src='logo.png' align="right" height="180" /></a>
 ## **Version 2.0 is now available!** 
 - Now using ```data.tree``` to analyze hierarchical data using a tree-traversal strategy.
 - Children are allowed to compete against all ancestors as long as they keep winning hierarchical competitions.
