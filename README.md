@@ -20,7 +20,7 @@
 - [Flag information](https://github.com/aoliver44/taxaHFE#information-about-the-flags)
 - [About](https://github.com/aoliver44/taxaHFE#about)
 - [Contribute](https://github.com/aoliver44/taxaHFE#contribute)
-
+- [Citation](https://github.com/aoliver44/taxaHFE#citation)
 
 
 -----------------------------
@@ -238,7 +238,12 @@ Special thanks to Stephanie M.G. Wilson for the logo.
 
 Feel free to raise an issue, contribute with a pull request, or reach out!
 
+------------------------------
+## **Citation**
 
+To cite this work please use:
 
-
+```
+Andrew Oliver, Matthew Kay, Danielle G Lemay. TaxaHFE: a machine learning approach to collapse microbiome datasets using taxonomic structure, Bioinformatics Advances, Volume 3, Issue 1, 2023, vbad165, https://doi.org/10.1093/bioadv/vbad165
+```
 
