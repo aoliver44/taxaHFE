@@ -1,24 +1,17 @@
- # **TaxaHFE**
+ # **TaxaHFE** <a><img src='logo.png' align="right" height="240" /></a>
+  A program to perform hierarchical feature engineering on data with taxonomic organization (i.e., microbiome data, dietary data)
 ## **Version 2.0 is now available!** 
-- Now using ```data.tree``` to analyze hierarchical data using a tree-traversal strategy.
-- Children are allowed to compete against all ancestors as long as they keep winning hierarchical competitions.
-- TaxaHFE v2 selects far less features than TaxaHFE v1, for the same or better model performance.
-- TaxaHFE v2 can replicate TaxaHFE v1 by setting the flat ```--max_depth 1```
 
- # **taxaHFE**
- 
- ## VERSION 2 RELEASE: 
  Version 2 of this algorthim makes numerous advances over Version 1. While it is reasonably stable, please report any issues! We suggest you use Version 2! 
 
  Change log:
-- convert to using a tree-based data structure
-- allow children competitions past the immediate parent (!!)
-- speed and memory enhancements
-- generally as good of performance (model performance) as version 1, but utilizes significantly fewer features.
+- Now using ```data.tree``` to analyze hierarchical data using a tree-traversal strategy.
+- Children are allowed to compete against all ancestors as long as they keep winning hierarchical competitions.
+- TaxaHFE v2 selects far less features than TaxaHFE v1, for the same or better model performance.
+- Covariates can be considered in the RF models
+- TaxaHFE v2 can replicate TaxaHFE v1 by setting the flat ```--max_depth 1```
 
 -----------------------------------
-
- A program to perform hierarchical feature engineering on data with taxonomic organization (i.e., microbiome data, dietary data)
 
 ## **Table of Contents**
 - [Description](https://github.com/aoliver44/taxaHFE#description)
@@ -27,7 +20,7 @@
 - [Flag information](https://github.com/aoliver44/taxaHFE#information-about-the-flags)
 - [About](https://github.com/aoliver44/taxaHFE#about)
 - [Contribute](https://github.com/aoliver44/taxaHFE#contribute)
-
+- [Citation](https://github.com/aoliver44/taxaHFE#citation)
 
 
 -----------------------------
@@ -35,8 +28,8 @@
  ## **Description:** 
  A program to perform hierarchical feature engineering on data with taxonomic organization (i.e., microbiome data, dietary data). TaxaHFE takes in a dataset of abundances for every hierarchical level, and then uses correlation and machine learning to determine the optimum taxonomic level which contains the most information relative to a metadata covariate of interest. This is not a new idea; however, few implementations exist in the wild. For some reading on these ideas, please follow the links below!
 
-[TaxaHFE: A machine learning approach to collapse microbiome datasets using taxonomic structure.](https://www.biorxiv.org/content/10.1101/2023.06.06.543755v1)
-Andrew Oliver & Danielle G. Lemay. 2023. *BioRxiv*. 
+[TaxaHFE: A machine learning approach to collapse microbiome datasets using taxonomic structure.](https://doi.org/10.1093/bioadv/vbad165)
+Andrew Oliver, Matthew Kay, Danielle G. Lemay. 2023. *Bioinformatics Advances*. 
 
 [Taxonomy-aware feature engineering for microbiome classification.](https://bmcbioinformatics.biomedcentral.com/articles/10.1186/s12859-018-2205-3)
 Mai Oudah & Andreas Henschel. 2018. *BMC Bioinformatics*.
@@ -237,6 +230,7 @@ Arguments:
 
 We developed software, called TaxaHFE (Hierarchical Feature Engineering), which works by first considering the pairwise correlation structure between a taxon and its descendants to prune descendants above a correlation threshold. Next it permutes a random forest on the taxon and remaining descendants to determine how important each is at explaining an intervention or clinical covariate. If, on average, the taxon is the most important feature in the model, the descendants are dropped, otherwise only the descendants more important than the taxon are kept. Last, an optional final filter step considers all features remaining, and again permutes a random forest. Any features which are either below the average importance of all remaining features or have a negative or zero average importance are dropped.  
 
+Special thanks to Stephanie M.G. Wilson for the logo.
 </br>
 
 ------------------------------
@@ -244,7 +238,12 @@ We developed software, called TaxaHFE (Hierarchical Feature Engineering), which 
 
 Feel free to raise an issue, contribute with a pull request, or reach out!
 
+------------------------------
+## **Citation**
 
+To cite this work please use:
 
-
+```
+Andrew Oliver, Matthew Kay, Danielle G Lemay. TaxaHFE: a machine learning approach to collapse microbiome datasets using taxonomic structure, Bioinformatics Advances, Volume 3, Issue 1, 2023, vbad165, https://doi.org/10.1093/bioadv/vbad165
+```
 

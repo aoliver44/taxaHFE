@@ -58,10 +58,25 @@ read_in_metadata <- function(input, subject_identifier, label) {
   # read in metadata, and select only the subject identifier and
   # feature of interest. Drop NA samples.
   metadata <- suppressMessages(readr::read_delim(file = input, delim = delim)) %>%
-    dplyr::select(., subject_identifier, label) %>%
     dplyr::rename(., "subject_id" = subject_identifier) %>%
     rename(., "feature_of_interest" = label) %>%
-    tidyr::drop_na()
+    dplyr::filter(., !is.na(subject_id)) %>%
+    janitor::clean_names()
+  
+  ## check and make sure there are not too many metadata columns
+  ## we will allow 10 total columns (8 columns of additional covariates)
+  if (ncol(metadata) > 10) {
+    stop("Please only provide subject, label, and up to 8 additional covariates in the metadata file.")
+  }
+  
+  ## notify user what covariates we find, if any
+  if (ncol(metadata) > 2) {
+    cat("You supplied covariates to consider for the RF competition. They are:\n")
+    print(metadata %>% 
+            dplyr::select(., -subject_id, -feature_of_interest) %>%
+            colnames())
+  }
+  
   ## this is an effort to clean names for the RF later, which will complain big time
   ## if there are symbols or just numbers in your subject IDs
   metadata$subject_id <- metadata$subject_id %>% janitor::make_clean_names(use_make_names = F)
@@ -126,6 +141,9 @@ read_in_hierarchical_data <- function(input, metadata, cores) {
 # write summarized abundance files for each level except taxa_tree
 write_summary_files <- function(input, metadata, output) {
   
+  ## select "base" (no covariates) metadata file
+  metadata <- metadata %>% dplyr::select(., subject_id, feature_of_interest)
+  
   ## write file for TaxaHFE version 1
   version1 <- input %>%
     dplyr::filter(., name != "taxaTree") %>%
@@ -180,6 +198,9 @@ write_summary_files <- function(input, metadata, output) {
 ## write files for old_HFE =====================================================
 # write old files for the Oudah program
 write_old_hfe <- function(input, output) {
+  
+  ## select "base" (no covariates) metadata file
+  metadata <- metadata %>% dplyr::select(., subject_id, feature_of_interest)
   
   max_levels <- max(input[["depth"]])
   ## start at 2 to ignore taxa_tree depth (meaningless node)
@@ -663,8 +684,15 @@ calc_class_frequencies <- function(input, feature_type, feature = "feature_of_in
 ## rf competition function =====================================================
 # TODO: document these inputs
 rf_competition <- function(df, metadata, parent_descendent_competition, feature_of_interest = "feature_of_interest", subject_identifier = "subject_id", feature_type, sample_fraction, ncores, nperm) {
+  
+  ## get a list of the covariates in order to remove them from the RF winners
+  ## later, so the only RF winners are taxa
+  covariates <- metadata %>% 
+    dplyr::select(., -subject_id, -feature_of_interest) %>%
+    colnames()
   # merge node abundance + children abundance with metadata
   merged_data <- merge(df, metadata, by.x = "row.names", by.y = "subject_id")
+  merged_data <- merged_data %>% tidyr::drop_na()
   # clean node names so ranger doesnt throw an error
   merged_data <- tibble::column_to_rownames(merged_data, var = "Row.names")
   data_colnames <- colnames(merged_data)
@@ -691,13 +719,14 @@ rf_competition <- function(df, metadata, parent_descendent_competition, feature_
     ranger::ranger(response_formula, data = merged_data, importance = "impurity_corrected", seed = seed, sample.fraction = sample_fraction, replace = TRUE, num.threads = ncores)$variable.importance %>%
       as.data.frame() %>%
       dplyr::rename(., "importance" = ".") %>%
-      tibble::rownames_to_column(var = "taxa")
+      tibble::rownames_to_column(var = "taxa") 
   }
   
   # run the above function across nperm random seeds and average the vip scores
   model_importance <- purrr::map_df(sample(1:1000, nperm), run_ranger) %>%
     dplyr::group_by(taxa) %>%
-    dplyr::summarise(., average = mean(importance))
+    dplyr::summarise(., average = mean(importance)) %>% 
+    dplyr::filter(., taxa %!in% covariates)
   
   # if this is not a parent vs descendent competition
   # return the ids of competitors whose scores meet the following thresholds:
@@ -780,6 +809,10 @@ write_output_file <- function(flattened_df, metadata, output_location, file_suff
 # if disable_super_filter is TRUE, the super filter competition wasn't run, and only one output will be generated
 # if both_outputs is FALSE, one file will be produced with the final level of competition that occurred
 generate_outputs <- function(tree, metadata, col_names, output_location, disable_super_filter, write_both_outputs, write_old_files, write_flattened_df_backup, ncores) {
+  
+  ## select "base" (no covariates) metadata file
+  metadata <- metadata %>% dplyr::select(., subject_id, feature_of_interest)
+  
   # flatten tree back into metadata, and assign original column names from hData to the sample columns
   flattened_df <- flatten_tree_with_metadata(tree)
   colnames(flattened_df)[11:NCOL(flattened_df)] <- col_names
