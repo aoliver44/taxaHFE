@@ -56,13 +56,13 @@ Petar Ristoski & Heiko Paulheim. 2014. *International Conference on Discovery Sc
 Option 1: The easiest way to get started is pulling the docker image. Please [install docker](https://www.docker.com/) you go this route. 
 
 ```
-docker pull aoliver44/taxa_hfe:2.0
+docker pull aoliver44/taxa_hfe:latest
 ```
 
 Option 2: Alternatively, you can pull this image using Singularity:
 
 ```
-singularity pull taxaHFE.sif docker://aoliver44/taxa_hfe:2.0
+singularity pull taxaHFE.sif docker://aoliver44/taxa_hfe:latest
 ```
 
 Option 3: Finally, it's possible to build the image yourself:
@@ -72,7 +72,7 @@ Option 3: Finally, it's possible to build the image yourself:
 3. Run the command:
 
 ```
-docker build -t taxa_hfe:2.0 .
+docker build -t taxa_hfe:latest .
 ```
 </br>
 
@@ -82,7 +82,7 @@ docker build -t taxa_hfe:2.0 .
 Option 1: Run taxaHFE with **YOUR** data:
 1. Navigate to the directory containing your data, and start the docker image!
 ```
-docker run --rm -it -v `pwd`:/home/docker -w /home/docker aoliver44/taxa_hfe:2.0 bash
+docker run --rm -it -v `pwd`:/home/docker -w /home/docker aoliver44/taxa_hfe:latest bash
 
 ## or with singularity
 singularity run -W `pwd` --bind `pwd`:/home/docker taxaHFE.sif bash
@@ -100,7 +100,7 @@ Option 2: Run taxaHFE on **EXAMPLE** data provided:
 git clone https://github.com/aoliver44/taxaHFE.git && cd taxaHFE
 
 ## STEP 2: RUN THE CONTAINER
-docker run --rm -it -v `pwd`:/home/docker -w /home/docker aoliver44/taxa_hfe:2.0 bash
+docker run --rm -it -v `pwd`:/home/docker -w /home/docker aoliver44/taxa_hfe:latest bash
 
 ## STEP 3: RUN TAXAHFE 
 taxaHFE --subject_identifier Sample --label Category --lowest_level 3 --ncores 2 --seed 42 /home/docker/example_inputs/metadata.txt /home/docker/example_inputs/microbiome_data.txt /home/docker/example_inputs/output.csv
@@ -243,7 +243,5 @@ Feel free to raise an issue, contribute with a pull request, or reach out!
 
 To cite this work please use:
 
-```
-Andrew Oliver, Matthew Kay, Danielle G Lemay. TaxaHFE: a machine learning approach to collapse microbiome datasets using taxonomic structure, Bioinformatics Advances, Volume 3, Issue 1, 2023, vbad165, https://doi.org/10.1093/bioadv/vbad165
-```
+Oliver A, Kay M, Lemay DG. TaxaHFE: a machine learning approach to collapse microbiome datasets using taxonomic structure. *Bioinformatics Advances* 2023;3:, https://doi.org/10.1093/bioadv/vbad165
 
