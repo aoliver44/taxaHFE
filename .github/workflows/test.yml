@@ -19,13 +19,12 @@ jobs:
       
       - name: Install test dependencies
         run: |
-          library(remotes)
+          install.packages("remotes")
           remotes::install_cran("covr")
           install.packages("testthat")
         shell: Rscript {0}
       
       - name: Test coverage
         run: |
-          library(covr)
           covr::file_coverage("tree.R", "tests/test-tree.R")
         shell: Rscript {0}
