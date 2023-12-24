@@ -29,5 +29,5 @@ jobs:
           pwd
           ls -la
 
-      - name: Test coverage
+      - name: Run tests
         run: Rscript tests/*
