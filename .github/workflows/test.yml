@@ -25,6 +25,7 @@ jobs:
           install.packages("testthat")
         shell: Rscript {0}
 
+      # goal is to match a single file of functions with a tests file, to generate coverage
       - name: Test coverage
         run: |
           covr::file_coverage("tree.R", "tests/test-tree.R")
