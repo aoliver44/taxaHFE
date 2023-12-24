@@ -17,17 +17,13 @@ jobs:
       
       - uses: r-lib/actions/setup-renv@v2
       
+      # TODO: add these deps to renv so they can be cached
       - name: Install test dependencies
         run: |
           install.packages("remotes")
           remotes::install_cran("covr")
           install.packages("testthat")
         shell: Rscript {0}
-      
-      - name: test directory
-        run: |
-          pwd
-          ls -la
 
       - name: Test coverage
         run: |

@@ -887,10 +887,3 @@ load_docopt <- function(doc_string, version, to_convert) {
     simplify = FALSE
   ))
 }
-
-greater_than_3 <- function(n) {
-  if (n > 3) {
-    return(TRUE)
-  }
-  return(FALSE)
-}
