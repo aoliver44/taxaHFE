@@ -29,5 +29,7 @@ jobs:
           pwd
           ls -la
 
-      - name: Run tests
-        run: Rscript tests/*
+      - name: Test coverage
+        run: |
+          covr::file_coverage("tree.R", "tests/test-tree.R")
+        shell: Rscript {0}
