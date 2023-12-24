@@ -3,7 +3,7 @@
 ## Date: June 14, 2023
 
 ## base image to start with
-FROM rocker/r-base:4.2.0
+FROM rocker/rstudio:4.2.0
 
 ## RENV version
 ENV RENV_VERSION=0.16.0
@@ -27,4 +27,4 @@ COPY tree.R ./scripts/utilities/tree.R
 
 ENV PATH="${PATH}:/scripts/"
 
-USER docker
+# USER docker
