@@ -34,4 +34,5 @@ jobs:
           file("tree.R", "r")
           file("tests/test-tree.R", "r")
           covr::file_coverage("tree.R", "tests/test-tree.R")
+          traceback()
         shell: Rscript {0}
