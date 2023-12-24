@@ -31,6 +31,6 @@ jobs:
 
       - name: Test coverage
         run: |
-          getwd()
+          head(readLines("tree.R"))
           covr::file_coverage("tree.R", "tests/test-tree.R")
         shell: Rscript {0}
