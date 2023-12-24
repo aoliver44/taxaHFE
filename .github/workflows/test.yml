@@ -1,8 +1,8 @@
-name: Actions Test
+name: Test
 run-name: Testing ${{ github.ref }}
 on: [push]
 jobs:
-  load-r:
+  test:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
