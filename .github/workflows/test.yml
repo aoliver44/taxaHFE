@@ -24,6 +24,9 @@ jobs:
           install.packages("testthat")
         shell: Rscript {0}
       
+      - name: test directory
+        run: ls -la
+
       - name: Test coverage
         run: |
           getwd()
