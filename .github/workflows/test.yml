@@ -25,7 +25,9 @@ jobs:
         shell: Rscript {0}
       
       - name: test directory
-        run: ls -la
+        run: |
+          pwd
+          ls -la
 
       - name: Test coverage
         run: |
