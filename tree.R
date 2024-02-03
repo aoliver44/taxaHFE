@@ -26,7 +26,12 @@ set_seed_func <- function(seed) {
   }
 }
 
-trim <- 0.02 # trim outliers from mean feature abundance calc
+# trim outliers from mean feature abundance calc
+# UPDATE: intially we had at 0.02, for an outlier resistant mean
+# but if you want a = 0, p = 0 (all features), the trim
+# was causing some features to get filtered (they look like
+# zero abundance, but really the top 2% of features had non-zero abundances)
+trim <- 0.00 
 
 ## helper functions ============================================================
 
