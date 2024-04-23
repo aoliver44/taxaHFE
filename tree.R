@@ -809,7 +809,10 @@ write_output_file <- function(flattened_df, metadata, output_location, file_suff
 
   output <- merge(metadata, output, by = "subject_id")
   readr::write_delim(file = paste0(tools::file_path_sans_ext(output_location), file_suffix), x = output, delim = ",")
-  assign(x = paste0("output_", count, gsub(pattern = ".csv", replacement = "", x = file_suffix)), output, envir = .GlobalEnv)
+  ## write variable to global env if doing taxaHFE-SHAP
+  if (exists(tr_te_split)) { 
+    assign(x = paste0("output_", count, gsub(pattern = ".csv", replacement = "", x = file_suffix)), output, envir = .GlobalEnv) 
+    } 
 }
 
 # generate the outputs
