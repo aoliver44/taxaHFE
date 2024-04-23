@@ -25,14 +25,12 @@ RUN R -e 'renv::restore()'
 COPY ./taxaHFE-SHAP/leakfree_taxaHFE.R ./scripts/taxaHFE-SHAP
 COPY ./taxaHFE-SHAP/dietML.R ./scripts/dietML.R
 COPY ./tree.R ./scripts/tree.R
-COPY ./run_taxaHFEv2.R ./scripts/run_taxaHFEv2.R
+COPY ./run_taxaHFEv2.R ./scripts/taxaHFE
 COPY ./taxaHFE-SHAP/models/dietML_ranger_tidy.R ./scripts/models/dietML_ranger_tidy.R
 COPY ./taxaHFE-SHAP/models/dietML_null_tidy.R ./scripts/models/dietML_null_tidy.R
 COPY ./taxaHFE-SHAP/utilities/shap_figures.R ./scripts/utilities/shap_figures.R
 COPY ./taxaHFE-SHAP/utilities/vip_basic.R ./scripts/utilities/vip_basic.R
 
 ENV PATH="${PATH}:/scripts/"
-
-USER docker
 
 
