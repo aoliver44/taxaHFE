@@ -1,9 +1,9 @@
 ## Author: Andrew Oliver
-## Version: aoliver44/taxaHFE:1.12
-## Date: June 14, 2023
+## Version: aoliver44/leakage_free_taxaHFE:latest
+## Date: Jan 25, 2023
 
 ## base image to start with
-FROM rocker/r-base:4.2.0
+FROM rocker/r-ver:4.2.3
 
 ## RENV version
 ENV RENV_VERSION=0.16.0
@@ -16,15 +16,23 @@ RUN apt install -y libz-dev libxml2-dev
 RUN R -e "install.packages('remotes', repos = c(CRAN = 'https://cloud.r-project.org'))"
 RUN R -e "remotes::install_github('rstudio/renv@${RENV_VERSION}')"
 
-# should be in the same directory as this file
+# should be in the same directocat ry as this file
 COPY renv.lock ./
 RUN R -e 'renv::consent(provided = TRUE)'
 RUN R -e 'renv::restore()'
 
 # copy in scripts so they are part of container
-COPY run_taxaHFEv2.R ./scripts/taxaHFE
-COPY tree.R ./scripts/utilities/tree.R
+COPY ./taxaHFE-SHAP/leakfree_taxaHFE.R ./scripts/taxaHFE-SHAP
+COPY ./taxaHFE-SHAP/dietML.R ./scripts/dietML.R
+COPY ./tree.R ./scripts/tree.R
+COPY ./run_taxaHFEv2.R ./scripts/run_taxaHFEv2.R
+COPY ./taxaHFE-SHAP/models/dietML_ranger_tidy.R ./scripts/models/dietML_ranger_tidy.R
+COPY ./taxaHFE-SHAP/models/dietML_null_tidy.R ./scripts/models/dietML_null_tidy.R
+COPY ./taxaHFE-SHAP/utilities/shap_figures.R ./scripts/utilities/shap_figures.R
+COPY ./taxaHFE-SHAP/utilities/vip_basic.R ./scripts/utilities/vip_basic.R
 
 ENV PATH="${PATH}:/scripts/"
 
 USER docker
+
+
