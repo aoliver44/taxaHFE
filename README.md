@@ -1,5 +1,5 @@
 ![test workflow](https://github.com/mmmckay/taxaHFE/actions/workflows/test.yml/badge.svg)
-# **TaxaHFE** <a><img src='logo.png' align="right" height="120" /></a>
+# **TaxaHFE** <a><img src='logo.png' align="right" height="150" /></a>
   A program to perform hierarchical feature engineering on data with taxonomic organization (i.e., microbiome data, dietary data)
 ## **Version 2.0 is now available!** 
 
