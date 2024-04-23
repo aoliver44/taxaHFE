@@ -19,10 +19,12 @@ library(docopt, quietly = T, verbose = F, warn.conflicts = F)
 ## set random seed, defaults to system time
 set_seed_func <- function(seed) {
   if (!is.null(seed)) {
+    opt$seed <<- as.numeric(opt$seed)
     set.seed(seed)
   } else {
     message('No random seed set. Using system time!')
-    set.seed(as.numeric(Sys.time()))
+    opt$seed <<- as.numeric(Sys.time())
+    set.seed(opt$seed)
   }
 }
 
@@ -807,7 +809,7 @@ write_output_file <- function(flattened_df, metadata, output_location, file_suff
 
   output <- merge(metadata, output, by = "subject_id")
   readr::write_delim(file = paste0(tools::file_path_sans_ext(output_location), file_suffix), x = output, delim = ",")
-
+  assign(x = paste0("output_", count, gsub(pattern = ".csv", replacement = "", x = file_suffix)), output, envir = .GlobalEnv)
 }
 
 # generate the outputs
@@ -819,23 +821,22 @@ generate_outputs <- function(tree, metadata, col_names, output_location, disable
   metadata <- metadata %>% dplyr::select(., subject_id, feature_of_interest)
   
   # flatten tree back into metadata, and assign original column names from hData to the sample columns
-  flattened_df <- flatten_tree_with_metadata(tree)
+  flattened_df <- flatten_tree_with_metadata(tree) 
   colnames(flattened_df)[11:NCOL(flattened_df)] <- col_names
-
+  assign(x = "flattened_df", value = flattened_df, envir = .GlobalEnv)
+  
   ## filter to only winners and clean names in case of duplicate
   ## also further filtering for sf winners
   flattened_winners <- flattened_df %>% 
     dplyr::filter(., winner == TRUE)
 
   flattened_winners$name <- janitor::make_clean_names(flattened_winners$name)
-
   flattened_sf_winners <- flattened_winners %>%
     dplyr::filter(., sf_winner == TRUE)
-
   ## if super filter is disabled, write the flattened_winners as standard output
   ## otherwise write the super filter winners as standard output
   if (disable_super_filter == TRUE) {
-    write_output_file(flattened_winners, metadata, output_location, ".csv")
+    write_output_file(flattened_winners, metadata, output_location, "_no_sf.csv")
   } else {
     write_output_file(flattened_sf_winners, metadata, output_location, ".csv")
   }
