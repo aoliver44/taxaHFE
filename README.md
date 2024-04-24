@@ -46,7 +46,7 @@ Petar Ristoski & Heiko Paulheim. 2014. *International Conference on Discovery Sc
 ## **Outline of taxaHFE**
 
 
-![Outline of taxaHFE algorithm](algorithm_outline_github.png "Outline of taxaHFE algorithm")
+![Outline of taxaHFE algorithm](Figure1_v2.png "Outline of taxaHFE algorithm")
 
 </br>
 
