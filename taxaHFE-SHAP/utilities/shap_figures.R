@@ -36,8 +36,7 @@ tryCatch( { if (length(levels(as.factor(split_from_data_frame$data$feature_of_in
   ## pull out data
   shap_data_full <- recipes::prep(dietML_recipe, split_from_data_frame$data) %>% 
     recipes::juice() %>% 
-    dplyr::select(-feature_of_interest, -dplyr::any_of(opt$subject_identifier)) %>% 
-    as.matrix()
+    dplyr::select(-feature_of_interest, -dplyr::any_of(opt$subject_identifier)) 
   
   ## explain with fastshap
   shap_explainations_full <- fastshap::explain(best_workflow_mod$fit, X = shap_data_full, pred_wrapper = pfun, nsim = 100, adjust = TRUE)
@@ -69,8 +68,7 @@ tryCatch( { if (length(levels(as.factor(split_from_data_frame$data$feature_of_in
   ## pull out data
   shap_data_train <- recipes::prep(dietML_recipe, train) %>% 
     recipes::juice() %>% 
-    dplyr::select(-feature_of_interest, -dplyr::any_of(opt$subject_identifier)) %>% 
-    as.matrix()
+    dplyr::select(-feature_of_interest, -dplyr::any_of(opt$subject_identifier)) 
   
   ## explain with fastshap
   shap_explainations_train <- fastshap::explain(best_workflow_mod$fit, X = shap_data_train, pred_wrapper = pfun, nsim = 100, adjust = TRUE)
@@ -102,8 +100,7 @@ tryCatch( { if (length(levels(as.factor(split_from_data_frame$data$feature_of_in
   ## pull out data
   shap_data_test<- recipes::prep(dietML_recipe, test) %>% 
     recipes::juice() %>% 
-    dplyr::select(-feature_of_interest, -dplyr::any_of(opt$subject_identifier)) %>% 
-    as.matrix()
+    dplyr::select(-feature_of_interest, -dplyr::any_of(opt$subject_identifier)) 
   
   ## explain with fastshap
   shap_explainations_test <- fastshap::explain(best_workflow_mod$fit, X = shap_data_test, pred_wrapper = pfun, nsim = 100, adjust = TRUE)
@@ -135,8 +132,7 @@ tryCatch( { if (length(levels(as.factor(split_from_data_frame$data$feature_of_in
     ## pull out data
     shap_data_full <- recipes::prep(dietML_recipe, split_from_data_frame$data) %>% 
       recipes::juice() %>% 
-      dplyr::select(-feature_of_interest, -dplyr::any_of(opt$subject_identifier)) %>% 
-      as.matrix()
+      dplyr::select(-feature_of_interest, -dplyr::any_of(opt$subject_identifier)) 
     
     ## explain with fastshap
     shap_explainations_full <- fastshap::explain(best_workflow_mod$fit, X = shap_data_full, pred_wrapper = pfun, nsim = 100, adjust = TRUE)
@@ -164,8 +160,7 @@ tryCatch( { if (length(levels(as.factor(split_from_data_frame$data$feature_of_in
     ## pull out data
     shap_data_train <- recipes::prep(dietML_recipe, train) %>% 
       recipes::juice() %>% 
-      dplyr::select(-feature_of_interest, -dplyr::any_of(opt$subject_identifier)) %>% 
-      as.matrix()
+      dplyr::select(-feature_of_interest, -dplyr::any_of(opt$subject_identifier)) 
     
     ## explain with fastshap
     shap_explainations_train <- fastshap::explain(best_workflow_mod$fit, X = shap_data_train, pred_wrapper = pfun, nsim = 100, adjust = TRUE)
@@ -193,8 +188,7 @@ tryCatch( { if (length(levels(as.factor(split_from_data_frame$data$feature_of_in
     ## pull out data
     shap_data_test <- recipes::prep(dietML_recipe, test) %>% 
       recipes::juice() %>% 
-      dplyr::select(-feature_of_interest, -dplyr::any_of(opt$subject_identifier)) %>% 
-      as.matrix()
+      dplyr::select(-feature_of_interest, -dplyr::any_of(opt$subject_identifier)) 
     
     ## explain with fastshap
     shap_explainations_test <- fastshap::explain(best_workflow_mod$fit, X = shap_data_test, pred_wrapper = pfun, nsim = 100, adjust = TRUE)
