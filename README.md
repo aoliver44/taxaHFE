@@ -182,7 +182,7 @@ Arguments:
 
 --feature_type: is the label a factor or a continuous variable (options: factor or numeric)?
 
---abundance: a per-feature abundance filter. This filter calculates an outlier-resistant mean (trimming the top and bottom 2% of data) of the feature's abundance. If the average abundance across the middle 96% of samples is above this value, the feature is kept. Note, if your sampling effort is not standardized in some way (e.g. relative abundance), this filter may produce undesirable behavior. To turn this filter off, set its value to 0 (or the minimum value in your dataset). The default behavior is to filter out features below a mean abundance of 0.0001; however, this assumes the feature abundances exist on a scale from 0-1. 
+--abundance: a per-feature abundance filter. Note, if your sampling effort is not standardized in some way (e.g. relative abundance), this filter may produce undesirable behavior. To turn this filter off, set its value to 0 (or the minimum value in your dataset). The default behavior is to filter out features below a mean abundance of 0.0001; however, this assumes the feature abundances exist on a scale from 0-1 (i.e., total sum scaled to 1). 
 
 --prevalence: a per-feature prevalence filter. This filter sets the number of non-zero occurrences desired for features. The default behavior is if the feature is 99% zeros, it will be dropped from further analysis. This filter is also somewhat sensitive to sampling depth, as samples with greater sampling depth will likely find rarer features.
 
