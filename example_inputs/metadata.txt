@@ -1,290 +1,290 @@
-study	Sample	Category
-UCI_Fiber_high	UCI_1	Industrialized
-UCI_Fiber_low	UCI_2	Industrialized
-UCI_Fiber_high	UCI_3	Industrialized
-UCI_Fiber_high	UCI_4	Industrialized
-UCI_Fiber_low	UCI_5	Industrialized
-UCI_Fiber_high	UCI_6	Industrialized
-UCI_Fiber_high	UCI_7	Industrialized
-UCI_Fiber_high	UCI_8	Industrialized
-UCI_Fiber_high	UCI_9	Industrialized
-UCI_Fiber_high	UCI_10	Industrialized
-UCI_Fiber_low	UCI_11	Industrialized
-UCI_Fiber_low	UCI_12	Industrialized
-UCI_Fiber_high	UCI_13	Industrialized
-UCI_Fiber_low	UCI_14	Industrialized
-UCI_Fiber_high	UCI_15	Industrialized
-UCI_Fiber_high	UCI_16	Industrialized
-UCI_Fiber_high	UCI_17	Industrialized
-UCI_Fiber_low	UCI_18	Industrialized
-UCI_Fiber_high	UCI_19	Industrialized
-UCI_Fiber_low	UCI_20	Industrialized
-UCI_Fiber_low	UCI_21	Industrialized
-UCI_Fiber_high	UCI_22	Industrialized
-UCI_Fiber_low	UCI_23	Industrialized
-UCI_Fiber_high	UCI_24	Industrialized
-UCI_Fiber_low	UCI_25	Industrialized
-UCI_Fiber_high	UCI_26	Industrialized
-UCI_Fiber_low	UCI_27	Industrialized
-UCI_Fiber_high	UCI_28	Industrialized
-UCI_Fiber_low	UCI_29	Industrialized
-UCI_Fiber_high	UCI_30	Industrialized
-UCI_Fiber_low	UCI_31	Industrialized
-UCI_Fiber_high	UCI_32	Industrialized
-UCI_Fiber_high	UCI_33	Industrialized
-UCI_Fiber_low	UCI_34	Industrialized
-UCI_Fiber_low	UCI_35	Industrialized
-UCI_Fiber_high	UCI_36	Industrialized
-UCI_Fiber_low	UCI_37	Industrialized
-UCI_Fiber_high	UCI_38	Industrialized
-UCI_Fiber_high	UCI_39	Industrialized
-UCI_Fiber_low	UCI_40	Industrialized
-UCI_Fiber_low	UCI_41	Industrialized
-UCI_Fiber_high	UCI_42	Industrialized
-UCI_Fiber_low	UCI_43	Industrialized
-UCI_Fiber_high	UCI_44	Industrialized
-UCI_Fiber_low	UCI_45	Industrialized
-UCI_Fiber_low	UCI_46	Industrialized
-UCI_Fiber_low	UCI_47	Industrialized
-UCI_Fiber_high	UCI_48	Industrialized
-UCI_Fiber_low	UCI_49	Industrialized
-UCI_Fiber_low	UCI_50	Industrialized
-UCI_Fiber_high	UCI_51	Industrialized
-UCI_Fiber_low	UCI_52	Industrialized
-UCI_Fiber_low	UCI_53	Industrialized
-UCI_Fiber_low	UCI_54	Industrialized
-UCI_Fiber_high	UCI_55	Industrialized
-UCI_Fiber_low	UCI_56	Industrialized
-UCI_Fiber_high	UCI_57	Industrialized
-UCI_Fiber_low	UCI_58	Industrialized
-UCI_Fiber_high	UCI_59	Industrialized
-UCI_Fiber_low	UCI_60	Industrialized
-UCI_Fiber_high	UCI_61	Industrialized
-UCI_Fiber_high	UCI_62	Industrialized
-UCI_Fiber_high	UCI_63	Industrialized
-UCI_Fiber_low	UCI_64	Industrialized
-UCI_Fiber_high	UCI_65	Industrialized
-UCI_Fiber_low	UCI_66	Industrialized
-UCI_Fiber_low	UCI_67	Industrialized
-UCI_Fiber_high	UCI_68	Industrialized
-UCI_Fiber_high	UCI_69	Industrialized
-UCI_Fiber_low	UCI_70	Industrialized
-UCI_Fiber_high	UCI_71	Industrialized
-UCI_Fiber_low	UCI_72	Industrialized
-UCI_Fiber_low	UCI_73	Industrialized
-UCI_Fiber_high	UCI_74	Industrialized
-UCI_Fiber_high	UCI_75	Industrialized
-UCI_Fiber_low	UCI_76	Industrialized
-UCI_Fiber_high	UCI_77	Industrialized
-UCI_Fiber_high	UCI_78	Industrialized
-UCI_Fiber_low	UCI_79	Industrialized
-UCI_Fiber_high	UCI_80	Industrialized
-UCI_Fiber_low	UCI_81	Industrialized
-UCI_Fiber_high	UCI_82	Industrialized
-UCI_Fiber_high	UCI_83	Industrialized
-UCI_Fiber_high	UCI_84	Industrialized
-UCI_Fiber_low	UCI_85	Industrialized
-UCI_Fiber_low	UCI_86	Industrialized
-Tanzania	hadza_1	Non_industrialized
-Tanzania	hadza_2	Non_industrialized
-Tanzania	hadza_3	Non_industrialized
-Tanzania	hadza_4	Non_industrialized
-Tanzania	hadza_5	Non_industrialized
-Tanzania	hadza_6	Non_industrialized
-Tanzania	hadza_7	Non_industrialized
-Tanzania	hadza_8	Non_industrialized
-Tanzania	hadza_9	Non_industrialized
-Tanzania	hadza_10	Non_industrialized
-Tanzania	hadza_11	Non_industrialized
-Tanzania	hadza_12	Non_industrialized
-Tanzania	hadza_13	Non_industrialized
-Italy	italy_1	Industrialized
-Italy	italy_2	Industrialized
-Italy	italy_3	Industrialized
-Italy	italy_4	Industrialized
-Italy	italy_5	Industrialized
-Italy	italy_6	Industrialized
-Italy	italy_7	Industrialized
-Italy	italy_8	Industrialized
-Tanzania	hadza_14	Non_industrialized
-Tanzania	hadza_15	Non_industrialized
-Tanzania	hadza_16	Non_industrialized
-Tanzania	hadza_17	Non_industrialized
-Tanzania	hadza_18	Non_industrialized
-Tanzania	hadza_19	Non_industrialized
-Tanzania	hadza_20	Non_industrialized
-Tanzania	hadza_21	Non_industrialized
-Tanzania	hadza_22	Non_industrialized
-Tanzania	hadza_23	Non_industrialized
-Tanzania	hadza_24	Non_industrialized
-Tanzania	hadza_25	Non_industrialized
-MLVS_cohort	MLVS_1	Industrialized
-MLVS_cohort	MLVS_2	Industrialized
-MLVS_cohort	MLVS_3	Industrialized
-MLVS_cohort	MLVS_4	Industrialized
-MLVS_cohort	MLVS_5	Industrialized
-MLVS_cohort	MLVS_6	Industrialized
-MLVS_cohort	MLVS_7	Industrialized
-MLVS_cohort	MLVS_8	Industrialized
-MLVS_cohort	MLVS_9	Industrialized
-MLVS_cohort	MLVS_10	Industrialized
-MLVS_cohort	MLVS_11	Industrialized
-MLVS_cohort	MLVS_12	Industrialized
-MLVS_cohort	MLVS_13	Industrialized
-MLVS_cohort	MLVS_14	Industrialized
-MLVS_cohort	MLVS_15	Industrialized
-MLVS_cohort	MLVS_16	Industrialized
-MLVS_cohort	MLVS_17	Industrialized
-MLVS_cohort	MLVS_18	Industrialized
-MLVS_cohort	MLVS_19	Industrialized
-MLVS_cohort	MLVS_20	Industrialized
-MLVS_cohort	MLVS_21	Industrialized
-MLVS_cohort	MLVS_22	Industrialized
-MLVS_cohort	MLVS_23	Industrialized
-MLVS_cohort	MLVS_24	Industrialized
-MLVS_cohort	MLVS_25	Industrialized
-MLVS_cohort	MLVS_26	Industrialized
-MLVS_cohort	MLVS_27	Industrialized
-MLVS_cohort	MLVS_28	Industrialized
-MLVS_cohort	MLVS_29	Industrialized
-MLVS_cohort	MLVS_30	Industrialized
-MLVS_cohort	MLVS_31	Industrialized
-MLVS_cohort	MLVS_32	Industrialized
-MLVS_cohort	MLVS_33	Industrialized
-MLVS_cohort	MLVS_34	Industrialized
-MLVS_cohort	MLVS_35	Industrialized
-MLVS_cohort	MLVS_36	Industrialized
-MLVS_cohort	MLVS_37	Industrialized
-MLVS_cohort	MLVS_38	Industrialized
-MLVS_cohort	MLVS_39	Industrialized
-MLVS_cohort	MLVS_40	Industrialized
-Peru_Lewis	Lewis_1	Non_industrialized
-Peru_Lewis	Lewis_2	Non_industrialized
-Peru_Lewis	Lewis_3	Non_industrialized
-Peru_Lewis	Lewis_4	Non_industrialized
-Peru_Lewis	Lewis_5	Non_industrialized
-Peru_Lewis	Lewis_6	Non_industrialized
-Peru_Lewis	Lewis_7	Non_industrialized
-Peru_Lewis	Lewis_8	Non_industrialized
-Peru_Lewis	Lewis_9	Non_industrialized
-Peru_Lewis	Lewis_10	Non_industrialized
-Peru_Lewis	Lewis_11	Non_industrialized
-USA_Lewis	Lewis_12	Industrialized
-USA_Lewis	Lewis_13	Industrialized
-USA_Lewis	Lewis_14	Industrialized
-USA_Lewis	Lewis_15	Industrialized
-USA_Lewis	Lewis_16	Industrialized
-USA_Lewis	Lewis_17	Industrialized
-USA_Lewis	Lewis_18	Industrialized
-USA_Lewis	Lewis_19	Industrialized
-USA_Lewis	Lewis_20	Industrialized
-USA_Lewis	Lewis_21	Industrialized
-USA_Lewis	Lewis_22	Industrialized
-USA_Lewis	Lewis_23	Industrialized
-USA_Lewis	Lewis_24	Industrialized
-USA_Lewis	Lewis_25	Industrialized
-USA_Lewis	Lewis_26	Industrialized
-USA_Lewis	Lewis_27	Industrialized
-Peru_Lewis	Lewis_28	Non_industrialized
-Peru_Lewis	Lewis_29	Non_industrialized
-Peru_Lewis	Lewis_30	Non_industrialized
-Peru_Lewis	Lewis_31	Non_industrialized
-Peru_Lewis	Lewis_32	Non_industrialized
-Peru_Lewis	Lewis_33	Non_industrialized
-Peru_Lewis	Lewis_34	Non_industrialized
-Peru_Lewis	Lewis_35	Non_industrialized
-Peru_Lewis	Lewis_36	Non_industrialized
-Peru_Lewis	Lewis_37	Non_industrialized
-Peru_Lewis	Lewis_38	Non_industrialized
-Peru_Lewis	Lewis_39	Non_industrialized
-Peru_Lewis	Lewis_40	Non_industrialized
-Peru_Lewis	Lewis_41	Non_industrialized
-Peru_Lewis	Lewis_42	Non_industrialized
-Peru_Lewis	Lewis_43	Non_industrialized
-Peru_Lewis	Lewis_44	Non_industrialized
-Peru_Lewis	Lewis_45	Non_industrialized
-Peru_Lewis	Lewis_46	Non_industrialized
-Peru_Lewis	Lewis_47	Non_industrialized
-Peru_Lewis	Lewis_48	Non_industrialized
-Peru_Lewis	Lewis_49	Non_industrialized
-Peru_Lewis	Lewis_50	Non_industrialized
-Peru_Lewis	Lewis_51	Non_industrialized
-Peru_Lewis	Lewis_52	Non_industrialized
-Peru_Lewis	Lewis_53	Non_industrialized
-Peru_Lewis	Lewis_54	Non_industrialized
-Peru_Lewis	Lewis_55	Non_industrialized
-Peru_Lewis	Lewis_56	Non_industrialized
-Peru_Lewis	Lewis_57	Non_industrialized
-Peru_Lewis	Lewis_58	Non_industrialized
-USA_Lewis	Lewis_59	Industrialized
-USA_Lewis	Lewis_60	Industrialized
-USA_Lewis	Lewis_61	Industrialized
-USA_Lewis	Lewis_62	Industrialized
-USA_Lewis	Lewis_63	Industrialized
-USA_Lewis	Lewis_64	Industrialized
-USA_Lewis	Lewis_65	Industrialized
-USA_Lewis	Lewis_66	Industrialized
-USA_Lewis	Lewis_67	Industrialized
-USA_Lewis	Lewis_68	Industrialized
-USA_Lewis	Lewis_69	Industrialized
-USA_Lewis	Lewis_70	Industrialized
-USA_Lewis	Lewis_71	Industrialized
-USA_Lewis	Lewis_72	Industrialized
-USA_Lewis	Lewis_73	Industrialized
-USA_Lewis	Lewis_74	Industrialized
-USA_Lewis	Lewis_75	Industrialized
-USA_Lewis	Lewis_76	Industrialized
-USA_Lewis	Lewis_77	Industrialized
-USA_Lewis	Lewis_78	Industrialized
-Peru_Lewis	Lewis_79	Non_industrialized
-Peru_Lewis	Lewis_80	Non_industrialized
-Peru_Lewis	Lewis_81	Non_industrialized
-Peru_Lewis	Lewis_82	Non_industrialized
-Peru_Lewis	Lewis_83	Non_industrialized
-Peru_Lewis	Lewis_84	Non_industrialized
-Peru_Lewis	Lewis_85	Non_industrialized
-Peru_Lewis	Lewis_86	Non_industrialized
-Peru_Lewis	Lewis_87	Non_industrialized
-Peru_Lewis	Lewis_88	Non_industrialized
-Peru_Lewis	Lewis_89	Non_industrialized
-Peru_Lewis	Lewis_90	Non_industrialized
-Peru_Lewis	Lewis_91	Non_industrialized
-Peru_Lewis	Lewis_92	Non_industrialized
-Peru_Lewis	Lewis_93	Non_industrialized
-Peru_Lewis	Lewis_94	Non_industrialized
-Peru_Lewis	Lewis_95	Non_industrialized
-Peru_Lewis	Lewis_96	Non_industrialized
-Peru_Lewis	Lewis_97	Non_industrialized
-Peru_Lewis	Lewis_98	Non_industrialized
-Peru_Lewis	Lewis_99	Non_industrialized
-Peru_Lewis	Lewis_100	Non_industrialized
-Peru_Lewis	Lewis_101	Non_industrialized
-USA_Lewis	Lewis_102	Industrialized
-USA_Lewis	Lewis_103	Industrialized
-USA_Lewis	Lewis_104	Industrialized
-USA_Lewis	Lewis_105	Industrialized
-Peru_Lewis	Lewis_106	Non_industrialized
-USA_Lewis	Lewis_107	Industrialized
-Peru_Lewis	Lewis_108	Non_industrialized
-Peru_Lewis	Lewis_109	Non_industrialized
-USA_Lewis	Lewis_110	Industrialized
-USA_Lewis	Lewis_111	Industrialized
-USA_Lewis	Lewis_112	Industrialized
-Peru_Lewis	Lewis_113	Non_industrialized
-Peru_Lewis	Lewis_114	Non_industrialized
-Peru_Lewis	Lewis_115	Non_industrialized
-Peru_Lewis	Lewis_116	Non_industrialized
-HMP_Fecal	HMP_2	Industrialized
-HMP_Fecal	HMP_4	Industrialized
-HMP_Fecal	HMP_7	Industrialized
-HMP_Fecal	HMP_8	Industrialized
-HMP_Fecal	HMP_9	Industrialized
-HMP_Fecal	HMP_12	Industrialized
-HMP_Fecal	HMP_13	Industrialized
-HMP_Fecal	HMP_16	Industrialized
-HMP_Fecal	HMP_17	Industrialized
-HMP_Fecal	HMP_20	Industrialized
-HMP_Fecal	HMP_21	Industrialized
-HMP_Fecal	HMP_24	Industrialized
-HMP_Fecal	HMP_25	Industrialized
-HMP_Fecal	HMP_27	Industrialized
+Sample	Category
+UCI_1	Industrialized
+UCI_2	Industrialized
+UCI_3	Industrialized
+UCI_4	Industrialized
+UCI_5	Industrialized
+UCI_6	Industrialized
+UCI_7	Industrialized
+UCI_8	Industrialized
+UCI_9	Industrialized
+UCI_10	Industrialized
+UCI_11	Industrialized
+UCI_12	Industrialized
+UCI_13	Industrialized
+UCI_14	Industrialized
+UCI_15	Industrialized
+UCI_16	Industrialized
+UCI_17	Industrialized
+UCI_18	Industrialized
+UCI_19	Industrialized
+UCI_20	Industrialized
+UCI_21	Industrialized
+UCI_22	Industrialized
+UCI_23	Industrialized
+UCI_24	Industrialized
+UCI_25	Industrialized
+UCI_26	Industrialized
+UCI_27	Industrialized
+UCI_28	Industrialized
+UCI_29	Industrialized
+UCI_30	Industrialized
+UCI_31	Industrialized
+UCI_32	Industrialized
+UCI_33	Industrialized
+UCI_34	Industrialized
+UCI_35	Industrialized
+UCI_36	Industrialized
+UCI_37	Industrialized
+UCI_38	Industrialized
+UCI_39	Industrialized
+UCI_40	Industrialized
+UCI_41	Industrialized
+UCI_42	Industrialized
+UCI_43	Industrialized
+UCI_44	Industrialized
+UCI_45	Industrialized
+UCI_46	Industrialized
+UCI_47	Industrialized
+UCI_48	Industrialized
+UCI_49	Industrialized
+UCI_50	Industrialized
+UCI_51	Industrialized
+UCI_52	Industrialized
+UCI_53	Industrialized
+UCI_54	Industrialized
+UCI_55	Industrialized
+UCI_56	Industrialized
+UCI_57	Industrialized
+UCI_58	Industrialized
+UCI_59	Industrialized
+UCI_60	Industrialized
+UCI_61	Industrialized
+UCI_62	Industrialized
+UCI_63	Industrialized
+UCI_64	Industrialized
+UCI_65	Industrialized
+UCI_66	Industrialized
+UCI_67	Industrialized
+UCI_68	Industrialized
+UCI_69	Industrialized
+UCI_70	Industrialized
+UCI_71	Industrialized
+UCI_72	Industrialized
+UCI_73	Industrialized
+UCI_74	Industrialized
+UCI_75	Industrialized
+UCI_76	Industrialized
+UCI_77	Industrialized
+UCI_78	Industrialized
+UCI_79	Industrialized
+UCI_80	Industrialized
+UCI_81	Industrialized
+UCI_82	Industrialized
+UCI_83	Industrialized
+UCI_84	Industrialized
+UCI_85	Industrialized
+UCI_86	Industrialized
+hadza_1	Non_industrialized
+hadza_2	Non_industrialized
+hadza_3	Non_industrialized
+hadza_4	Non_industrialized
+hadza_5	Non_industrialized
+hadza_6	Non_industrialized
+hadza_7	Non_industrialized
+hadza_8	Non_industrialized
+hadza_9	Non_industrialized
+hadza_10	Non_industrialized
+hadza_11	Non_industrialized
+hadza_12	Non_industrialized
+hadza_13	Non_industrialized
+italy_1	Industrialized
+italy_2	Industrialized
+italy_3	Industrialized
+italy_4	Industrialized
+italy_5	Industrialized
+italy_6	Industrialized
+italy_7	Industrialized
+italy_8	Industrialized
+hadza_14	Non_industrialized
+hadza_15	Non_industrialized
+hadza_16	Non_industrialized
+hadza_17	Non_industrialized
+hadza_18	Non_industrialized
+hadza_19	Non_industrialized
+hadza_20	Non_industrialized
+hadza_21	Non_industrialized
+hadza_22	Non_industrialized
+hadza_23	Non_industrialized
+hadza_24	Non_industrialized
+hadza_25	Non_industrialized
+MLVS_1	Industrialized
+MLVS_2	Industrialized
+MLVS_3	Industrialized
+MLVS_4	Industrialized
+MLVS_5	Industrialized
+MLVS_6	Industrialized
+MLVS_7	Industrialized
+MLVS_8	Industrialized
+MLVS_9	Industrialized
+MLVS_10	Industrialized
+MLVS_11	Industrialized
+MLVS_12	Industrialized
+MLVS_13	Industrialized
+MLVS_14	Industrialized
+MLVS_15	Industrialized
+MLVS_16	Industrialized
+MLVS_17	Industrialized
+MLVS_18	Industrialized
+MLVS_19	Industrialized
+MLVS_20	Industrialized
+MLVS_21	Industrialized
+MLVS_22	Industrialized
+MLVS_23	Industrialized
+MLVS_24	Industrialized
+MLVS_25	Industrialized
+MLVS_26	Industrialized
+MLVS_27	Industrialized
+MLVS_28	Industrialized
+MLVS_29	Industrialized
+MLVS_30	Industrialized
+MLVS_31	Industrialized
+MLVS_32	Industrialized
+MLVS_33	Industrialized
+MLVS_34	Industrialized
+MLVS_35	Industrialized
+MLVS_36	Industrialized
+MLVS_37	Industrialized
+MLVS_38	Industrialized
+MLVS_39	Industrialized
+MLVS_40	Industrialized
+Lewis_1	Non_industrialized
+Lewis_2	Non_industrialized
+Lewis_3	Non_industrialized
+Lewis_4	Non_industrialized
+Lewis_5	Non_industrialized
+Lewis_6	Non_industrialized
+Lewis_7	Non_industrialized
+Lewis_8	Non_industrialized
+Lewis_9	Non_industrialized
+Lewis_10	Non_industrialized
+Lewis_11	Non_industrialized
+Lewis_12	Industrialized
+Lewis_13	Industrialized
+Lewis_14	Industrialized
+Lewis_15	Industrialized
+Lewis_16	Industrialized
+Lewis_17	Industrialized
+Lewis_18	Industrialized
+Lewis_19	Industrialized
+Lewis_20	Industrialized
+Lewis_21	Industrialized
+Lewis_22	Industrialized
+Lewis_23	Industrialized
+Lewis_24	Industrialized
+Lewis_25	Industrialized
+Lewis_26	Industrialized
+Lewis_27	Industrialized
+Lewis_28	Non_industrialized
+Lewis_29	Non_industrialized
+Lewis_30	Non_industrialized
+Lewis_31	Non_industrialized
+Lewis_32	Non_industrialized
+Lewis_33	Non_industrialized
+Lewis_34	Non_industrialized
+Lewis_35	Non_industrialized
+Lewis_36	Non_industrialized
+Lewis_37	Non_industrialized
+Lewis_38	Non_industrialized
+Lewis_39	Non_industrialized
+Lewis_40	Non_industrialized
+Lewis_41	Non_industrialized
+Lewis_42	Non_industrialized
+Lewis_43	Non_industrialized
+Lewis_44	Non_industrialized
+Lewis_45	Non_industrialized
+Lewis_46	Non_industrialized
+Lewis_47	Non_industrialized
+Lewis_48	Non_industrialized
+Lewis_49	Non_industrialized
+Lewis_50	Non_industrialized
+Lewis_51	Non_industrialized
+Lewis_52	Non_industrialized
+Lewis_53	Non_industrialized
+Lewis_54	Non_industrialized
+Lewis_55	Non_industrialized
+Lewis_56	Non_industrialized
+Lewis_57	Non_industrialized
+Lewis_58	Non_industrialized
+Lewis_59	Industrialized
+Lewis_60	Industrialized
+Lewis_61	Industrialized
+Lewis_62	Industrialized
+Lewis_63	Industrialized
+Lewis_64	Industrialized
+Lewis_65	Industrialized
+Lewis_66	Industrialized
+Lewis_67	Industrialized
+Lewis_68	Industrialized
+Lewis_69	Industrialized
+Lewis_70	Industrialized
+Lewis_71	Industrialized
+Lewis_72	Industrialized
+Lewis_73	Industrialized
+Lewis_74	Industrialized
+Lewis_75	Industrialized
+Lewis_76	Industrialized
+Lewis_77	Industrialized
+Lewis_78	Industrialized
+Lewis_79	Non_industrialized
+Lewis_80	Non_industrialized
+Lewis_81	Non_industrialized
+Lewis_82	Non_industrialized
+Lewis_83	Non_industrialized
+Lewis_84	Non_industrialized
+Lewis_85	Non_industrialized
+Lewis_86	Non_industrialized
+Lewis_87	Non_industrialized
+Lewis_88	Non_industrialized
+Lewis_89	Non_industrialized
+Lewis_90	Non_industrialized
+Lewis_91	Non_industrialized
+Lewis_92	Non_industrialized
+Lewis_93	Non_industrialized
+Lewis_94	Non_industrialized
+Lewis_95	Non_industrialized
+Lewis_96	Non_industrialized
+Lewis_97	Non_industrialized
+Lewis_98	Non_industrialized
+Lewis_99	Non_industrialized
+Lewis_100	Non_industrialized
+Lewis_101	Non_industrialized
+Lewis_102	Industrialized
+Lewis_103	Industrialized
+Lewis_104	Industrialized
+Lewis_105	Industrialized
+Lewis_106	Non_industrialized
+Lewis_107	Industrialized
+Lewis_108	Non_industrialized
+Lewis_109	Non_industrialized
+Lewis_110	Industrialized
+Lewis_111	Industrialized
+Lewis_112	Industrialized
+Lewis_113	Non_industrialized
+Lewis_114	Non_industrialized
+Lewis_115	Non_industrialized
+Lewis_116	Non_industrialized
+HMP_2	Industrialized
+HMP_4	Industrialized
+HMP_7	Industrialized
+HMP_8	Industrialized
+HMP_9	Industrialized
+HMP_12	Industrialized
+HMP_13	Industrialized
+HMP_16	Industrialized
+HMP_17	Industrialized
+HMP_20	Industrialized
+HMP_21	Industrialized
+HMP_24	Industrialized
+HMP_25	Industrialized
+HMP_27	Industrialized

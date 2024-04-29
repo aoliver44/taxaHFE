@@ -19,10 +19,12 @@ library(docopt, quietly = T, verbose = F, warn.conflicts = F)
 ## set random seed, defaults to system time
 set_seed_func <- function(seed) {
   if (!is.null(seed)) {
+    opt$seed <<- as.numeric(opt$seed)
     set.seed(seed)
   } else {
     message('No random seed set. Using system time!')
-    set.seed(as.numeric(Sys.time()))
+    opt$seed <<- as.numeric(Sys.time())
+    set.seed(opt$seed)
   }
 }
 
@@ -395,7 +397,7 @@ build_tree <- function(df, filter_prevalence, filter_mean_abundance) {
 # for this node, evaluates correlation and rf against all descendants that have won previous rounds
 # modifies the node indicating if it is a winner against those descendants
 # OR which of 1:n descendants are winners
-compete_node <- function(node, col_names, lowest_level, max_depth, corr_threshold, metadata, sample_fraction, ncores, feature_type, nperm) {
+compete_node <- function(node, col_names, lowest_level, max_depth, corr_threshold, metadata, ncores, feature_type, nperm) {
   # skip anything lower than the lowest level (exclusive)
   if (node$level < lowest_level) {
     return()
@@ -484,7 +486,6 @@ compete_node <- function(node, col_names, lowest_level, max_depth, corr_threshol
     "feature_of_interest",
     "subject_id",
     feature_type,
-    sample_fraction,
     ncores,
     nperm
   )
@@ -524,7 +525,7 @@ compete_node <- function(node, col_names, lowest_level, max_depth, corr_threshol
 ## compete all winners (final RF) ==============================================
 # compete all winners, updating the tree in the process
 # TODO: combine the overlaps in this code with the code in the function above
-compete_all_winners <- function(tree, metadata, col_names, sample_fraction, feature_type, nperm, ncores) {
+compete_all_winners <- function(tree, metadata, col_names, feature_type, nperm, ncores) {
   # all vs all competition with winners
   # skipped rows have winner = FALSE so won't appear in this list
   competitors <- get_descendant_winners(tree, tree$height)
@@ -552,8 +553,7 @@ compete_all_winners <- function(tree, metadata, col_names, sample_fraction, feat
     feature_of_interest = "feature_of_interest",
     subject_identifier = "subject_id",
     feature_type = feature_type,
-    ncores = ncores, nperm = nperm,
-    sample_fraction = sample_fraction
+    ncores = ncores, nperm = nperm
   )
 
 
@@ -599,10 +599,9 @@ compete_all_winners <- function(tree, metadata, col_names, sample_fraction, feat
 #   defaults to a massive number to allow every descendant
 # corr_threshold: the threshold to mark a descendant as highly correlated
 # metadata: the metadata associated with the input df that generated the tree
-# sample_fraction: fraction of data to use in rf to help prevent data leakage
 # ncores: the number of cores to use when running the random forest
 # disable_super_filter: disables running the final competition
-compete_tree <- function(tree, modify_tree = TRUE, col_names, lowest_level = 2, max_depth = 1000, corr_threshold, metadata, sample_fraction, ncores, feature_type, nperm, disable_super_filter) {
+compete_tree <- function(tree, modify_tree = TRUE, col_names, lowest_level = 2, max_depth = 1000, corr_threshold, metadata, ncores, feature_type, nperm, disable_super_filter) {
   # if not modifying the input tree, create a copy of the tree to perform the competition
   if (!modify_tree) tree <- data.tree::Clone(tree)
 
@@ -610,16 +609,15 @@ compete_tree <- function(tree, modify_tree = TRUE, col_names, lowest_level = 2, 
   
   # perform the competition, modifying the tree (which may or may not be a clone of the input)
   tree$Do(
-    function(node, col_names, lowest_level, max_depth, corr_threshold, metadata, sample_fraction, ncores, feature_type, nperm) {
+    function(node, col_names, lowest_level, max_depth, corr_threshold, metadata, ncores, feature_type, nperm) {
       pb$tick()
-      compete_node(node, col_names, lowest_level, max_depth, corr_threshold, metadata, sample_fraction, ncores, feature_type, nperm)
+      compete_node(node, col_names, lowest_level, max_depth, corr_threshold, metadata, ncores, feature_type, nperm)
     },
     col_names = col_names,
     lowest_level = lowest_level,
     max_depth = max_depth,
     corr_threshold = corr_threshold,
     metadata = metadata,
-    sample_fraction = sample_fraction,
     ncores = ncores,
     feature_type = feature_type,
     nperm = nperm,
@@ -633,7 +631,6 @@ compete_tree <- function(tree, modify_tree = TRUE, col_names, lowest_level = 2, 
       tree,
       metadata,
       col_names = col_names,
-      sample_fraction = sample_fraction,
       feature_type = feature_type,
       nperm = nperm * 10,
       ncores = ncores
@@ -658,37 +655,9 @@ calculate_correlation <- function(df, corrThreshold) {
   )
 }
 
-## calculate class frequencies =================================================
-# function to calculate frequencies of factor classes from metadata
-# and pass that into the ranger function, to help with class imbalance. These
-# class frequencies are modified by the subsample flag (a subsample of the
-# class frequencies).
-# If metadata variable is not a factor, returns the subsample flag
-calc_class_frequencies <- function(input, feature_type, feature = "feature_of_interest", sample_fraction) {
-  if (feature_type == "factor") {
-    ## create a vector to deal with class imbalance
-    ## this is infomred by: https://github.com/imbs-hl/ranger/issues/167
-    ## note in the ranger model, they use sample.fraction and replace = T
-    class_frequencies <- input %>%
-      dplyr::count(.data[[feature]]) %>%
-      dplyr::mutate(prop = prop.table(n)) %>%
-      dplyr::pull(prop)
-    ## make the class frequencies a fraction of the entire data to help
-    ## prevent overfitting. Janky, but i think this is better than nothing
-    ## edit...im gonna leave this in here, but since ranger uses OOB to calc
-    ## scores maybe its best to use all the data. Not ideal, but because
-    ## sample sizes are usually a little small i think its better to use all
-    ## data??
-    class_frequencies <- class_frequencies * sample_fraction
-    return(class_frequencies)
-  } else {
-    return(sample_fraction)
-  }
-}
-
 ## rf competition function =====================================================
 # TODO: document these inputs
-rf_competition <- function(df, metadata, parent_descendent_competition, feature_of_interest = "feature_of_interest", subject_identifier = "subject_id", feature_type, sample_fraction, ncores, nperm) {
+rf_competition <- function(df, metadata, parent_descendent_competition, feature_of_interest = "feature_of_interest", subject_identifier = "subject_id", feature_type, ncores, nperm) {
   
   ## get a list of the covariates in order to remove them from the RF winners
   ## later, so the only RF winners are taxa
@@ -716,12 +685,11 @@ rf_competition <- function(df, metadata, parent_descendent_competition, feature_
   
   # run ranger, setting parameters such as
   # random seed
-  # sample.fraction (acquired from class frequencies function)
   # num.threads number of threads to five ranger
   run_ranger <- function(seed) {
     if (!parent_descendent_competition) pb$tick()
 
-    ranger::ranger(response_formula, data = merged_data, importance = "impurity_corrected", seed = seed, sample.fraction = sample_fraction, replace = TRUE, num.threads = ncores)$variable.importance %>%
+    ranger::ranger(response_formula, data = merged_data, importance = "impurity_corrected", seed = seed, sample.fraction = 1, replace = TRUE, num.threads = ncores)$variable.importance %>%
       as.data.frame() %>%
       dplyr::rename(., "importance" = ".") %>%
       tibble::rownames_to_column(var = "taxa") 
@@ -807,7 +775,10 @@ write_output_file <- function(flattened_df, metadata, output_location, file_suff
 
   output <- merge(metadata, output, by = "subject_id")
   readr::write_delim(file = paste0(tools::file_path_sans_ext(output_location), file_suffix), x = output, delim = ",")
-
+  ## write variable to global env if doing taxaHFE-ML
+  if (exists("tr_te_split", envir = .GlobalEnv)) { 
+    assign(x = paste0("output_", count, gsub(pattern = ".csv", replacement = "", x = file_suffix)), output, envir = .GlobalEnv) 
+    } 
 }
 
 # generate the outputs
@@ -819,23 +790,22 @@ generate_outputs <- function(tree, metadata, col_names, output_location, disable
   metadata <- metadata %>% dplyr::select(., subject_id, feature_of_interest)
   
   # flatten tree back into metadata, and assign original column names from hData to the sample columns
-  flattened_df <- flatten_tree_with_metadata(tree)
+  flattened_df <- flatten_tree_with_metadata(tree) 
   colnames(flattened_df)[11:NCOL(flattened_df)] <- col_names
-
+  assign(x = "flattened_df", value = flattened_df, envir = .GlobalEnv)
+  
   ## filter to only winners and clean names in case of duplicate
   ## also further filtering for sf winners
   flattened_winners <- flattened_df %>% 
     dplyr::filter(., winner == TRUE)
 
   flattened_winners$name <- janitor::make_clean_names(flattened_winners$name)
-
   flattened_sf_winners <- flattened_winners %>%
     dplyr::filter(., sf_winner == TRUE)
-
   ## if super filter is disabled, write the flattened_winners as standard output
   ## otherwise write the super filter winners as standard output
   if (disable_super_filter == TRUE) {
-    write_output_file(flattened_winners, metadata, output_location, ".csv")
+    write_output_file(flattened_winners, metadata, output_location, "_no_sf.csv")
   } else {
     write_output_file(flattened_sf_winners, metadata, output_location, ".csv")
   }
@@ -845,9 +815,22 @@ generate_outputs <- function(tree, metadata, col_names, output_location, disable
     write_output_file(flattened_winners, metadata, output_location, "_no_sf.csv")
   }
 
-  cat(" Features (no super filter): ", nrow(flattened_winners), "\n")
+  ## report number of features for the original program or just the training
+  ## features for taxaHFE-ML
+  if (exists("tr_te_split", envir = .GlobalEnv)) {
+    if (count == 1) {
+      cat(" Number of features selcted from training: ", nrow(flattened_winners), "\n") 
+      cat(" Number of samples used for training: ", (ncol(hData_split) - 1), "\n")
+      cat(" Number of samples used for testing: ", ((ncol(hData) - 1) - (ncol(hData_split) - 1)), "\n")
+      if (disable_super_filter != TRUE) { 
+        cat("\n Number of features selcted from training (super filter): ", nrow(flattened_sf_winners), "\n") 
+      }
+    } 
+  } else {
+    cat(" Features (no super filter): ", nrow(flattened_winners), "\n")
   if (disable_super_filter != TRUE) {
     cat("\n Features (super filter): ", nrow(flattened_sf_winners), "\n")
+    }
   }
 
   ## write old files  ============================================================
