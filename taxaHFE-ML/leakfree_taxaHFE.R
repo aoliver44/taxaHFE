@@ -22,7 +22,7 @@ source("/scripts/tree.R")
 
 'Hierarchical feature engineering (HFE) for the reduction of features with respects to a factor or regressor
 Usage:
-    taxaHFE-SHAP [options] <METADATA> <DATA> <OUTPUT>
+    taxaHFE-ML [options] <METADATA> <DATA> <OUTPUT>
 
 Global Options:
     -h --help                         Show help text.
@@ -72,7 +72,7 @@ numeric_options <- c("train_split", "abundance", "prevalence", "lowest_level", "
 # ex. commandArgs <- function(x) { "-s subject_id -l new_butyrate -L 3 -n 4 -wWD --seed 42 /home/docker/metadata.txt example_inputs/microbiome_data.txt example_inputs/out.csv" }
 # these will be used by the options loader
 #commandArgs <- function(x) { "-s subject_id -l crp_boxcox -t numeric -n 4 -a 0 -L 3 -d --train_split 0.7 --seed 56 --metric mae /home/docker/example_data/stephanie_crp_metadata.csv /home/docker/example_data/input_file_relabund.txt /home/docker/ml_output/output.csv" }
-opt <- load_docopt(doc, version = 'taxaHFE-SHAP.R v1.0\n\n', to_convert = numeric_options)
+opt <- load_docopt(doc, version = 'taxaHFE-ML.R v1.0\n\n', to_convert = numeric_options)
 
 ## Run main ====================================================================
 
@@ -208,15 +208,19 @@ for (split_metadata in list(train_metadata, test_metadata)) {
     assign(x = "flattened_df_train", value = flattened_df, envir = .GlobalEnv)
     if (opt$disable_super_filter == TRUE) {
       assign(x = "train_data", output_1_no_sf, envir = .GlobalEnv)
+      readr::write_csv(x = train_data, file = paste0(dirname(opt$OUTPUT), "train_data.csv"))
     } else {
       assign(x = "train_data", output_1, envir = .GlobalEnv)
+      readr::write_csv(x = train_data, file = paste0(dirname(opt$OUTPUT), "train_data.csv"))
     }
   } else {
     assign(x = "flattened_df_test", value = flattened_df, envir = .GlobalEnv)
     if (opt$disable_super_filter == TRUE) {
       assign(x = "test_data", output_2_no_sf, envir = .GlobalEnv)
+      readr::write_csv(x = test_data, file = paste0(dirname(opt$OUTPUT), "test_data.csv"))
     } else {
       assign(x = "test_data", output_2, envir = .GlobalEnv)
+      readr::write_csv(x = test_data, file = paste0(dirname(opt$OUTPUT), "test_data.csv"))
     }
   }
   
