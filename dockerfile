@@ -22,14 +22,14 @@ RUN R -e 'renv::consent(provided = TRUE)'
 RUN R -e 'renv::restore()'
 
 # copy in scripts so they are part of container
-COPY ./taxaHFE-SHAP/leakfree_taxaHFE.R ./scripts/taxaHFE-ML
-COPY ./taxaHFE-SHAP/dietML.R ./scripts/dietML.R
+COPY ./taxaHFE-ML/leakfree_taxaHFE.R ./scripts/taxaHFE-ML
+COPY ./taxaHFE-ML/dietML.R ./scripts/dietML.R
 COPY ./tree.R ./scripts/tree.R
 COPY ./run_taxaHFEv2.R ./scripts/taxaHFE
-COPY ./taxaHFE-SHAP/models/dietML_ranger_tidy.R ./scripts/models/dietML_ranger_tidy.R
-COPY ./taxaHFE-SHAP/models/dietML_null_tidy.R ./scripts/models/dietML_null_tidy.R
-COPY ./taxaHFE-SHAP/utilities/shap_figures.R ./scripts/utilities/shap_figures.R
-COPY ./taxaHFE-SHAP/utilities/vip_basic.R ./scripts/utilities/vip_basic.R
+COPY ./taxaHFE-ML/models/dietML_ranger_tidy.R ./scripts/models/dietML_ranger_tidy.R
+COPY ./taxaHFE-ML/models/dietML_null_tidy.R ./scripts/models/dietML_null_tidy.R
+COPY ./taxaHFE-ML/utilities/shap_figures.R ./scripts/utilities/shap_figures.R
+COPY ./taxaHFE-ML/utilities/vip_basic.R ./scripts/utilities/vip_basic.R
 
 ENV PATH="${PATH}:/scripts/"
 
