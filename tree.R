@@ -854,8 +854,8 @@ generate_outputs <- function(tree, metadata, col_names, output_location, disable
   if (exists("tr_te_split", envir = .GlobalEnv)) {
     if (count == 1) {
       cat(" Number of features selcted from training: ", nrow(flattened_winners), "\n") 
-      cat("\n Number of samples used for training: ", (nrow(hData_split) - 1), "\n")
-      cat("\n Number of samples used for testing: ", ((nrow(hData) - 1) - (nrow(hData_split) - 1)), "\n")
+      cat(" Number of samples used for training: ", (ncol(hData_split) - 1), "\n")
+      cat(" Number of samples used for testing: ", ((ncol(hData) - 1) - (ncol(hData_split) - 1)), "\n")
       if (disable_super_filter != TRUE) { 
         cat("\n Number of features selcted from training (super filter): ", nrow(flattened_sf_winners), "\n") 
       }
@@ -865,11 +865,6 @@ generate_outputs <- function(tree, metadata, col_names, output_location, disable
   if (disable_super_filter != TRUE) {
     cat("\n Features (super filter): ", nrow(flattened_sf_winners), "\n")
     }
-  }
-
-  cat(" Features (no super filter): ", nrow(flattened_winners), "\n")
-  if (disable_super_filter != TRUE) {
-    cat("\n Features (super filter): ", nrow(flattened_sf_winners), "\n")
   }
 
   ## write old files  ============================================================
