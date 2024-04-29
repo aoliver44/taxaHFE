@@ -177,7 +177,7 @@ Arguments:
 
 --feature_type: is the label a factor or a continuous variable (options: factor or numeric)?
 
---subsample: a decimal value for performing stratified subsampling of factor type data. This behavior is to help protect against data-leakage.
+--subsample: a decimal value for performing stratified subsampling of factor type data or standard subsampling of continuous metadata. This behavior does not prevent against data leakage. This only subsamples data into the RF part of the competition, and not the correlation step. We suggest leaving this value at the default of 1. If you are concerned about data leakage, please use ```taxaHFE-ML``` which is much better about this. Use at your own risk. 
 
 --abundance: a per-feature abundance filter. This filter calculates an outlier-resistant mean (trimming the top and bottom 2% of data) of the feature's abundance. If the average abundance across the middle 96% of samples is above this value, the feature is kept. Note, if your sampling effort is not standardized in some way (e.g. relative abundance), this filter may produce undesirable behavior. To turn this filter off, set its value to 0 (or the minimum value in your dataset). The default behavior is to filter out features below a mean abundance of 0.0001; however, this assumes the feature abundances exist on a scale from 0-1. 
 
@@ -227,16 +227,16 @@ Arguments:
 </br>
 
 ------------------------------
-## **TaxaHFE-SHAP**
+## **TaxaHFE-ML**
 
-If your ultimate goal is to use TaxaHFE as a feature engineering step in a machine learning pipeline, and you want to see what features are driving a model, we designed ```taxaHFE-SHAP``` for you. ```taxaHFE-SHAP``` splits data (using a train-test split) ahead of ```taxaHFE```, and runs the core hierarchical feature engineering on just the training data. The features selected here are also selected from the test data (though there instances when we drop features in test that are in the training data - mainly due to abundance and prevalence filters). Next they are put through a machine learning pipeline, called ```dietML```, which is a pipeline leveraging [Tidymodels](https://www.tidymodels.org/). This process substantially reduces data leakage. Small datasets will likely struggle to produce ML models with skill, or find meaningful features. This is not necessarily a problem with ```taxaHFE-SHAP``` but rather a general problem of using too small of data for machine learning.
+If your ultimate goal is to use TaxaHFE as a feature engineering step in a machine learning pipeline, and you want to see what features are driving a model, we designed ```taxaHFE-ML``` for you. ```taxaHFE-ML``` splits data (using a train-test split) ahead of ```taxaHFE```, and runs the core hierarchical feature engineering on just the training data. The features selected here are also selected from the test data (though there instances when we drop features in test that are in the training data - mainly due to abundance and prevalence filters). Next they are put through a machine learning pipeline, called ```dietML```, which is a pipeline leveraging [Tidymodels](https://www.tidymodels.org/). This process substantially reduces data leakage. Small datasets will likely struggle to produce ML models with skill, or find meaningful features. This is not necessarily a problem with ```taxaHFE-ML``` but rather a general problem of using too small of data for machine learning.
 
-```taxaHFE-SHAP``` requires slightly different use:
+```taxaHFE-ML``` requires slightly different use:
 
 ```
 Hierarchical feature engineering (HFE) for the reduction of features with respects to a factor or regressor
 Usage:
-    taxaHFE-SHAP [options] <METADATA> <DATA> <OUTPUT>
+    taxaHFE-ML [options] <METADATA> <DATA> <OUTPUT>
 
 Global Options:
     -h --help                         Show help text.
@@ -277,10 +277,10 @@ Arguments:
     DATA path to input file from hierarchical data (i.e. hData data) (txt | tsv | csv)
     OUTPUT output file name (csv)
 ```
-**Notably:** The file inputs for ```taxaHFE-SHAP``` are the same as for ```taxaHFE```. The output specified is the same as well. Here is an example run:
+**Notably:** The file inputs for ```taxaHFE-ML``` are the same as for ```taxaHFE```. The output specified is the same as well. Here is an example run:
 
 ```
-taxaHFE-SHAP --subject_identifier Sample --label Category --feature_type factor --lowest_level 3 --ncores 2 --seed 42 --train_split 0.7 --model rf --metric bal_accuracy /home/docker/example_inputs/metadata.txt /home/docker/example_inputs/microbiome_data.txt /home/docker/example_inputs/output.csv
+taxaHFE-ML --subject_identifier Sample --label Category --feature_type factor --lowest_level 3 --ncores 2 --seed 42 --train_split 0.7 --model rf --metric bal_accuracy /home/docker/example_inputs/metadata.txt /home/docker/example_inputs/microbiome_data.txt /home/docker/example_inputs/output.csv
 ```
 
 
