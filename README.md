@@ -1,11 +1,17 @@
 ![test workflow](https://github.com/mmmckay/taxaHFE/actions/workflows/test.yml/badge.svg)
 # **TaxaHFE** <a><img src='logo.png' align="right" height="150" /></a>
   A program to perform hierarchical feature engineering on data with taxonomic organization (i.e., microbiome data, dietary data)
-## **Version 2.0 is now available!** 
+## **Version 2.2 is now available!** 
 
- Version 2 of this algorthim makes numerous advances over Version 1. While it is reasonably stable, please report any issues! We suggest you use Version 2! 
+Version 2.2 of this algorithm makes solid advances, introducing taxaHFE-ML
 
- Change log:
+Change log:
+- ```taxaHFE-ML``` now splits data into train and test and runs the data through an ML pipeline, minimizing data leakage. Crucially, most of the core codebase remains the unchanged. You may call ```taxaHFE``` OR ```taxaHFE-ML```.
+- removes subsampling from the core function, which never could do what ```taxaHFE-ML``` can do.
+
+Version 2 of this algorthim makes numerous advances over Version 1. While it is reasonably stable, please report any issues! We suggest you use Version 2! 
+
+Change log:
 - Now using ```data.tree``` to analyze hierarchical data using a tree-traversal strategy.
 - Children are allowed to compete against all ancestors as long as they keep winning hierarchical competitions.
 - TaxaHFE v2 selects far less features than TaxaHFE v1, for the same or better model performance.
@@ -151,7 +157,6 @@ Options:
     -s --subject_identifier <string>  Metadata column name containing subject IDs [default: subject_id]
     -l --label <string>               Metadata column name of interest for ML [default: cluster]
     -t --feature_type <string>        Is the ML label a factor or numeric [default: factor]
-    -f --sample_fraction <float>      Only let rf see a fraction of total data [default: 1]
     -a --abundance <float>            Minimum mean abundance of feature [default: 0.0001]
     -p --prevalence <float>           Minimum prevalence of feature [default: 0.01]
     -L --lowest_level <int>           Most general level allowed to compete [default: 2]
@@ -176,8 +181,6 @@ Arguments:
 --label: the name of the column in your input metadata that you are trying to predict with HFE. Can be a factor or continuous. 
 
 --feature_type: is the label a factor or a continuous variable (options: factor or numeric)?
-
---subsample: a decimal value for performing stratified subsampling of factor type data or standard subsampling of continuous metadata. This behavior does not prevent against data leakage. This only subsamples data into the RF part of the competition, and not the correlation step. We suggest leaving this value at the default of 1. If you are concerned about data leakage, please use ```taxaHFE-ML``` which is much better about this. Use at your own risk. 
 
 --abundance: a per-feature abundance filter. This filter calculates an outlier-resistant mean (trimming the top and bottom 2% of data) of the feature's abundance. If the average abundance across the middle 96% of samples is above this value, the feature is kept. Note, if your sampling effort is not standardized in some way (e.g. relative abundance), this filter may produce undesirable behavior. To turn this filter off, set its value to 0 (or the minimum value in your dataset). The default behavior is to filter out features below a mean abundance of 0.0001; however, this assumes the feature abundances exist on a scale from 0-1. 
 
@@ -229,7 +232,7 @@ Arguments:
 ------------------------------
 ## **TaxaHFE-ML**
 
-If your ultimate goal is to use TaxaHFE as a feature engineering step in a machine learning pipeline, and you want to see what features are driving a model, we designed ```taxaHFE-ML``` for you. ```taxaHFE-ML``` splits data (using a train-test split) ahead of ```taxaHFE```, and runs the core hierarchical feature engineering on just the training data. The features selected here are also selected from the test data (though there instances when we drop features in test that are in the training data - mainly due to abundance and prevalence filters). Next they are put through a machine learning pipeline, called ```dietML```, which is a pipeline leveraging [Tidymodels](https://www.tidymodels.org/). This process substantially reduces data leakage. Small datasets will likely struggle to produce ML models with skill, or find meaningful features. This is not necessarily a problem with ```taxaHFE-ML``` but rather a general problem of using too small of data for machine learning.
+If your ultimate goal is to use TaxaHFE as a feature engineering step in a machine learning pipeline, and you want to see what features are driving a model, we designed ```taxaHFE-ML``` for you. ```taxaHFE-ML``` splits data (using a train-test split) ahead of ```taxaHFE```, and runs the core hierarchical feature engineering on just the training data. The features selected here are also selected from the test data (though there instances when we drop features in test that are in the training data - mainly due to abundance and prevalence filters). Next they are put through a machine learning pipeline, called ```dietML```, which is a pipeline leveraging [Tidymodels](https://www.tidymodels.org/). This process helps to reduce data leakage. Small datasets will likely struggle to produce ML models with skill, or find meaningful features. This is not necessarily a problem with ```taxaHFE-ML``` but rather a general problem of using too small of data for machine learning.
 
 ```taxaHFE-ML``` requires slightly different use:
 
