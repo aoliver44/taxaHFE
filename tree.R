@@ -397,7 +397,7 @@ build_tree <- function(df, filter_prevalence, filter_mean_abundance) {
 # for this node, evaluates correlation and rf against all descendants that have won previous rounds
 # modifies the node indicating if it is a winner against those descendants
 # OR which of 1:n descendants are winners
-compete_node <- function(node, col_names, lowest_level, max_depth, corr_threshold, metadata, sample_fraction, ncores, feature_type, nperm) {
+compete_node <- function(node, col_names, lowest_level, max_depth, corr_threshold, metadata, ncores, feature_type, nperm) {
   # skip anything lower than the lowest level (exclusive)
   if (node$level < lowest_level) {
     return()
@@ -486,7 +486,6 @@ compete_node <- function(node, col_names, lowest_level, max_depth, corr_threshol
     "feature_of_interest",
     "subject_id",
     feature_type,
-    sample_fraction,
     ncores,
     nperm
   )
@@ -526,7 +525,7 @@ compete_node <- function(node, col_names, lowest_level, max_depth, corr_threshol
 ## compete all winners (final RF) ==============================================
 # compete all winners, updating the tree in the process
 # TODO: combine the overlaps in this code with the code in the function above
-compete_all_winners <- function(tree, metadata, col_names, sample_fraction, feature_type, nperm, ncores) {
+compete_all_winners <- function(tree, metadata, col_names, feature_type, nperm, ncores) {
   # all vs all competition with winners
   # skipped rows have winner = FALSE so won't appear in this list
   competitors <- get_descendant_winners(tree, tree$height)
@@ -554,8 +553,7 @@ compete_all_winners <- function(tree, metadata, col_names, sample_fraction, feat
     feature_of_interest = "feature_of_interest",
     subject_identifier = "subject_id",
     feature_type = feature_type,
-    ncores = ncores, nperm = nperm,
-    sample_fraction = sample_fraction
+    ncores = ncores, nperm = nperm
   )
 
 
@@ -601,10 +599,9 @@ compete_all_winners <- function(tree, metadata, col_names, sample_fraction, feat
 #   defaults to a massive number to allow every descendant
 # corr_threshold: the threshold to mark a descendant as highly correlated
 # metadata: the metadata associated with the input df that generated the tree
-# sample_fraction: fraction of data to use in rf to help prevent data leakage
 # ncores: the number of cores to use when running the random forest
 # disable_super_filter: disables running the final competition
-compete_tree <- function(tree, modify_tree = TRUE, col_names, lowest_level = 2, max_depth = 1000, corr_threshold, metadata, sample_fraction, ncores, feature_type, nperm, disable_super_filter) {
+compete_tree <- function(tree, modify_tree = TRUE, col_names, lowest_level = 2, max_depth = 1000, corr_threshold, metadata, ncores, feature_type, nperm, disable_super_filter) {
   # if not modifying the input tree, create a copy of the tree to perform the competition
   if (!modify_tree) tree <- data.tree::Clone(tree)
 
@@ -612,16 +609,15 @@ compete_tree <- function(tree, modify_tree = TRUE, col_names, lowest_level = 2, 
   
   # perform the competition, modifying the tree (which may or may not be a clone of the input)
   tree$Do(
-    function(node, col_names, lowest_level, max_depth, corr_threshold, metadata, sample_fraction, ncores, feature_type, nperm) {
+    function(node, col_names, lowest_level, max_depth, corr_threshold, metadata, ncores, feature_type, nperm) {
       pb$tick()
-      compete_node(node, col_names, lowest_level, max_depth, corr_threshold, metadata, sample_fraction, ncores, feature_type, nperm)
+      compete_node(node, col_names, lowest_level, max_depth, corr_threshold, metadata, ncores, feature_type, nperm)
     },
     col_names = col_names,
     lowest_level = lowest_level,
     max_depth = max_depth,
     corr_threshold = corr_threshold,
     metadata = metadata,
-    sample_fraction = sample_fraction,
     ncores = ncores,
     feature_type = feature_type,
     nperm = nperm,
@@ -635,7 +631,6 @@ compete_tree <- function(tree, modify_tree = TRUE, col_names, lowest_level = 2, 
       tree,
       metadata,
       col_names = col_names,
-      sample_fraction = sample_fraction,
       feature_type = feature_type,
       nperm = nperm * 10,
       ncores = ncores
@@ -660,37 +655,9 @@ calculate_correlation <- function(df, corrThreshold) {
   )
 }
 
-## calculate class frequencies =================================================
-# function to calculate frequencies of factor classes from metadata
-# and pass that into the ranger function, to help with class imbalance. These
-# class frequencies are modified by the subsample flag (a subsample of the
-# class frequencies).
-# If metadata variable is not a factor, returns the subsample flag
-calc_class_frequencies <- function(input, feature_type, feature = "feature_of_interest", sample_fraction) {
-  if (feature_type == "factor") {
-    ## create a vector to deal with class imbalance
-    ## this is infomred by: https://github.com/imbs-hl/ranger/issues/167
-    ## note in the ranger model, they use sample.fraction and replace = T
-    class_frequencies <- input %>%
-      dplyr::count(.data[[feature]]) %>%
-      dplyr::mutate(prop = prop.table(n)) %>%
-      dplyr::pull(prop)
-    ## make the class frequencies a fraction of the entire data to help
-    ## prevent overfitting. Janky, but i think this is better than nothing
-    ## edit...im gonna leave this in here, but since ranger uses OOB to calc
-    ## scores maybe its best to use all the data. Not ideal, but because
-    ## sample sizes are usually a little small i think its better to use all
-    ## data??
-    class_frequencies <- class_frequencies * sample_fraction
-    return(class_frequencies)
-  } else {
-    return(sample_fraction)
-  }
-}
-
 ## rf competition function =====================================================
 # TODO: document these inputs
-rf_competition <- function(df, metadata, parent_descendent_competition, feature_of_interest = "feature_of_interest", subject_identifier = "subject_id", feature_type, sample_fraction, ncores, nperm) {
+rf_competition <- function(df, metadata, parent_descendent_competition, feature_of_interest = "feature_of_interest", subject_identifier = "subject_id", feature_type, ncores, nperm) {
   
   ## get a list of the covariates in order to remove them from the RF winners
   ## later, so the only RF winners are taxa
@@ -718,12 +685,11 @@ rf_competition <- function(df, metadata, parent_descendent_competition, feature_
   
   # run ranger, setting parameters such as
   # random seed
-  # sample.fraction (acquired from class frequencies function)
   # num.threads number of threads to five ranger
   run_ranger <- function(seed) {
     if (!parent_descendent_competition) pb$tick()
 
-    ranger::ranger(response_formula, data = merged_data, importance = "impurity_corrected", seed = seed, sample.fraction = sample_fraction, replace = TRUE, num.threads = ncores)$variable.importance %>%
+    ranger::ranger(response_formula, data = merged_data, importance = "impurity_corrected", seed = seed, sample.fraction = 1, replace = TRUE, num.threads = ncores)$variable.importance %>%
       as.data.frame() %>%
       dplyr::rename(., "importance" = ".") %>%
       tibble::rownames_to_column(var = "taxa") 

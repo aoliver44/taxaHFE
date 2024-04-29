@@ -84,11 +84,7 @@ if (dir.exists(paste0(dirname(opt$OUTPUT))) == FALSE) {
   dir.create(path = paste0(dirname(opt$OUTPUT)))
 }
 
-## set sample fraction to 1 because taxaHFEv2 needs it and
-## almost all this code is based on it (also we are not
-## using this as the for test-train split).
-## We also need the flattened tree outout, so always make it true
-opt$sample_fraction = as.numeric(1)
+## We need the flattened tree outout, so always make it true
 opt$write_flattened_tree = TRUE
 
 ## parameters specified
@@ -179,11 +175,6 @@ for (split_metadata in list(train_metadata, test_metadata)) {
     ncores = opt$ncores,
     feature_type = opt$feature_type,
     nperm = switch(count, {opt$nperm}, {as.numeric(3)}), # massively reduce the RF nperm by decreasing nperm - run only on test data - speed up
-    sample_fraction = calc_class_frequencies(
-      input = split_metadata,
-      feature_type = opt$feature_type,
-      sample_fraction = opt$sample_fraction
-    ),
     disable_super_filter = opt$disable_super_filter
   )
   
@@ -208,19 +199,19 @@ for (split_metadata in list(train_metadata, test_metadata)) {
     assign(x = "flattened_df_train", value = flattened_df, envir = .GlobalEnv)
     if (opt$disable_super_filter == TRUE) {
       assign(x = "train_data", output_1_no_sf, envir = .GlobalEnv)
-      readr::write_csv(x = train_data, file = paste0(dirname(opt$OUTPUT), "train_data.csv"))
+      readr::write_csv(x = train_data, file = paste0(dirname(opt$OUTPUT), "/train_data.csv"))
     } else {
       assign(x = "train_data", output_1, envir = .GlobalEnv)
-      readr::write_csv(x = train_data, file = paste0(dirname(opt$OUTPUT), "train_data.csv"))
+      readr::write_csv(x = train_data, file = paste0(dirname(opt$OUTPUT), "/train_data.csv"))
     }
   } else {
     assign(x = "flattened_df_test", value = flattened_df, envir = .GlobalEnv)
     if (opt$disable_super_filter == TRUE) {
       assign(x = "test_data", output_2_no_sf, envir = .GlobalEnv)
-      readr::write_csv(x = test_data, file = paste0(dirname(opt$OUTPUT), "test_data.csv"))
+      readr::write_csv(x = test_data, file = paste0(dirname(opt$OUTPUT), "/test_data.csv"))
     } else {
       assign(x = "test_data", output_2, envir = .GlobalEnv)
-      readr::write_csv(x = test_data, file = paste0(dirname(opt$OUTPUT), "test_data.csv"))
+      readr::write_csv(x = test_data, file = paste0(dirname(opt$OUTPUT), "/test_data.csv"))
     }
   }
   
