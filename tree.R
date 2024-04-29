@@ -809,7 +809,7 @@ write_output_file <- function(flattened_df, metadata, output_location, file_suff
 
   output <- merge(metadata, output, by = "subject_id")
   readr::write_delim(file = paste0(tools::file_path_sans_ext(output_location), file_suffix), x = output, delim = ",")
-  ## write variable to global env if doing taxaHFE-SHAP
+  ## write variable to global env if doing taxaHFE-ML
   if (exists("tr_te_split", envir = .GlobalEnv)) { 
     assign(x = paste0("output_", count, gsub(pattern = ".csv", replacement = "", x = file_suffix)), output, envir = .GlobalEnv) 
     } 
@@ -847,6 +847,24 @@ generate_outputs <- function(tree, metadata, col_names, output_location, disable
   ## also write the non-sf output if both outputs are requested
   if (write_both_outputs == TRUE && disable_super_filter == FALSE) {
     write_output_file(flattened_winners, metadata, output_location, "_no_sf.csv")
+  }
+
+  ## report number of features for the original program or just the training
+  ## features for taxaHFE-ML
+  if (exists("tr_te_split", envir = .GlobalEnv)) {
+    if (count = 1) {
+      cat(" Number of features selcted from training: ", nrow(flattened_winners), "\n") 
+      cat("\n Number of samples used for training: ", (nrow(hData_split) - 1), "\n")
+      cat("\n Number of samples used for testing: ", ((nrow(hData) - 1) - (nrow(hData_split) - 1)), "\n")
+      if (disable_super_filter != TRUE) { 
+        cat("\n Number of features selcted from training (super filter): ", nrow(flattened_sf_winners), "\n") 
+      }
+    } 
+  } else {
+    cat(" Features (no super filter): ", nrow(flattened_winners), "\n")
+  if (disable_super_filter != TRUE) {
+    cat("\n Features (super filter): ", nrow(flattened_sf_winners), "\n")
+    }
   }
 
   cat(" Features (no super filter): ", nrow(flattened_winners), "\n")
