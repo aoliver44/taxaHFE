@@ -852,7 +852,7 @@ generate_outputs <- function(tree, metadata, col_names, output_location, disable
   ## report number of features for the original program or just the training
   ## features for taxaHFE-ML
   if (exists("tr_te_split", envir = .GlobalEnv)) {
-    if (count = 1) {
+    if (count == 1) {
       cat(" Number of features selcted from training: ", nrow(flattened_winners), "\n") 
       cat("\n Number of samples used for training: ", (nrow(hData_split) - 1), "\n")
       cat("\n Number of samples used for testing: ", ((nrow(hData) - 1) - (nrow(hData_split) - 1)), "\n")
