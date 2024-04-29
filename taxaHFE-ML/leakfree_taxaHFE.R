@@ -174,11 +174,11 @@ for (split_metadata in list(train_metadata, test_metadata)) {
     lowest_level = opt$lowest_level,
     max_depth = opt$max_depth, # allows for all levels to be competed. Change to 1 for pairwise comparisons
     col_names = colnames(hData_split)[2:NCOL(hData_split)],
-    corr_threshold = opt$cor_level,
+    corr_threshold = switch(count, {opt$cor_level}, {as.numeric(0.1)}), # massively reduce the RF compititons by decreasing corr_thresh - run only on test data - speed up
     metadata = split_metadata,
     ncores = opt$ncores,
     feature_type = opt$feature_type,
-    nperm = opt$nperm,
+    nperm = switch(count, {opt$nperm}, {as.numeric(3)}), # massively reduce the RF nperm by decreasing nperm - run only on test data - speed up
     sample_fraction = calc_class_frequencies(
       input = split_metadata,
       feature_type = opt$feature_type,
