@@ -22,7 +22,7 @@ RUN R -e 'renv::consent(provided = TRUE)'
 RUN R -e 'renv::restore()'
 
 # copy in scripts so they are part of container
-COPY ./taxaHFE-SHAP/leakfree_taxaHFE.R ./scripts/taxaHFE-SHAP
+COPY ./taxaHFE-SHAP/leakfree_taxaHFE.R ./scripts/taxaHFE-ML
 COPY ./taxaHFE-SHAP/dietML.R ./scripts/dietML.R
 COPY ./tree.R ./scripts/tree.R
 COPY ./run_taxaHFEv2.R ./scripts/taxaHFE
