@@ -30,7 +30,6 @@ Options:
     -s --subject_identifier <string>  Metadata column name containing subject IDs [default: subject_id]
     -l --label <string>               Metadata column name of interest for ML [default: cluster]
     -t --feature_type <string>        Is the ML label a factor or numeric [default: factor]
-    -f --sample_fraction <float>      Only let rf see a fraction of total data [default: 1]
     -a --abundance <float>            Minimum mean abundance of feature [default: 0.0001]
     -p --prevalence <float>           Minimum prevalence of feature [default: 0.01]
     -L --lowest_level <int>           Most general level allowed to compete [default: 2]
@@ -52,7 +51,7 @@ Arguments:
 ' -> doc
 
 # these options will be converted to numeric by load_docopt
-numeric_options <- c("sample_fraction", "abundance", "prevalence", "lowest_level", "max_depth", "cor_level", "ncores", "nperm")
+numeric_options <- c("abundance", "prevalence", "lowest_level", "max_depth", "cor_level", "ncores", "nperm")
 # to use this code line-by-line in the Rstudio context, commandArgs can be overloaded to specify the desired flags
 # ex. commandArgs <- function(x) { "-s Sample -l Category -L 3 -n 4 -wWD --seed 42 example_inputs/metadata.txt example_inputs/microbiome_data.txt example_inputs/out.txt" }
 # these will be used by the options loader
@@ -68,7 +67,6 @@ cat("\n","Parameters specified: \n")
 cat(paste0("--subject_identifier: ", opt$subject_identifier), "\n")
 cat(paste0("--label: ", opt$label), "\n")
 cat(paste0("--feature_type: ", opt$feature_type), "\n")
-cat(paste0("--sample_fraction: ", opt$sample_fraction), "\n")
 cat(paste0("--abundance: ", opt$abundance), "\n")
 cat(paste0("--prevalence: ", opt$prevalence), "\n")
 cat(paste0("--lowest_level: ", opt$lowest_level), "\n")
@@ -112,11 +110,6 @@ competed_tree <- compete_tree(
   ncores = opt$ncores,
   feature_type = opt$feature_type,
   nperm = opt$nperm,
-  sample_fraction = calc_class_frequencies(
-    input = metadata,
-    feature_type = opt$feature_type,
-    sample_fraction = opt$sample_fraction
-  ),
   disable_super_filter = opt$disable_super_filter
 )
 
