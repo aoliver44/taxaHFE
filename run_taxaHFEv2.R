@@ -75,6 +75,7 @@ cat(paste0("--cor_level: ", opt$cor_level), "\n")
 cat(paste0("--write_old_files: ", opt$write_old_files), "\n")
 cat(paste0("--ncores: ", opt$ncores), "\n")
 cat(paste0("--nperm: ", opt$nperm), "\n")
+cat(paste0("--seed: ", opt$seed), "\n")
 cat(paste0("OUTPUT: ", opt$OUTPUT))
 
 ## check for inputs and read in read in =======================================================
