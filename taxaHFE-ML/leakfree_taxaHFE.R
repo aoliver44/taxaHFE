@@ -167,7 +167,7 @@ for (split_metadata in list(train_metadata, test_metadata)) {
   
   competed_tree <- compete_tree(
     hTree,
-    lowest_level = opt$lowest_level,
+    lowest_level = switch(count, {opt$lowest_level}, {max(flattened_df_train$depth) - 1}),
     max_depth = opt$max_depth, # allows for all levels to be competed. Change to 1 for pairwise comparisons
     col_names = colnames(hData_split)[2:NCOL(hData_split)],
     corr_threshold = switch(count, {opt$cor_level}, {as.numeric(0.1)}), # massively reduce the RF compititons by decreasing corr_thresh - run only on test data - speed up
