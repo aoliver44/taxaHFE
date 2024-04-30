@@ -774,11 +774,12 @@ write_output_file <- function(flattened_df, metadata, output_location, file_suff
     tibble::rownames_to_column(var = "subject_id")
 
   output <- merge(metadata, output, by = "subject_id")
-  readr::write_delim(file = paste0(tools::file_path_sans_ext(output_location), file_suffix), x = output, delim = ",")
   ## write variable to global env if doing taxaHFE-ML
   if (exists("tr_te_split", envir = .GlobalEnv)) { 
     assign(x = paste0("output_", count, gsub(pattern = ".csv", replacement = "", x = file_suffix)), output, envir = .GlobalEnv) 
-    } 
+    } else {
+      readr::write_delim(file = paste0(tools::file_path_sans_ext(output_location), file_suffix), x = output, delim = ",")
+    }
 }
 
 # generate the outputs

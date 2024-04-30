@@ -199,19 +199,15 @@ for (split_metadata in list(train_metadata, test_metadata)) {
     assign(x = "flattened_df_train", value = flattened_df, envir = .GlobalEnv)
     if (opt$disable_super_filter == TRUE) {
       assign(x = "train_data", output_1_no_sf, envir = .GlobalEnv)
-      readr::write_csv(x = train_data, file = paste0(dirname(opt$OUTPUT), "/train_data.csv"))
     } else {
       assign(x = "train_data", output_1, envir = .GlobalEnv)
-      readr::write_csv(x = train_data, file = paste0(dirname(opt$OUTPUT), "/train_data.csv"))
     }
   } else {
     assign(x = "flattened_df_test", value = flattened_df, envir = .GlobalEnv)
     if (opt$disable_super_filter == TRUE) {
       assign(x = "test_data", output_2_no_sf, envir = .GlobalEnv)
-      readr::write_csv(x = test_data, file = paste0(dirname(opt$OUTPUT), "/test_data.csv"))
     } else {
       assign(x = "test_data", output_2, envir = .GlobalEnv)
-      readr::write_csv(x = test_data, file = paste0(dirname(opt$OUTPUT), "/test_data.csv"))
     }
   }
   

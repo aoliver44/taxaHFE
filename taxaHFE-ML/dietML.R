@@ -95,6 +95,9 @@ test_data <- test_data %>% dplyr::select(., dplyr::any_of(overlap_features))
 ## reorder test columns
 test_data <- test_data[names(train_data)]
 
+## write the test and train data to file
+readr::write_csv(x = train_data, file = paste0(dirname(opt$OUTPUT), "/train_data.csv"))
+readr::write_csv(x = test_data, file = paste0(dirname(opt$OUTPUT), "/test_data.csv"))
 
 ## check for label
 if ("feature_of_interest" %in% colnames(train_data) == FALSE & "feature_of_interest" %in% colnames(test_data) == FALSE) {
