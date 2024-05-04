@@ -1,10 +1,17 @@
- # **TaxaHFE** <a><img src='logo.png' align="right" height="240" /></a>
+![test workflow](https://github.com/mmmckay/taxaHFE/actions/workflows/test.yml/badge.svg)
+# **TaxaHFE** <a><img src='logo.png' align="right" height="150" /></a>
   A program to perform hierarchical feature engineering on data with taxonomic organization (i.e., microbiome data, dietary data)
-## **Version 2.0 is now available!** 
+## **Version 2.2 is now available!** 
 
- Version 2 of this algorthim makes numerous advances over Version 1. While it is reasonably stable, please report any issues! We suggest you use Version 2! 
+Version 2.2 of this algorithm makes solid advances, introducing taxaHFE-ML
 
- Change log:
+Change log:
+- ```taxaHFE-ML``` now splits data into train and test and runs the data through an ML pipeline, minimizing data leakage. Crucially, most of the core codebase remains the unchanged. You may call ```taxaHFE``` OR ```taxaHFE-ML```.
+- removes subsampling from the core function, which never could do what ```taxaHFE-ML``` can do.
+
+Version 2 of this algorthim makes numerous advances over Version 1. While it is reasonably stable, please report any issues! We suggest you use Version 2! 
+
+Change log:
 - Now using ```data.tree``` to analyze hierarchical data using a tree-traversal strategy.
 - Children are allowed to compete against all ancestors as long as they keep winning hierarchical competitions.
 - TaxaHFE v2 selects far less features than TaxaHFE v1, for the same or better model performance.
@@ -45,7 +52,7 @@ Petar Ristoski & Heiko Paulheim. 2014. *International Conference on Discovery Sc
 ## **Outline of taxaHFE**
 
 
-![Outline of taxaHFE algorithm](algorithm_outline_github.png "Outline of taxaHFE algorithm")
+![Outline of taxaHFE algorithm](Figure1_v2.png "Outline of taxaHFE algorithm")
 
 </br>
 
@@ -150,7 +157,6 @@ Options:
     -s --subject_identifier <string>  Metadata column name containing subject IDs [default: subject_id]
     -l --label <string>               Metadata column name of interest for ML [default: cluster]
     -t --feature_type <string>        Is the ML label a factor or numeric [default: factor]
-    -f --sample_fraction <float>      Only let rf see a fraction of total data [default: 1]
     -a --abundance <float>            Minimum mean abundance of feature [default: 0.0001]
     -p --prevalence <float>           Minimum prevalence of feature [default: 0.01]
     -L --lowest_level <int>           Most general level allowed to compete [default: 2]
@@ -176,9 +182,7 @@ Arguments:
 
 --feature_type: is the label a factor or a continuous variable (options: factor or numeric)?
 
---subsample: a decimal value for performing stratified subsampling of factor type data. This behavior is to help protect against data-leakage.
-
---abundance: a per-feature abundance filter. This filter calculates an outlier-resistant mean (trimming the top and bottom 2% of data) of the feature's abundance. If the average abundance across the middle 96% of samples is above this value, the feature is kept. Note, if your sampling effort is not standardized in some way (e.g. relative abundance), this filter may produce undesirable behavior. To turn this filter off, set its value to 0 (or the minimum value in your dataset). The default behavior is to filter out features below a mean abundance of 0.0001; however, this assumes the feature abundances exist on a scale from 0-1. 
+--abundance: a per-feature abundance filter. Note, if your sampling effort is not standardized in some way (e.g. relative abundance), this filter may produce undesirable behavior. To turn this filter off, set its value to 0 (or the minimum value in your dataset). The default behavior is to filter out features below a mean abundance of 0.0001; however, this assumes the feature abundances exist on a scale from 0-1 (i.e., total sum scaled to 1). 
 
 --prevalence: a per-feature prevalence filter. This filter sets the number of non-zero occurrences desired for features. The default behavior is if the feature is 99% zeros, it will be dropped from further analysis. This filter is also somewhat sensitive to sampling depth, as samples with greater sampling depth will likely find rarer features.
 
@@ -224,6 +228,64 @@ Arguments:
 **output_old_hfe_taxa.txt:** Taxa data for use in the Oudah algorithm (if write_old_files = TRUE)
 
 </br>
+
+------------------------------
+## **TaxaHFE-ML**
+
+If your ultimate goal is to use TaxaHFE as a feature engineering step in a machine learning pipeline, and you want to see what features are driving a model, we designed ```taxaHFE-ML``` for you. ```taxaHFE-ML``` splits data (using a train-test split) ahead of ```taxaHFE```, and runs the core hierarchical feature engineering on just the training data. The features selected here are also selected from the test data (though there instances when we drop features in test that are in the training data - mainly due to abundance and prevalence filters). Next they are put through a machine learning pipeline, called ```dietML```, which is a pipeline leveraging [Tidymodels](https://www.tidymodels.org/). This process helps to reduce data leakage. Small datasets will likely struggle to produce ML models with skill, or find meaningful features. This is not necessarily a problem with ```taxaHFE-ML``` but rather a general problem of using too small of data for machine learning.
+
+```taxaHFE-ML``` requires slightly different use:
+
+```
+Hierarchical feature engineering (HFE) for the reduction of features with respects to a factor or regressor
+Usage:
+    taxaHFE-ML [options] <METADATA> <DATA> <OUTPUT>
+
+Global Options:
+    -h --help                         Show help text.
+    -v --version                      Show version.
+    -s --subject_identifier <string>  Metadata column name containing subject IDs [default: subject_id]
+    -l --label <string>               Metadata column name of interest for ML [default: cluster]
+    -t --feature_type <string>        Is the ML label a factor or numeric [default: factor]
+    -c --cor_level <float>            Initial pearson correlation filter [default: 0.95]
+    -n --ncores <int>                 Number of cpu cores to use [default: 2]
+    --seed <numeric>                  Set a random numeric seed, default is to use system time
+TaxaHFE Options:
+    -a --abundance <float>            Minimum mean abundance of feature [default: 0.0001]
+    -p --prevalence <float>           Minimum prevalence of feature [default: 0.01]
+    -L --lowest_level <int>           Most general level allowed to compete [default: 2]
+    -m --max_depth <int>              How many hierarchical levels should be allowed to compete [default: 1000]
+    -d --disable_super_filter         Disable running of the super filter (final forest competition)
+    -w --write_old_files              Write individual level files and old HFE files
+    -W --write_flattened_tree         Write a compressed backup of the entire competed tree
+    -D --write_both_outputs           Write an output for pre and post super filter results, overridden by --disable_super_filter
+    --nperm <int>                     Number of RF permutations [default: 40]
+DietML Options:
+    --train_split what percentage of samples should be used in training
+            [default: 0.70]
+    --model what model would you like run
+            (options: rf,enet) [default: rf]
+    --folds number of CV folds to tune with [default: 10]
+    --metric what metric would you like to optimize in training
+            (options: roc_auc, bal_accuracy, accuracy, mae, rmse, rsq, kap,
+             f_meas, ccc) [default: bal_accuracy]
+    --tune_length number of hyperparameter combinations to sample [default: 80]
+    --tune_time length of time tune_bayes runs [default: 10]
+    --tune_stop number of HP interations to let pass without a metric
+            improvement [default: 10]
+    --shap attempt to calcualte shap values? [default: TRUE]
+
+Arguments:
+    METADATA path to metadata input (txt | tsv | csv)
+    DATA path to input file from hierarchical data (i.e. hData data) (txt | tsv | csv)
+    OUTPUT output file name (csv)
+```
+**Notably:** The file inputs for ```taxaHFE-ML``` are the same as for ```taxaHFE```. The output specified is the same as well. Here is an example run:
+
+```
+taxaHFE-ML --subject_identifier Sample --label Category --feature_type factor --lowest_level 3 --ncores 2 --seed 42 --train_split 0.7 --model rf --metric bal_accuracy /home/docker/example_inputs/metadata.txt /home/docker/example_inputs/microbiome_data.txt /home/docker/example_inputs/output.csv
+```
+
 
 ------------------------------
 ## **About**

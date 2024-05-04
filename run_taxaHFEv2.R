@@ -16,7 +16,7 @@
 setwd("/home/docker")
 
 ## load libraries =====================================================
-source("/scripts/utilities/tree.R")
+source("/scripts/tree.R")
 
 ## add commandline options =====================================================
 
@@ -30,7 +30,6 @@ Options:
     -s --subject_identifier <string>  Metadata column name containing subject IDs [default: subject_id]
     -l --label <string>               Metadata column name of interest for ML [default: cluster]
     -t --feature_type <string>        Is the ML label a factor or numeric [default: factor]
-    -f --sample_fraction <float>      Only let rf see a fraction of total data [default: 1]
     -a --abundance <float>            Minimum mean abundance of feature [default: 0.0001]
     -p --prevalence <float>           Minimum prevalence of feature [default: 0.01]
     -L --lowest_level <int>           Most general level allowed to compete [default: 2]
@@ -52,11 +51,11 @@ Arguments:
 ' -> doc
 
 # these options will be converted to numeric by load_docopt
-numeric_options <- c("sample_fraction", "abundance", "prevalence", "lowest_level", "max_depth", "cor_level", "ncores", "nperm")
+numeric_options <- c("abundance", "prevalence", "lowest_level", "max_depth", "cor_level", "ncores", "nperm")
 # to use this code line-by-line in the Rstudio context, commandArgs can be overloaded to specify the desired flags
 # ex. commandArgs <- function(x) { "-s Sample -l Category -L 3 -n 4 -wWD --seed 42 example_inputs/metadata.txt example_inputs/microbiome_data.txt example_inputs/out.txt" }
 # these will be used by the options loader
-opt <- load_docopt(doc, version = 'taxaHFE.R v2.0\n\n', to_convert = numeric_options)
+opt <- load_docopt(doc, version = 'taxaHFE.R v2.11\n\n', to_convert = numeric_options)
 
 ## Run main ====================================================================
 
@@ -68,7 +67,6 @@ cat("\n","Parameters specified: \n")
 cat(paste0("--subject_identifier: ", opt$subject_identifier), "\n")
 cat(paste0("--label: ", opt$label), "\n")
 cat(paste0("--feature_type: ", opt$feature_type), "\n")
-cat(paste0("--sample_fraction: ", opt$sample_fraction), "\n")
 cat(paste0("--abundance: ", opt$abundance), "\n")
 cat(paste0("--prevalence: ", opt$prevalence), "\n")
 cat(paste0("--lowest_level: ", opt$lowest_level), "\n")
@@ -77,6 +75,7 @@ cat(paste0("--cor_level: ", opt$cor_level), "\n")
 cat(paste0("--write_old_files: ", opt$write_old_files), "\n")
 cat(paste0("--ncores: ", opt$ncores), "\n")
 cat(paste0("--nperm: ", opt$nperm), "\n")
+cat(paste0("--seed: ", opt$seed), "\n")
 cat(paste0("OUTPUT: ", opt$OUTPUT))
 
 ## check for inputs and read in read in =======================================================
@@ -112,11 +111,6 @@ competed_tree <- compete_tree(
   ncores = opt$ncores,
   feature_type = opt$feature_type,
   nperm = opt$nperm,
-  sample_fraction = calc_class_frequencies(
-    input = metadata,
-    feature_type = opt$feature_type,
-    sample_fraction = opt$sample_fraction
-  ),
   disable_super_filter = opt$disable_super_filter
 )
 
