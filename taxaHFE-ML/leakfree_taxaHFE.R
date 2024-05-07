@@ -224,5 +224,11 @@ cat(" Outputs written! TaxaHFE completed. \n")
 ## DIETML MACHINE LEARNING
 ##########################
 
-source("/scripts/dietML.R")
+if (opt$model == "none") {
+  cat("Model set to none. DietML not run")
+} else { 
+  source("/scripts/dietML.R")
+}
+
+
 
