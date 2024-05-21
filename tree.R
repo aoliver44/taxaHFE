@@ -844,9 +844,17 @@ generate_outputs <- function(tree, metadata, col_names, output_location, disable
 
   ## save flattened DF to come back to
   if (write_flattened_df_backup == TRUE) {
+    if (exists("tr_te_split", envir = .GlobalEnv)) { 
+      if (count == 1) {
+        vroom::vroom_write(x = flattened_df,
+                      file =  paste0(tools::file_path_sans_ext(output_location), "_raw_data.tsv.gz"),
+                      num_threads = ncores)
+      }
+  } else {
     vroom::vroom_write(x = flattened_df,
                       file =  paste0(tools::file_path_sans_ext(output_location), "_raw_data.tsv.gz"),
                       num_threads = ncores)
+    }
   }
 }
 
