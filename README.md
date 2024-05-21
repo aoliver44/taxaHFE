@@ -3,11 +3,11 @@
   A program to perform hierarchical feature engineering on data with taxonomic organization (i.e., microbiome data, dietary data)
 ## **Version 2.2 is now available!** 
 
-Version 2.2 of this algorithm makes solid advances, introducing taxaHFE-ML
+Version 2.2 of this algorithm makes solid advances, introducing ```TaxaHFE-ML```. If you want to understand your specific data set, rather than to build generalizable models, ```TaxaHFE``` is for you. IF you want to build generalizable or predictive models, ```TaxaHFE-ML``` may be a better tool. 
 
 Change log:
-- ```taxaHFE-ML``` now splits data into train and test and runs the data through an ML pipeline, minimizing data leakage. Crucially, most of the core codebase remains the unchanged. You may call ```taxaHFE``` OR ```taxaHFE-ML```.
-- removes subsampling from the core function, which never could do what ```taxaHFE-ML``` can do.
+- ```TaxaHFE-ML``` now splits data into train and test and runs the data through an ML pipeline, minimizing data leakage.
+- ```TaxaHFE-ML``` can help you determine the unbiased accuracy of your models (e.g. their generalizability on held-out data).
 
 Version 2 of this algorthim makes numerous advances over Version 1. While it is reasonably stable, please report any issues! We suggest you use Version 2! 
 
