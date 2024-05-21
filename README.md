@@ -1,5 +1,5 @@
 ![test workflow](https://github.com/mmmckay/taxaHFE/actions/workflows/test.yml/badge.svg)
-# **TaxaHFE** <a><img src='logo.png' align="right" height="150" /></a>
+# **TaxaHFE** <a><img src='pictures/logo.png' align="right" height="150" /></a>
   A program to perform hierarchical feature engineering on data with taxonomic organization (i.e., microbiome data, dietary data)
 ## **Version 2.2 is now available!** 
 
@@ -52,7 +52,7 @@ Petar Ristoski & Heiko Paulheim. 2014. *International Conference on Discovery Sc
 ## **Outline of taxaHFE**
 
 
-![Outline of taxaHFE algorithm](Figure1_v2.png "Outline of taxaHFE algorithm")
+![Outline of taxaHFE algorithm](pictures/Figure1_v2.png "Outline of taxaHFE algorithm")
 
 </br>
 
