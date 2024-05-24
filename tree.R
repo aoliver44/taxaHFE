@@ -774,12 +774,8 @@ write_output_file <- function(flattened_df, metadata, output_location, file_suff
     tibble::rownames_to_column(var = "subject_id")
 
   output <- merge(metadata, output, by = "subject_id")
-  ## write variable to global env if doing taxaHFE-ML
-  if (exists("tr_te_split", envir = .GlobalEnv)) { 
-    assign(x = paste0("output_", count, gsub(pattern = ".csv", replacement = "", x = file_suffix)), output, envir = .GlobalEnv) 
-    } else {
-      readr::write_delim(file = paste0(tools::file_path_sans_ext(output_location), file_suffix), x = output, delim = ",")
-    }
+  readr::write_delim(file = paste0(tools::file_path_sans_ext(output_location), file_suffix), x = output, delim = ",")
+
 }
 
 # generate the outputs
@@ -816,23 +812,10 @@ generate_outputs <- function(tree, metadata, col_names, output_location, disable
     write_output_file(flattened_winners, metadata, output_location, "_no_sf.csv")
   }
 
-  ## report number of features for the original program or just the training
-  ## features for taxaHFE-ML
-  if (exists("tr_te_split", envir = .GlobalEnv)) {
-    if (count == 1) {
-      cat(" Number of features selcted from training: ", nrow(flattened_winners), "\n") 
-      cat(" Number of samples used for training: ", (ncol(hData_split) - 1), "\n")
-      cat(" Number of samples used for testing: ", ((ncol(hData) - 1) - (ncol(hData_split) - 1)), "\n")
-      if (disable_super_filter != TRUE) { 
-        cat("\n Number of features selcted from training (super filter): ", nrow(flattened_sf_winners), "\n") 
-      }
-    } 
-  } else {
-    cat(" Features (no super filter): ", nrow(flattened_winners), "\n")
+  cat(" Features (no super filter): ", nrow(flattened_winners), "\n")
   if (disable_super_filter != TRUE) {
     cat("\n Features (super filter): ", nrow(flattened_sf_winners), "\n")
     }
-  }
 
   ## write old files  ============================================================
   if (write_old_files == TRUE) {
@@ -844,17 +827,9 @@ generate_outputs <- function(tree, metadata, col_names, output_location, disable
 
   ## save flattened DF to come back to
   if (write_flattened_df_backup == TRUE) {
-    if (exists("tr_te_split", envir = .GlobalEnv)) { 
-      if (count == 1) {
-        vroom::vroom_write(x = flattened_df,
-                      file =  paste0(tools::file_path_sans_ext(output_location), "_raw_data.tsv.gz"),
-                      num_threads = ncores)
-      }
-  } else {
     vroom::vroom_write(x = flattened_df,
                       file =  paste0(tools::file_path_sans_ext(output_location), "_raw_data.tsv.gz"),
-                      num_threads = ncores)
-    }
+                      num_threads = ncores) 
   }
 }
 
