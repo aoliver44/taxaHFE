@@ -25,6 +25,7 @@ RUN R -e 'renv::restore()'
 COPY ./taxaHFE-ML/leakfree_taxaHFE.R ./scripts/taxaHFE-ML
 COPY ./taxaHFE-ML/dietML.R ./scripts/dietML.R
 COPY ./tree.R ./scripts/tree.R
+COPY ./options.R ./scripts/options.R
 COPY ./run_taxaHFEv2.R ./scripts/taxaHFE
 COPY ./taxaHFE-ML/models/dietML_ranger_tidy.R ./scripts/models/dietML_ranger_tidy.R
 COPY ./taxaHFE-ML/models/dietML_null_tidy.R ./scripts/models/dietML_null_tidy.R
