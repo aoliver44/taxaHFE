@@ -37,5 +37,6 @@ arg_parser <- function(version) {
 }
 
 load_args <- function(version) {
-  return(arg_parser(version)$parse_args(commandArgs(TRUE)))
+  parser <- arg_parser(version)
+  return(parser$parse_args(commandArgs(TRUE)))
 }
