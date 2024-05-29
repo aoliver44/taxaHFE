@@ -66,12 +66,11 @@ Arguments:
 ' -> doc
 
 # these options will be converted to numeric by load_docopt
-numeric_options <- c("train_split", "abundance", "prevalence", "lowest_level", "max_depth", "cor_level", "ncores", "nperm", "folds", "tune_length", "tune_time", "tune_stop", 
+numeric_options <- c("train_split", "abundance", "prevalence", "lowest_level", "max_depth", "cor_level", "ncores", "nperm", "folds", "tune_length", "tune_time", "tune_stop",
                      "--train_split", "--abundance", "--prevalence", "--lowest_level", "--max_depth", "--cor_level", "--ncores", "--nperm", "--folds", "--tune_length", "--tune_time", "--tune_stop")
 # to use this code line-by-line in the Rstudio context, commandArgs can be overloaded to specify the desired flags
-# ex. commandArgs <- function(x) { "-s subject_id -l new_butyrate -L 3 -n 4 -wWD --seed 42 /home/docker/metadata.txt example_inputs/microbiome_data.txt example_inputs/out.csv" }
-# these will be used by the options loader
-#commandArgs <- function(x) { "-s subject_id -l crp_boxcox -t numeric -n 4 -a 0 -L 3 -d --train_split 0.7 --seed 56 --metric mae /home/docker/example_data/stephanie_crp_metadata.csv /home/docker/example_data/input_file_relabund.txt /home/docker/ml_output/output.csv" }
+# these will be used by the options loader, example: 
+#commandArgs <- function(x) { "-s Sample -l Category -t factor -n 4 -a 0 -L 3 -d -c 0.3 --train_split 0.7 /home/docker/example_inputs/metadata.txt /home/docker/example_inputs/microbiome_data.txt /home/docker/example_inputs/output.csv" }
 opt <- load_docopt(doc, version = 'taxaHFE-ML.R v1.0\n\n', to_convert = numeric_options)
 
 ## Run main ====================================================================
@@ -167,14 +166,17 @@ for (split_metadata in list(train_metadata, test_metadata)) {
   
   competed_tree <- compete_tree(
     hTree,
-    lowest_level = switch(count, {opt$lowest_level}, {max(flattened_df_train$depth) - 1}),
+    # if in train loop (count = 1), compete to lowest level specified, else count = 2, barely compete, just one level
+    lowest_level = switch(count, {opt$lowest_level}, { max(stringr::str_count(hData$clade_name, "\\|")) }),
     max_depth = opt$max_depth, # allows for all levels to be competed. Change to 1 for pairwise comparisons
     col_names = colnames(hData_split)[2:NCOL(hData_split)],
-    corr_threshold = switch(count, {opt$cor_level}, {as.numeric(0.1)}), # massively reduce the RF compititons by decreasing corr_thresh - run only on test data - speed up
+    # if in train loop (count = 1), corr competitions as specified, else count = 2, make almost everything a corr competition
+    corr_threshold = switch(count, {opt$cor_level}, {as.numeric(0.1)}), 
     metadata = split_metadata,
     ncores = opt$ncores,
     feature_type = opt$feature_type,
-    nperm = switch(count, {opt$nperm}, {as.numeric(3)}), # massively reduce the RF nperm by decreasing nperm - run only on test data - speed up
+    # if in train loop (count = 1), nperm as specified, else count = 2, barely permute the RF competitions
+    nperm = switch(count, {opt$nperm}, {as.numeric(3)}), 
     disable_super_filter = opt$disable_super_filter
   )
   
@@ -186,30 +188,14 @@ for (split_metadata in list(train_metadata, test_metadata)) {
     competed_tree,
     split_metadata,
     colnames(hData_split)[2:NCOL(hData_split)],
-    opt$OUTPUT, opt$disable_super_filter,
+    # if in train loop (count = 1), write opt$OUTPUT_train.csv, else count = 2, write opt$OUTPUT_test.csv
+    switch(count, {paste0(tools::file_path_sans_ext(opt$OUTPUT), "_train.csv")}, {paste0(tools::file_path_sans_ext(opt$OUTPUT), "_test.csv")}), 
+    opt$disable_super_filter,
     opt$write_both_outputs,
     opt$write_old_files,
     opt$write_flattened_tree,
     opt$ncores
   )
-  
-  ## rename output objects for ease
-  ## if user disabled superfilter, our outputs will reflect that
-  if (count == 1) {
-    assign(x = "flattened_df_train", value = flattened_df, envir = .GlobalEnv)
-    if (opt$disable_super_filter == TRUE) {
-      assign(x = "train_data", output_1_no_sf, envir = .GlobalEnv)
-    } else {
-      assign(x = "train_data", output_1, envir = .GlobalEnv)
-    }
-  } else {
-    assign(x = "flattened_df_test", value = flattened_df, envir = .GlobalEnv)
-    if (opt$disable_super_filter == TRUE) {
-      assign(x = "test_data", output_2_no_sf, envir = .GlobalEnv)
-    } else {
-      assign(x = "test_data", output_2, envir = .GlobalEnv)
-    }
-  }
   
   ## iteratable to loop over train and test data
   count = count + 1
