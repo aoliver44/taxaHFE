@@ -54,7 +54,7 @@ read_in_metadata <- function(input, subject_identifier, label) {
     stop("METADATA input not found.")
   }
   cat("\n", paste0("Using ", input, " as METADATA"), "\n")
-
+  
   # read extension to determine file delim
   if (strsplit(basename(input), split = "\\.")[[1]][2] %in% c("tsv","txt")) {
     delim = "\t"
@@ -100,7 +100,7 @@ read_in_hierarchical_data <- function(input, metadata, cores) {
     stop("DATA input not found.")
   }
   cat("\n", paste0("Using ", input, " as DATA"), "\n") 
-
+  
   ## read extension to determine file delim
   if (strsplit(basename(input), split = "\\.")[[1]][2] %in% c("tsv","txt")) {
     delim = "\t"
@@ -323,10 +323,10 @@ fix_unpopulated_node <- function(node, row_len, next_row_id, filter_prevalence, 
   abundance <- numeric(row_len)
   for (child in node$children) {
     if (is.null(child$abundance)) next
-
+    
     abundance <- abundance + child$abundance
   }
-
+  
   # Populate values now that the summed abundance exists
   initial_leaf_values(node, next_row_id, abundance, filter_prevalence, filter_mean_abundance)
 }
@@ -377,7 +377,7 @@ build_tree <- function(df, filter_prevalence, filter_mean_abundance) {
   next_row_id <- nrow(df) + 1
   
   pb2 <- progress::progress_bar$new(format = " Fixing unpopulated nodes [:bar] :percent in :elapsed", total = taxa_tree$totalCount, clear = FALSE, width = 60)
-
+  
   # traverse the tree and fix the unpopulated nodes
   taxa_tree$Do(function(node) {
     pb2$tick()
@@ -387,7 +387,7 @@ build_tree <- function(df, filter_prevalence, filter_mean_abundance) {
     # <<- ensures that we assign to the next_row_id var outside this closure loop
     next_row_id <<- next_row_id + 1
   }, traversal = "post-order")
-
+  
   return(taxa_tree)
 }
 
@@ -435,7 +435,7 @@ compete_node <- function(node, col_names, lowest_level, max_depth, corr_threshol
     df <- rbind(df, descendant$abundance)
     row_names <- append(row_names, descendant$id)
   }
-
+  
   rownames(df) <- row_names
   colnames(df) <- col_names
   
@@ -489,7 +489,7 @@ compete_node <- function(node, col_names, lowest_level, max_depth, corr_threshol
     ncores,
     nperm
   )
-
+  
   # generate winner and loser name lists from the competitors (parent and non-correlated descendants), using the outcome
   # build ahead of time so that a summary can be provided in outcomes
   # this can be sped up and done in a single loop if outcomes are not needed
@@ -555,8 +555,8 @@ compete_all_winners <- function(tree, metadata, col_names, feature_type, nperm, 
     feature_type = feature_type,
     ncores = ncores, nperm = nperm
   )
-
-
+  
+  
   # TODO: so much duplication below
   
   # generate winner and loser name lists from the competitors (parent and non-correlated descendants), using the outcome
@@ -604,8 +604,8 @@ compete_all_winners <- function(tree, metadata, col_names, feature_type, nperm, 
 compete_tree <- function(tree, modify_tree = TRUE, col_names, lowest_level = 2, max_depth = 1000, corr_threshold, metadata, ncores, feature_type, nperm, disable_super_filter) {
   # if not modifying the input tree, create a copy of the tree to perform the competition
   if (!modify_tree) tree <- data.tree::Clone(tree)
-
-   pb <- progress::progress_bar$new(format = " Competing tree [:bar] :percent in :elapsed", total = tree$totalCount, clear = FALSE, width = 60)
+  
+  pb <- progress::progress_bar$new(format = " Competing tree [:bar] :percent in :elapsed", total = tree$totalCount, clear = FALSE, width = 60)
   
   # perform the competition, modifying the tree (which may or may not be a clone of the input)
   tree$Do(
@@ -638,7 +638,7 @@ compete_tree <- function(tree, modify_tree = TRUE, col_names, lowest_level = 2, 
   } else {
     cat(" Skipping super filter\n")
   }
-
+  
   # return the tree
   return(tree)
 }
@@ -678,7 +678,7 @@ rf_competition <- function(df, metadata, parent_descendent_competition, feature_
   } else {
     response_formula <- as.formula(paste("as.numeric(", feature_of_interest, ") ~ .", sep = ""))
   }
-
+  
   # progress bar for the final rf competition
   # will only be incremented/shown if parent_descendent_competition == FALSE
   pb <- progress::progress_bar$new(format = " Competing final winners [:bar] :percent in :elapsed", total = nperm, clear = FALSE, width = 60)
@@ -688,7 +688,7 @@ rf_competition <- function(df, metadata, parent_descendent_competition, feature_
   # num.threads number of threads to five ranger
   run_ranger <- function(seed) {
     if (!parent_descendent_competition) pb$tick()
-
+    
     ranger::ranger(response_formula, data = merged_data, importance = "impurity_corrected", seed = seed, sample.fraction = 1, replace = TRUE, num.threads = ncores)$variable.importance %>%
       as.data.frame() %>%
       dplyr::rename(., "importance" = ".") %>%
@@ -708,13 +708,13 @@ rf_competition <- function(df, metadata, parent_descendent_competition, feature_
   if (!parent_descendent_competition) {
     return(
       gsub(pattern = "x", replacement = "", x = model_importance %>%
-        dplyr::filter(., average > mean(average)) %>%
-        dplyr::filter(., average > 0) %>%
-        dplyr::pull(., taxa)
+             dplyr::filter(., average > mean(average)) %>%
+             dplyr::filter(., average > 0) %>%
+             dplyr::pull(., taxa)
       )
     )
   }
-
+  
   # otherwise
   # if top score is the parent, parent wins, else grab the children who
   # beat the parent's score
@@ -753,7 +753,7 @@ flatten_tree_with_metadata <- function(node) {
     abundance = data.frame(t(sapply(node$abundance,c))),
     stringsAsFactors = FALSE
   )
-
+  
   if (length(node$children) > 0) {
     children_df <- do.call(rbind, lapply(node$children, flatten_tree_with_metadata))
     df <- rbind(df, children_df)
@@ -772,64 +772,61 @@ write_output_file <- function(flattened_df, metadata, output_location, file_suff
     t() %>%
     as.data.frame() %>%
     tibble::rownames_to_column(var = "subject_id")
-
+  
   output <- merge(metadata, output, by = "subject_id")
   readr::write_delim(file = paste0(tools::file_path_sans_ext(output_location), file_suffix), x = output, delim = ",")
-
+  
 }
 
 # generate the outputs
 # if disable_super_filter is TRUE, the super filter competition wasn't run, and only one output will be generated
 # if both_outputs is FALSE, one file will be produced with the final level of competition that occurred
 generate_outputs <- function(tree, metadata, col_names, output_location, disable_super_filter, write_both_outputs, write_old_files, write_flattened_df_backup, ncores) {
-  
-  ## select "base" (no covariates) metadata file
-  metadata <- metadata %>% dplyr::select(., subject_id, feature_of_interest)
-  
   # flatten tree back into metadata, and assign original column names from hData to the sample columns
-  flattened_df <- flatten_tree_with_metadata(tree) 
+  flattened_df <- flatten_tree_with_metadata(tree)
   colnames(flattened_df)[11:NCOL(flattened_df)] <- col_names
-  assign(x = "flattened_df", value = flattened_df, envir = .GlobalEnv)
   
   ## filter to only winners and clean names in case of duplicate
   ## also further filtering for sf winners
   flattened_winners <- flattened_df %>% 
     dplyr::filter(., winner == TRUE)
-
+  
   flattened_winners$name <- janitor::make_clean_names(flattened_winners$name)
+  
   flattened_sf_winners <- flattened_winners %>%
     dplyr::filter(., sf_winner == TRUE)
+  
   ## if super filter is disabled, write the flattened_winners as standard output
   ## otherwise write the super filter winners as standard output
   if (disable_super_filter == TRUE) {
-    write_output_file(flattened_winners, metadata, output_location, "_no_sf.csv")
+    write_output_file(flattened_winners, metadata, output_location, ".csv")
   } else {
     write_output_file(flattened_sf_winners, metadata, output_location, ".csv")
   }
-
+  
   ## also write the non-sf output if both outputs are requested
   if (write_both_outputs == TRUE && disable_super_filter == FALSE) {
     write_output_file(flattened_winners, metadata, output_location, "_no_sf.csv")
   }
-
+  
   cat(" Features (no super filter): ", nrow(flattened_winners), "\n")
   if (disable_super_filter != TRUE) {
     cat("\n Features (super filter): ", nrow(flattened_sf_winners), "\n")
-    }
-
+  }
+  
   ## write old files  ============================================================
   if (write_old_files == TRUE) {
     cat("\n", "###########################\n", "Writing old files...\n", "###########################\n\n")
-
+    
     write_summary_files(input = flattened_df, metadata = metadata, output = output_location)
     write_old_hfe(input = flattened_df, output = output_location)
   }
-
+  
   ## save flattened DF to come back to
   if (write_flattened_df_backup == TRUE) {
     vroom::vroom_write(x = flattened_df,
-                      file =  paste0(tools::file_path_sans_ext(output_location), "_raw_data.tsv.gz"),
-                      num_threads = ncores) 
+                       file =  paste0(tools::file_path_sans_ext(output_location), "_raw_data.tsv.gz"),
+                       num_threads = ncores)
   }
 }
 
