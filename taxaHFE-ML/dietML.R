@@ -57,7 +57,9 @@ if (dir.exists(paste0(dirname(opt$OUTPUT), "/ml_analysis")) == TRUE) {
 }
 
 ## read in inputs
-train_data <- readr::read_csv(file =  paste0(tools::file_path_sans_ext(opt$OUTPUT), "_train.csv"))
+train_data <- ifelse(opt$disable_super_filter, 
+                     readr::read_csv(file =  paste0(tools::file_path_sans_ext(opt$OUTPUT), "_train_no_sf.csv")), 
+                     readr::read_csv(file =  paste0(tools::file_path_sans_ext(opt$OUTPUT), "_train.csv")))
 flattened_df_test <- readr::read_delim(file =  paste0(tools::file_path_sans_ext(opt$OUTPUT), "_test_raw_data.tsv.gz"))
 
 ## format input ================================================================
