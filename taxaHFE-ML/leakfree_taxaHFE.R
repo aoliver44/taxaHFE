@@ -15,65 +15,16 @@
 ## set working dir to /home for the docker container
 setwd("/home/docker")
 
-## source scripts ==============================================================
+## load libraries & functions ==================================================
 source("/scripts/tree.R")
+source("/scripts/options.R")
 
 ## add commandline options =====================================================
 
-'Hierarchical feature engineering (HFE) for the reduction of features with respects to a factor or regressor
-Usage:
-    taxaHFE-ML [options] <METADATA> <DATA> <OUTPUT>
-
-Global Options:
-    -h --help                         Show help text.
-    -v --version                      Show version.
-    -s --subject_identifier <string>  Metadata column name containing subject IDs [default: subject_id]
-    -l --label <string>               Metadata column name of interest for ML [default: cluster]
-    -t --feature_type <string>        Is the ML label a factor or numeric [default: factor]
-    -c --cor_level <float>            Initial pearson correlation filter [default: 0.95]
-    -n --ncores <int>                 Number of cpu cores to use [default: 2]
-    --seed <numeric>                  Set a random numeric seed, default is to use system time
-TaxaHFE Options:
-    -a --abundance <float>            Minimum mean abundance of feature [default: 0.0001]
-    -p --prevalence <float>           Minimum prevalence of feature [default: 0.01]
-    -L --lowest_level <int>           Most general level allowed to compete [default: 2]
-    -m --max_depth <int>              How many hierarchical levels should be allowed to compete [default: 1000]
-    -d --disable_super_filter         Disable running of the super filter (final forest competition)
-    -w --write_old_files              Write individual level files and old HFE files
-    -W --write_flattened_tree         Write a compressed backup of the entire competed tree
-    -D --write_both_outputs           Write an output for pre and post super filter results, overridden by --disable_super_filter
-    --nperm <int>                     Number of RF permutations [default: 40]
-DietML Options:
-    --train_split what percentage of samples should be used in training 
-            [default: 0.70]
-    --model what model would you like run 
-            (options: rf,enet) [default: rf]
-    --folds number of CV folds to tune with [default: 10]
-    --metric what metric would you like to optimize in training 
-            (options: roc_auc, bal_accuracy, accuracy, mae, rmse, rsq, kap, 
-             f_meas, ccc) [default: bal_accuracy]
-    --tune_length number of hyperparameter combinations to sample [default: 80]
-    --tune_time length of time tune_bayes runs [default: 10]
-    --tune_stop number of HP interations to let pass without a metric 
-            improvement [default: 10]
-    --shap attempt to calcualte shap values? [default: TRUE]
-
-Arguments:
-    METADATA path to metadata input (txt | tsv | csv)
-    DATA path to input file from hierarchical data (i.e. hData data) (txt | tsv | csv)
-    OUTPUT output file name (csv)
-
-' -> doc
-
-# these options will be converted to numeric by load_docopt
-numeric_options <- c("train_split", "abundance", "prevalence", "lowest_level", "max_depth", "cor_level", "ncores", "nperm", "folds", "tune_length", "tune_time", "tune_stop", 
-                     "--train_split", "--abundance", "--prevalence", "--lowest_level", "--max_depth", "--cor_level", "--ncores", "--nperm", "--folds", "--tune_length", "--tune_time", "--tune_stop")
 # to use this code line-by-line in the Rstudio context, commandArgs can be overloaded to specify the desired flags
-# ex. commandArgs <- function(x) { "-s subject_id -l new_butyrate -L 3 -n 4 -wWD --seed 42 /home/docker/metadata.txt example_inputs/microbiome_data.txt example_inputs/out.csv" }
-# these will be used by the options loader
-#commandArgs <- function(x) { "-s subject_id -l crp_boxcox -t numeric -n 4 -a 0 -L 3 -d --train_split 0.7 --seed 56 --metric mae /home/docker/example_data/stephanie_crp_metadata.csv /home/docker/example_data/input_file_relabund.txt /home/docker/ml_output/output.csv" }
-opt <- load_docopt(doc, version = 'taxaHFE-ML.R v1.0\n\n', to_convert = numeric_options)
-
+# ex. commandArgs <- function(x) { c("example_inputs/metadata.txt", "example_inputs/microbiome_data.txt", "example_inputs/out.txt", "-s", "Sample", "-l", "Category", "-L", "3", "-n", "4", "--seed", "42", "--shap", "--train_split", "0.8") }
+# these will be used by the argparser
+opt <- load_args('taxaHFE-ML.R v1.0', 2)
 ## Run main ====================================================================
 
 ## set random seed

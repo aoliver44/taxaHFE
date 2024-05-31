@@ -15,16 +15,16 @@
 ## set working dir to /home for the docker container
 setwd("/home/docker")
 
-## load libraries =====================================================
+## load libraries & functions ==================================================
 source("/scripts/tree.R")
 source("/scripts/options.R")
 
 ## add commandline options =====================================================
 
 # to use this code line-by-line in the Rstudio context, commandArgs can be overloaded to specify the desired flags
-# ex. commandArgs <- function(x) { "-s Sample -l Category -L 3 -n 4 -wWD --seed 42 example_inputs/metadata.txt example_inputs/microbiome_data.txt example_inputs/out.txt" }
+# ex. commandArgs <- function(x) { c("example_inputs/metadata.txt", "example_inputs/microbiome_data.txt", "example_inputs/out.txt", "-s", "Sample", "-l", "Category", "-L", "3", "-n", "4", "--seed", "42") }
 # these will be used by the argparser
-opt <- load_args('taxaHFE.R v2.11')
+opt <- load_args('taxaHFE.R v2.11', 1)
 
 ## Run main ====================================================================
 
