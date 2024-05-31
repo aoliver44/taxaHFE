@@ -9,10 +9,11 @@ suppressPackageStartupMessages(library(argparse, quietly = T, verbose = F, warn.
 
 arg_parser <- function(version, program_list_option) {
   parser <- argparse::ArgumentParser(
-    description= switch(program_list_option,
+    description=switch(program_list_option,
       {'Hierarchical feature engineering (HFE) for the reduction of features with respects to a factor or regressor'},
       {'Hierarchical feature engineering (HFE) for the reduction of features with respects to a factor or regressor, using a train-test split and machine learning to identify features of hierarchical features of interest'} 
       ),
+    usage=paste(switch(program_list_option, {'taxaHFE'},{'taxaHFE-ML'}), "[options] METADATA DATA OUTPUT"),
     ## this is a grouping of built in argparse formatter to make the help printout be more clear
     ## ArgumentDefaultsHelpFormatter - displays the default next to the help text
     ## MetavarTypeHelpFormatter - displays the expected type for the flag next to the flag names
