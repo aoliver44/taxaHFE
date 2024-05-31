@@ -15,47 +15,16 @@
 ## set working dir to /home for the docker container
 setwd("/home/docker")
 
-## load libraries =====================================================
+## load libraries & functions ==================================================
 source("/scripts/tree.R")
+source("/scripts/options.R")
 
 ## add commandline options =====================================================
 
-'Hierarchical feature engineering (HFE) for the reduction of features with respects to a factor or regressor
-Usage:
-    taxaHFE [options] <METADATA> <DATA> <OUTPUT>
-    
-Options:
-    -h --help                         Show help text.
-    -v --version                      Show version.
-    -s --subject_identifier <string>  Metadata column name containing subject IDs [default: subject_id]
-    -l --label <string>               Metadata column name of interest for ML [default: cluster]
-    -t --feature_type <string>        Is the ML label a factor or numeric [default: factor]
-    -a --abundance <float>            Minimum mean abundance of feature [default: 0.0001]
-    -p --prevalence <float>           Minimum prevalence of feature [default: 0.01]
-    -L --lowest_level <int>           Most general level allowed to compete [default: 2]
-    -m --max_depth <int>              How many hierarchical levels should be allowed to compete [default: 1000]
-    -c --cor_level <float>            Initial pearson correlation filter [default: 0.95]
-    -n --ncores <int>                 Number of cpu cores to use [default: 2]
-    -d --disable_super_filter         Disable running of the super filter (final forest competition)
-    -w --write_old_files              Write individual level files and old HFE files
-    -W --write_flattened_tree         Write a compressed backup of the entire competed tree
-    -D --write_both_outputs           Write an output for pre and post super filter results, overridden by --disable_super_filter
-    --nperm <int>                     Number of RF permutations [default: 40]
-    --seed <numeric>                  Set a random numeric seed, default is to use system time
-
-Arguments:
-    METADATA path to metadata input (txt | tsv | csv)
-    DATA path to input file from hierarchical data (i.e. hData data) (txt | tsv | csv)
-    OUTPUT output file name (csv)
-
-' -> doc
-
-# these options will be converted to numeric by load_docopt
-numeric_options <- c("abundance", "prevalence", "lowest_level", "max_depth", "cor_level", "ncores", "nperm")
 # to use this code line-by-line in the Rstudio context, commandArgs can be overloaded to specify the desired flags
-# ex. commandArgs <- function(x) { "-s Sample -l Category -L 3 -n 4 -wWD --seed 42 example_inputs/metadata.txt example_inputs/microbiome_data.txt example_inputs/out.txt" }
-# these will be used by the options loader
-opt <- load_docopt(doc, version = 'taxaHFE.R v2.11\n\n', to_convert = numeric_options)
+# ex. commandArgs <- function(x) { c("example_inputs/metadata.txt", "example_inputs/microbiome_data.txt", "example_inputs/out.txt", "-s", "Sample", "-l", "Category", "-L", "3", "-n", "4", "--seed", "42") }
+# these will be used by the argparser
+opt <- load_args('taxaHFE.R v2.11', 1)
 
 ## Run main ====================================================================
 

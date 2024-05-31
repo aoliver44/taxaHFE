@@ -13,7 +13,6 @@ library(purrr, quietly = T, verbose = F, warn.conflicts = F)
 library(ranger, quietly = T, verbose = F, warn.conflicts = F)
 library(vroom, quietly = T, verbose = F, warn.conflicts = F)
 library(tidyselect, quietly = T, verbose = F, warn.conflicts = F)
-library(docopt, quietly = T, verbose = F, warn.conflicts = F)
 
 
 ## set random seed, defaults to system time
@@ -828,31 +827,4 @@ generate_outputs <- function(tree, metadata, col_names, output_location, disable
                        file =  paste0(tools::file_path_sans_ext(output_location), "_raw_data.tsv.gz"),
                        num_threads = ncores)
   }
-}
-
-## loads docopt using the built in func and then converts the specified values to numeric
-## converts the docopt arguments to numeric if the opt name is in the provided vector
-## returns the updated docopt object
-## uses sapply to iterate of the names if the options, returning the converted value if found in to_convert
-## overloading commandArgs() to return an arbitrary string allows this to be run in rstudio
-load_docopt <- function(doc_string, version, to_convert) {
-  opt <- docopt::docopt(doc_string, commandArgs(TRUE), version = version)
-  
-  return(sapply(
-    names(opt), # names of the options
-    function(option) {
-      # if the option if in to_convert, return the converted value
-      if (option %in% to_convert) { 
-        numeric_option <- as.numeric(opt[[option]])
-        if (is.na(numeric_option)) {
-          stop(paste(option, "must be a numeric value"))
-        }
-        return(numeric_option)
-      }
-      # otherwise return the value as before
-      return(opt[[option]])
-    },
-    # this ensure that sapply will keep the names
-    simplify = FALSE
-  ))
 }

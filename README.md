@@ -147,33 +147,50 @@ wsl
 
 
 ```
-Hierarchical feature engineering (HFE) for the reduction of features with respects to a factor or regressor
-Usage:
-    taxaHFE [options] <METADATA> <DATA> <OUTPUT>
-    
-Options:
-    -h --help                         Show help text.
-    -v --version                      Show version.
-    -s --subject_identifier <string>  Metadata column name containing subject IDs [default: subject_id]
-    -l --label <string>               Metadata column name of interest for ML [default: cluster]
-    -t --feature_type <string>        Is the ML label a factor or numeric [default: factor]
-    -a --abundance <float>            Minimum mean abundance of feature [default: 0.0001]
-    -p --prevalence <float>           Minimum prevalence of feature [default: 0.01]
-    -L --lowest_level <int>           Most general level allowed to compete [default: 2]
-    -m --max_depth <int>              How many hierarchical levels should be allowed to compete [default: 1000]
-    -c --cor_level <float>            Initial pearson correlation filter [default: 0.95]
-    -n --ncores <int>                 Number of cpu cores to use [default: 2]
-    -d --disable_super_filter         Disable running of the super filter (final forest competition)
-    -w --write_old_files              Write individual level files and old HFE files
-    -W --write_flattened_tree         Write a compressed backup of the entire competed tree
-    -D --write_both_outputs           Write an output for pre and post super filter results, overridden by --disable_super_filter
-    --nperm <int>                     Number of RF permutations [default: 40]
-    --seed <numeric>                  Set a random numeric seed, default is to use system time
+usage: taxaHFE [options] METADATA DATA OUTPUT
 
-Arguments:
-    METADATA path to metadata input (txt | tsv | csv)
-    DATA path to input file from hierarchical data (i.e. hData data) (txt | tsv | csv)
-    OUTPUT output file name (csv)
+Hierarchical feature engineering (HFE) for the reduction of features with respects to a factor or regressor
+
+positional arguments:
+  METADATA              path to metadata input (txt | tsv | csv)
+  DATA                  path to input file from hierarchical data (i.e. hData data) (txt | tsv | csv)
+  OUTPUT                output file name (csv)
+
+optional arguments:
+  -h, --help            show this help message and exit
+  -n <numeric>, --ncores <numeric>
+                        Number of cpu cores to use (default: 2)
+  --seed <numeric>      Set a random numeric seed. If None, defaults to use system time (default: None)
+  -v, --version         show program's version number and exit
+
+TaxaHFE arguments:
+  Options to pass to TaxaHFE
+
+  -s <string>, --subject_identifier <string>
+                        Metadata column name containing subject IDs (default: subject_id)
+  -l <string>, --label <string>
+                        Metadata column name of interest for ML (default: feature_of_interest)
+  -t <string>, --feature_type <string>
+                        Is the ML label a factor or numeric (default: factor)
+  -a <numeric>, --abundance <numeric>
+                        Minimum mean abundance of feature (default: 0)
+  -p <numeric>, --prevalence <numeric>
+                        Minimum prevalence of feature (default: 0.01)
+  -L <numeric>, --lowest_level <numeric>
+                        Most general level allowed to compete (default: 2)
+  -m <numeric>, --max_level <numeric>
+                        How many hierarchical levels should be allowed to compete (default: 1000)
+  -c <numeric>, --cor_level <numeric>
+                        Initial pearson correlation filter (default: 0.95)
+  -d, --disable_super_filter
+                        Disable running of the super filter (final forest competition) (default: False)
+  -w, --write_old_files
+                        Write individual level files and old HFE files (default: False)
+  -W, --write_flattened_tree
+                        Write a compressed backup of the entire competed tree (default: False)
+  -D, --write_both_outputs
+                        Write an output for pre and post super filter results, overridden by --disable_super_filter (default: False)
+  --nperm <numeric>     Number of RF permutations (default: 40)
 ```
 
 --subject_identifier: this is a column that identifies the sample or subject ID in the input metadata. All subjectIDs should be unique. They will be coerced to unique values (and simplified snake_case alpha-numerics) using ```janitor::make_clean_names()```
@@ -188,7 +205,7 @@ Arguments:
 
 --lowest_level: The lowest level for which to compete in a taxaHFE competition. To better understand this parameter, consider a microbiome competition as an example: Each feature contains some version of taxonomic levels from general -> specific (kingdom, phylum, class, order, family, genus, species). taxaHFE adds one additional level "below" kingdom, called taxa_tree (a somewhat meaningless root representing the sum-total abundance per sample). Setting ```--lowest_level 1``` allows taxaHFE to take competitions all the way to taxa_tree, potentially allowing it to be the only feature selected (if, for instance, the differences in sum-total abundances are the most informative feature with respects to your metadata label). The default behavior is to set ```--lowest_level 2```, which would stop the competitions at the kingdom level in this example. Sometimes, this behavior will result in a similar result described above (i.e., the kingdom Bacteria is selected as the sole winner). IF your interest is what features are informative within your most general grouping (i.e., which bacteria, archaea, etc.), then consider setting this value to ```--lowest_level 3```.
 
---max_depth: how deep should a child be allowed to compete? In version 1 of this program, max_depth was effectively 1, which meant that a child was only allowed to compete against their parent, but NOT their grandparent. The default behavior in the current version is ```--max_depth 1000```, which means a child is allowed to compete against their parent and 1000 hierarchical levels beyond their parent (i.e., great-great-great...grandparent). If they are an informative feature, they are allowed to keep competing.
+--max_level: how deep should a child be allowed to compete? In version 1 of this program, max_depth was effectively 1, which meant that a child was only allowed to compete against their parent, but NOT their grandparent. The default behavior in the current version is ```--max_level 1000```, which means a child is allowed to compete against their parent and 1000 hierarchical levels beyond their parent (i.e., great-great-great...grandparent). If they are an informative feature, they are allowed to keep competing.
 
 --cor_level: what initial correlation threshold (Pearson) to use when comparing child to parent. We use a high threshold (0.95) and encourage this threshold to stay high. We are really after *redundant* features with this step, we're are not trying to institute a deep correlation filter.
 
@@ -237,48 +254,66 @@ If your ultimate goal is to use TaxaHFE as a feature engineering step in a machi
 ```taxaHFE-ML``` requires slightly different use:
 
 ```
-Hierarchical feature engineering (HFE) for the reduction of features with respects to a factor or regressor
-Usage:
-    taxaHFE-ML [options] <METADATA> <DATA> <OUTPUT>
+usage: taxaHFE-ML [options] METADATA DATA OUTPUT
 
-Global Options:
-    -h --help                         Show help text.
-    -v --version                      Show version.
-    -s --subject_identifier <string>  Metadata column name containing subject IDs [default: subject_id]
-    -l --label <string>               Metadata column name of interest for ML [default: cluster]
-    -t --feature_type <string>        Is the ML label a factor or numeric [default: factor]
-    -c --cor_level <float>            Initial pearson correlation filter [default: 0.95]
-    -n --ncores <int>                 Number of cpu cores to use [default: 2]
-    --seed <numeric>                  Set a random numeric seed, default is to use system time
-TaxaHFE Options:
-    -a --abundance <float>            Minimum mean abundance of feature [default: 0.0001]
-    -p --prevalence <float>           Minimum prevalence of feature [default: 0.01]
-    -L --lowest_level <int>           Most general level allowed to compete [default: 2]
-    -m --max_depth <int>              How many hierarchical levels should be allowed to compete [default: 1000]
-    -d --disable_super_filter         Disable running of the super filter (final forest competition)
-    -w --write_old_files              Write individual level files and old HFE files
-    -W --write_flattened_tree         Write a compressed backup of the entire competed tree
-    -D --write_both_outputs           Write an output for pre and post super filter results, overridden by --disable_super_filter
-    --nperm <int>                     Number of RF permutations [default: 40]
-DietML Options:
-    --train_split what percentage of samples should be used in training
-            [default: 0.70]
-    --model what model would you like run
-            (options: rf,enet) [default: rf]
-    --folds number of CV folds to tune with [default: 10]
-    --metric what metric would you like to optimize in training
-            (options: roc_auc, bal_accuracy, accuracy, mae, rmse, rsq, kap,
-             f_meas, ccc) [default: bal_accuracy]
-    --tune_length number of hyperparameter combinations to sample [default: 80]
-    --tune_time length of time tune_bayes runs [default: 10]
-    --tune_stop number of HP interations to let pass without a metric
-            improvement [default: 10]
-    --shap attempt to calcualte shap values? [default: TRUE]
+Hierarchical feature engineering (HFE) for the reduction of features with respects to a factor or regressor, using a train-test split and machine learning to identify features of hierarchical features of interest
 
-Arguments:
-    METADATA path to metadata input (txt | tsv | csv)
-    DATA path to input file from hierarchical data (i.e. hData data) (txt | tsv | csv)
-    OUTPUT output file name (csv)
+positional arguments:
+  METADATA              path to metadata input (txt | tsv | csv)
+  DATA                  path to input file from hierarchical data (i.e. hData data) (txt | tsv | csv)
+  OUTPUT                output file name (csv)
+
+optional arguments:
+  -h, --help            show this help message and exit
+  -n <numeric>, --ncores <numeric>
+                        Number of cpu cores to use (default: 2)
+  --seed <numeric>      Set a random numeric seed. If None, defaults to use system time (default: None)
+  -v, --version         show program's version number and exit
+
+TaxaHFE arguments:
+  Options to pass to TaxaHFE
+
+  -s <string>, --subject_identifier <string>
+                        Metadata column name containing subject IDs (default: subject_id)
+  -l <string>, --label <string>
+                        Metadata column name of interest for ML (default: feature_of_interest)
+  -t <string>, --feature_type <string>
+                        Is the ML label a factor or numeric (default: factor)
+  -a <numeric>, --abundance <numeric>
+                        Minimum mean abundance of feature (default: 0)
+  -p <numeric>, --prevalence <numeric>
+                        Minimum prevalence of feature (default: 0.01)
+  -L <numeric>, --lowest_level <numeric>
+                        Most general level allowed to compete (default: 2)
+  -m <numeric>, --max_level <numeric>
+                        How many hierarchical levels should be allowed to compete (default: 1000)
+  -c <numeric>, --cor_level <numeric>
+                        Initial pearson correlation filter (default: 0.95)
+  -d, --disable_super_filter
+                        Disable running of the super filter (final forest competition) (default: False)
+  -w, --write_old_files
+                        Write individual level files and old HFE files (default: False)
+  -W, --write_flattened_tree
+                        Write a compressed backup of the entire competed tree (default: False)
+  -D, --write_both_outputs
+                        Write an output for pre and post super filter results, overridden by --disable_super_filter (default: False)
+  --nperm <numeric>     Number of RF permutations (default: 40)
+
+DietML arguments:
+  Options to pass to DietML for machine learning and SHAP analysis of TaxaHFE features
+
+  --train_split <numeric>
+                        Percentage of samples should be used in training (default: 0.8)
+  --model <string>      Percentage of samples should be used in training (default: rf)
+  --folds <numeric>     Number of CV folds to tune with (default: 10)
+  --metric <string>     Metric would you like to optimize in training (default: bal_accuracy)
+  --tune_length <numeric>
+                        Number of hyperparameter combinations to sample (default: 80)
+  --tune_time <numeric>
+                        Length of time hyperparameter search runs (default: 10)
+  --tune_stop <numeric>
+                        Number of HP interations to let pass without a metric improvement (default: 10)
+  --shap                Attempt to calcualte shap values? (default: False)
 ```
 **Notably:** The file inputs for ```taxaHFE-ML``` are the same as for ```taxaHFE```. The output specified is the same as well. Here is an example run:
 

@@ -147,6 +147,18 @@
         "foreach"
       ]
     },
+    "argparse": {
+      "Package": "argparse",
+      "Version": "2.2.2",
+      "Source": "Repository",
+      "Repository": "RSPM",
+      "Hash": "9007366fdc899126f43b174c46c43e39",
+      "Requirements": [
+        "R6",
+        "findpython",
+        "jsonlite"
+      ]
+    },
     "backports": {
       "Package": "backports",
       "Version": "1.4.1",
@@ -460,14 +472,6 @@
         "iterators"
       ]
     },
-    "docopt": {
-      "Package": "docopt",
-      "Version": "0.7.1",
-      "Source": "Repository",
-      "Repository": "RSPM",
-      "Hash": "e9eeef7931ee99ca0093f3f20b88e09b",
-      "Requirements": []
-    },
     "dplyr": {
       "Package": "dplyr",
       "Version": "1.1.4",
@@ -544,6 +548,14 @@
         "RcppArmadillo",
         "foreach"
       ]
+    },
+    "findpython": {
+      "Package": "findpython",
+      "Version": "1.0.8",
+      "Source": "Repository",
+      "Repository": "RSPM",
+      "Hash": "8f9aa3ce842296afaad4083b839481a1",
+      "Requirements": []
     },
     "forcats": {
       "Package": "forcats",
