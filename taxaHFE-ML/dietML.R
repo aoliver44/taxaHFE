@@ -56,18 +56,20 @@ if (dir.exists(paste0(dirname(opt$OUTPUT), "/ml_analysis")) == TRUE) {
   setwd(paste0(dirname(opt$OUTPUT), "/ml_analysis"))
 }
 
-
-## check for input and break if not found
-if (!exists(x = "train_data") & !exists(x = "flattened_df_test")) { 
-  stop("Train data or Test data not found.\n")
-}
+## read in inputs
+train_data <- ifelse(opt$disable_super_filter, 
+                     readr::read_csv(file =  paste0(tools::file_path_sans_ext(opt$OUTPUT), "_train_no_sf.csv")), 
+                     readr::read_csv(file =  paste0(tools::file_path_sans_ext(opt$OUTPUT), "_train.csv")))
+flattened_df_test <- readr::read_delim(file =  paste0(tools::file_path_sans_ext(opt$OUTPUT), "_test_raw_data.tsv.gz"))
 
 ## format input ================================================================
 
 ## make sure test and train have the same features
 flattened_df_test$name <- janitor::make_clean_names(flattened_df_test$name)
 test_data <- flattened_df_test %>%
+  # only select rows with same feature names as train_data features
   dplyr::filter(., name %in% colnames(train_data)) %>%
+  # only select columns in test_metadata
   dplyr::select(., name, dplyr::any_of(test_metadata$subject_id)) %>%
   tibble::remove_rownames() %>%
   tibble::column_to_rownames(., var = "name") %>%
