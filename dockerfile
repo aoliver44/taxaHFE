@@ -11,6 +11,8 @@ ENV RENV_VERSION=0.16.0
 RUN apt update
 # install some things that R needs
 RUN apt install -y libz-dev libxml2-dev
+RUN apt-get update
+RUN apt-get install -y python3
 
 # install RENV, which will then install all R project packages
 RUN R -e "install.packages('remotes', repos = c(CRAN = 'https://cloud.r-project.org'))"
@@ -33,5 +35,3 @@ COPY ./taxaHFE-ML/utilities/shap_figures.R ./scripts/utilities/shap_figures.R
 COPY ./taxaHFE-ML/utilities/vip_basic.R ./scripts/utilities/vip_basic.R
 
 ENV PATH="${PATH}:/scripts/"
-
-
