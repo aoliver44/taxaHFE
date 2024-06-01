@@ -695,7 +695,7 @@ rf_competition <- function(df, metadata, parent_descendent_competition, feature_
   }
   
   # run the above function across nperm random seeds and average the vip scores
-  model_importance <- purrr::map_df(sample(1:1000, nperm), run_ranger) %>%
+  model_importance <- purrr::map_df(sample(1:1000000, nperm), run_ranger) %>%
     dplyr::group_by(taxa) %>%
     dplyr::summarise(., average = mean(importance)) %>% 
     dplyr::filter(., taxa %!in% covariates)
