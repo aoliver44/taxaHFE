@@ -254,12 +254,12 @@ write_old_hfe <- function(input, output) {
 ## get descenant winners =======================================================
 # get_descendant_winners goes through the descendants of node, returning a list of all found winners
 # maxDepth defines how deep the winner function will go to find a winner
-get_descendant_winners <- function(node, max_depth) {
+get_descendant_winners <- function(node, max_level) {
   winners <- list()
   
   # if maxDepth is zero, this is the bottom
   # return an empty list as no further generations will be considered
-  if (max_depth == 0) {
+  if (max_level == 0) {
     return(winners)
   }
   
@@ -271,7 +271,7 @@ get_descendant_winners <- function(node, max_depth) {
     }
     
     # otherwise, check the child's children for winners
-    winners <- append(winners, get_descendant_winners(child, max_depth - 1))
+    winners <- append(winners, get_descendant_winners(child, max_level - 1))
   }
   
   return(winners)
@@ -396,7 +396,7 @@ build_tree <- function(df, filter_prevalence, filter_mean_abundance) {
 # for this node, evaluates correlation and rf against all descendants that have won previous rounds
 # modifies the node indicating if it is a winner against those descendants
 # OR which of 1:n descendants are winners
-compete_node <- function(node, col_names, lowest_level, max_depth, corr_threshold, metadata, ncores, feature_type, nperm) {
+compete_node <- function(node, col_names, lowest_level, max_level, corr_threshold, metadata, ncores, feature_type, nperm) {
   # skip anything lower than the lowest level (exclusive)
   if (node$level < lowest_level) {
     return()
@@ -420,7 +420,7 @@ compete_node <- function(node, col_names, lowest_level, max_depth, corr_threshol
   df <- rbind(data.frame(), node$abundance)
   row_names <- c(node$id)
   
-  descendant_winners <- get_descendant_winners(node, max_depth)
+  descendant_winners <- get_descendant_winners(node, max_level)
   # if no descendant winners, the parent is the winner
   # TODO: is this possible? should it be indicated somehow to the end user?
   if (length(descendant_winners) == 0) {
@@ -594,13 +594,13 @@ compete_all_winners <- function(tree, metadata, col_names, feature_type, nperm, 
 # lowest_level: lowest level of the tree to consider during operations
 #   this level will be compared in a final all-vs-all random forest after the main tree competition
 #   defaults to skipping the lowest level (all abundances)
-# max_depth: determines how deep the descendant competitions will be held
+# max_level: determines how deep the descendant competitions will be held
 #   defaults to a massive number to allow every descendant
 # corr_threshold: the threshold to mark a descendant as highly correlated
 # metadata: the metadata associated with the input df that generated the tree
 # ncores: the number of cores to use when running the random forest
 # disable_super_filter: disables running the final competition
-compete_tree <- function(tree, modify_tree = TRUE, col_names, lowest_level = 2, max_depth = 1000, corr_threshold, metadata, ncores, feature_type, nperm, disable_super_filter) {
+compete_tree <- function(tree, modify_tree = TRUE, col_names, lowest_level = 2, max_level = 1000, corr_threshold, metadata, ncores, feature_type, nperm, disable_super_filter) {
   # if not modifying the input tree, create a copy of the tree to perform the competition
   if (!modify_tree) tree <- data.tree::Clone(tree)
   
@@ -608,13 +608,13 @@ compete_tree <- function(tree, modify_tree = TRUE, col_names, lowest_level = 2, 
   
   # perform the competition, modifying the tree (which may or may not be a clone of the input)
   tree$Do(
-    function(node, col_names, lowest_level, max_depth, corr_threshold, metadata, ncores, feature_type, nperm) {
+    function(node, col_names, lowest_level, max_level, corr_threshold, metadata, ncores, feature_type, nperm) {
       pb$tick()
-      compete_node(node, col_names, lowest_level, max_depth, corr_threshold, metadata, ncores, feature_type, nperm)
+      compete_node(node, col_names, lowest_level, max_level, corr_threshold, metadata, ncores, feature_type, nperm)
     },
     col_names = col_names,
     lowest_level = lowest_level,
-    max_depth = max_depth,
+    max_level = max_level,
     corr_threshold = corr_threshold,
     metadata = metadata,
     ncores = ncores,

@@ -16,7 +16,7 @@ Change log:
 - Children are allowed to compete against all ancestors as long as they keep winning hierarchical competitions.
 - TaxaHFE v2 selects far less features than TaxaHFE v1, for the same or better model performance.
 - Covariates can be considered in the RF models
-- TaxaHFE v2 can replicate TaxaHFE v1 by setting the flat ```--max_depth 1```
+- TaxaHFE v2 can replicate TaxaHFE v1 by setting the flat ```--max_level 1```
 
 -----------------------------------
 
@@ -205,7 +205,7 @@ TaxaHFE arguments:
 
 --lowest_level: The lowest level for which to compete in a taxaHFE competition. To better understand this parameter, consider a microbiome competition as an example: Each feature contains some version of taxonomic levels from general -> specific (kingdom, phylum, class, order, family, genus, species). taxaHFE adds one additional level "below" kingdom, called taxa_tree (a somewhat meaningless root representing the sum-total abundance per sample). Setting ```--lowest_level 1``` allows taxaHFE to take competitions all the way to taxa_tree, potentially allowing it to be the only feature selected (if, for instance, the differences in sum-total abundances are the most informative feature with respects to your metadata label). The default behavior is to set ```--lowest_level 2```, which would stop the competitions at the kingdom level in this example. Sometimes, this behavior will result in a similar result described above (i.e., the kingdom Bacteria is selected as the sole winner). IF your interest is what features are informative within your most general grouping (i.e., which bacteria, archaea, etc.), then consider setting this value to ```--lowest_level 3```.
 
---max_level: how deep should a child be allowed to compete? In version 1 of this program, max_depth was effectively 1, which meant that a child was only allowed to compete against their parent, but NOT their grandparent. The default behavior in the current version is ```--max_level 1000```, which means a child is allowed to compete against their parent and 1000 hierarchical levels beyond their parent (i.e., great-great-great...grandparent). If they are an informative feature, they are allowed to keep competing.
+--max_level: how deep should a child be allowed to compete? In version 1 of this program, max_level was effectively 1, which meant that a child was only allowed to compete against their parent, but NOT their grandparent. The default behavior in the current version is ```--max_level 1000```, which means a child is allowed to compete against their parent and 1000 hierarchical levels beyond their parent (i.e., great-great-great...grandparent). If they are an informative feature, they are allowed to keep competing.
 
 --cor_level: what initial correlation threshold (Pearson) to use when comparing child to parent. We use a high threshold (0.95) and encourage this threshold to stay high. We are really after *redundant* features with this step, we're are not trying to institute a deep correlation filter.
 

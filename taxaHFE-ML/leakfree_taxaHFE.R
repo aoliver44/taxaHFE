@@ -52,7 +52,7 @@ cat("\nTaxaHFE Options: \n")
 cat(paste0("--abundance: ", opt$abundance), "\n")
 cat(paste0("--prevalence: ", opt$prevalence), "\n")
 cat(paste0("--lowest_level: ", opt$lowest_level), "\n")
-cat(paste0("--max_depth: ", opt$max_depth), "\n")
+cat(paste0("--max_level: ", opt$max_level), "\n")
 cat(paste0("--disable_super_filter: ", opt$disable_super_filter), "\n")
 cat(paste0("--write_old_files: ", opt$write_old_files), "\n")
 cat(paste0("--write_flattened_tree (always TRUE): ", opt$write_flattened_tree), "\n")
@@ -121,7 +121,7 @@ for (split_metadata in list(train_metadata, test_metadata)) {
     hTree,
     # if in train loop (count = 1), compete to lowest level specified, else count = 2, barely compete, just one level
     lowest_level = switch(count, {opt$lowest_level}, { max(stringr::str_count(hData$clade_name, "\\|")) }),
-    max_depth = opt$max_depth, # allows for all levels to be competed. Change to 1 for pairwise comparisons
+    max_level = opt$max_level, # allows for all levels to be competed. Change to 1 for pairwise comparisons
     col_names = colnames(hData_split)[2:NCOL(hData_split)],
     # if in train loop (count = 1), corr competitions as specified, else count = 2, make almost everything a corr competition
     corr_threshold = switch(count, {opt$cor_level}, {as.numeric(0.1)}), 

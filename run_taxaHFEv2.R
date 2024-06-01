@@ -39,7 +39,7 @@ cat(paste0("--feature_type: ", opt$feature_type), "\n")
 cat(paste0("--abundance: ", opt$abundance), "\n")
 cat(paste0("--prevalence: ", opt$prevalence), "\n")
 cat(paste0("--lowest_level: ", opt$lowest_level), "\n")
-cat(paste0("--max_depth: ", opt$max_depth), "\n")
+cat(paste0("--max_level: ", opt$max_level), "\n")
 cat(paste0("--cor_level: ", opt$cor_level), "\n")
 cat(paste0("--write_old_files: ", opt$write_old_files), "\n")
 cat(paste0("--ncores: ", opt$ncores), "\n")
@@ -73,7 +73,7 @@ cat("\n", "###########################\n", "Competing Tree...\n", "#############
 competed_tree <- compete_tree(
   hTree,
   lowest_level = opt$lowest_level,
-  max_depth = opt$max_depth, # allows for all levels to be competed. Change to 1 for pairwise comparisons
+  max_level = opt$max_level, # allows for all levels to be competed. Change to 1 for pairwise comparisons
   col_names = colnames(hData)[2:NCOL(hData)],
   corr_threshold = opt$cor_level,
   metadata = metadata,
