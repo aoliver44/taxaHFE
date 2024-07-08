@@ -13,9 +13,6 @@
 ## suppress warnings
 options(warn=-1)
 
-## set working dir to /home for the docker container
-setwd("/home/docker")
-
 ## load libraries ==============================================================
 library(readr, quietly = T, verbose = F, warn.conflicts = F)
 library(dplyr, quietly = T, verbose = F, warn.conflicts = F)
@@ -127,7 +124,7 @@ cat("\n#########################\n")
 cat("Running null model...", "\n")
 cat("#########################\n\n")
 
-source("/scripts/models/dietML_null_tidy.R")
+source("models/dietML_null_tidy.R")
 
 ## run chosen model ============================================================
 
@@ -146,18 +143,18 @@ cat("#########################\n\n")
 
 ## random forest
 if (opt$model %in% c("ranger", "rf", "randomforest")) {
-  source("/scripts/models/dietML_ranger_tidy.R")
+  source("models/dietML_ranger_tidy.R")
 }
 
 ## lasso/ridge models
 if (opt$model %in% c("lasso", "ridge")) {
-    source("/scripts/models/dietML_glmnet_tidy_ridge_lasso.R")
+    source("models/dietML_glmnet_tidy_ridge_lasso.R")
 } 
 
 
 ## elastic net models
 if (opt$model %in% c("enet", "elasticnet")) {
-    source("/scripts/models/dietML_glmnet_tidy_enet.R")
+    source("models/dietML_glmnet_tidy_enet.R")
 } 
 
 ## VIP Plots ===================================================================
@@ -176,10 +173,10 @@ if (opt$shap == TRUE) {
   cat("#########################\n\n")
   
   if (opt$model %in% c("ranger", "rf", "randomforest")) {
-    source("/scripts/utilities/shap_figures.R")
+    source("lib/shap_figures.R")
   } else if (opt$model %in% c("enet", "elasticnet", "lasso", "ridge")) {
     cat("You are not using a RF model. We will attempt to\n calculate VIP values instead.")
-    source("/scripts/utilities/vip_basic.R")
+    source("lib/vip_basic.R")
   } else {
     cat("We are unable to calculate feature importances for\n the chosen model at this time.")
   }

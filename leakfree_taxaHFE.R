@@ -13,11 +13,11 @@
 #docker run --rm -v `pwd`:/home/docker -w /home/docker aoliver44/leakage_free_taxaHFE:latest
 
 ## set working dir to /home for the docker container
-setwd("/home/docker")
+# setwd("/home/docker")
 
 ## load libraries & functions ==================================================
-source("/scripts/tree.R")
-source("/scripts/options.R")
+source("lib/tree.R")
+source("lib/options.R")
 
 ## add commandline options =====================================================
 
@@ -167,5 +167,5 @@ if (opt$model == "none") {
   cat("Model set to none. DietML not run")
   save.image(file = paste0(dirname(opt$OUTPUT), "/taxaHFE_r_workspace.rds"))
 } else { 
-  source("/scripts/dietML.R")
+  source("dietML.R")
 }
