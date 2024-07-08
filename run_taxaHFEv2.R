@@ -13,11 +13,11 @@
 #docker run --rm -v `PWD`/:/home/docker -w /home/docker aoliver44/taxa_hfe:latest
 
 ## set working dir to /home for the docker container
-setwd("/home/docker")
+# setwd("/home/docker")
 
 ## load libraries & functions ==================================================
-source("/scripts/tree.R")
-source("/scripts/options.R")
+source("lib/tree.R")
+source("lib/options.R")
 
 ## add commandline options =====================================================
 
