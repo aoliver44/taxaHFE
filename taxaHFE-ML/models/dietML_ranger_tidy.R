@@ -209,6 +209,11 @@ null_results <- results_df %>%
 full_results <- merge(workflowsets::collect_metrics(final_res), null_results, by = ".metric", all = T)
 full_results$seed <- opt$seed
 
+## keep track of what program is being run for compete all levels
+if (opt$compare_all_levels) {
+  full_results$program <- opt$program
+}
+
 ## write final results to file or append if file exists
 readr::write_csv(x = full_results, file = paste0(dirname(opt$OUTPUT), "/ml_analysis/", "ml_results.csv"), append = T, col_names = !file.exists(paste0(dirname(opt$OUTPUT), "/ml_analysis/", "ml_results.csv")))
 
