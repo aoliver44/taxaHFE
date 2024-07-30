@@ -1,3 +1,14 @@
+#!/usr/bin/env Rscript
+
+## SCRIPT: options.R ===================================================
+## AUTHOR: Matt Kay & Andrew Oliver
+## DATE:   June, 24 2024
+##
+## PURPOSE: Holds the commandline args for taxaHFE
+## the options.R script
+
+## docker info =================================================================
+
 ## holds the parser for the flags of taxaHFE
 suppressPackageStartupMessages(library(argparse, quietly = T, verbose = F, warn.conflicts = F))
 
@@ -59,6 +70,8 @@ taxaHFE_ML_arg_parser <- function(version, program_list_option) {
   dietml_base_args$add_argument('--tune_time', type="numeric", metavar="<numeric>", default='10', help='Length of time hyperparameter search runs')
   dietml_base_args$add_argument('--tune_stop', type="numeric", metavar="<numeric>", default='10', help='Number of HP interations to let pass without a metric improvement')
   dietml_base_args$add_argument('--shap', action="store_true", help='Attempt to calcualte shap values?')
+  dietml_base_args$add_argument('--compare_all_levels', action="store_true", help='Compare RF metrics for taxaHFE-ML, taxaHFE(+/- SF), and all summarized levels')
+  
   return(parser)
 }
 
