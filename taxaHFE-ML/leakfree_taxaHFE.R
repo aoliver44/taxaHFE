@@ -22,7 +22,7 @@ source("/scripts/options.R")
 ## add commandline options =====================================================
 
 # to use this code line-by-line in the Rstudio context, commandArgs can be overloaded to specify the desired flags
-# ex. commandArgs <- function(x) { c("example_inputs/metadata.txt", "example_inputs/microbiome_data.txt", "example_inputs/out.txt", "-s", "Sample", "-l", "Category", "-L", "3", "-n", "4", "--seed", "42", "--shap", "--train_split", "0.8") }
+# ex. commandArgs <- function(x) { c("/home/docker/example_inputs/metadata.txt", "/home/docker/example_inputs/microbiome_data.txt", "/home/docker/example_inputs/out.csv", "-s", "Sample", "-l", "Category", "-L", "3", "-n", "4", "--seed", "42", "--train_split", "0.8", "--compare_all_levels", "--nperm", "10") }
 # these will be used by the argparser
 opt <- load_args('taxaHFE-ML.R v1.0', 2)
 
@@ -36,7 +36,7 @@ if (dir.exists(paste0(dirname(opt$OUTPUT))) == FALSE) {
   dir.create(path = paste0(dirname(opt$OUTPUT)))
 }
 
-## We need the flattened tree outout, so always make it true
+## We need the flattened tree output, so always make it true
 opt$write_flattened_tree = TRUE
 
 ## parameters specified
@@ -67,6 +67,7 @@ cat(paste0("--tune_length: ", opt$tune_length), "\n")
 cat(paste0("--tune_time: ", opt$tune_time), "\n")
 cat(paste0("--tune_stop: ", opt$tune_stop), "\n")
 cat(paste0("--shap: ", opt$shap), "\n")
+cat(paste0("--compare-all-levels: ", opt$compare_all_levels), "\n")
 cat(paste0("\n", "OUTPUT: ", opt$OUTPUT))
 
 ## check for inputs and read in read in ========================================
@@ -167,5 +168,67 @@ if (opt$model == "none") {
   cat("Model set to none. DietML not run")
   save.image(file = paste0(dirname(opt$OUTPUT), "/taxaHFE_r_workspace.rds"))
 } else { 
+  
+  ## format input for ML 
+  if (opt$disable_super_filter) {
+    train_data <- readr::read_csv(file = paste0(tools::file_path_sans_ext(opt$OUTPUT), "_train_no_sf.csv"))
+  } else {
+    train_data <- readr::read_csv(file = paste0(tools::file_path_sans_ext(opt$OUTPUT), "_train.csv"))
+  }
+  
+  flattened_df_test <- readr::read_delim(file = paste0(tools::file_path_sans_ext(opt$OUTPUT), "_test_raw_data.tsv.gz"))
+  
+  ## make sure test and train have the same features
+  flattened_df_test$name <- janitor::make_clean_names(flattened_df_test$name)
+  test_data <- flattened_df_test %>%
+    # only select rows with same feature names as train_data features
+    dplyr::filter(., name %in% colnames(train_data)) %>%
+    # only select columns in test_metadata
+    dplyr::select(., name, dplyr::any_of(test_metadata$subject_id)) %>%
+    tibble::remove_rownames() %>%
+    tibble::column_to_rownames(., var = "name") %>%
+    t() %>%
+    as.data.frame() %>%
+    tibble::rownames_to_column(., var = "subject_id")
+  
+  ## merge train and test data with metadata
+  train_data <- merge((metadata %>% dplyr::select(., -feature_of_interest)), train_data, by = "subject_id")
+  test_data <- merge(metadata, test_data, by = "subject_id")
+  
+  ## make colnames appropriate for ML (ranger is picky)
+  colnames(train_data) <- make.names(colnames(train_data))
+  colnames(test_data) <- make.names(colnames(test_data))
+  
+  ## organize the columns in test to be the same as train
+  ## the manual test-train split (make_splits()) is picky
+  ## they also have to have the same features
+  ## The actual error that gets thrown (even if columns are just out of order):
+  ## Error in `make_splits()` at scripts/models/dietML_ranger_tidy.R:41:1:
+  ##   ! The analysis and assessment sets must have the same columns
+  overlap_features <- dplyr::intersect(colnames(test_data), colnames(train_data))
+  test_data <- test_data %>% dplyr::select(., dplyr::any_of(overlap_features))
+  train_data_for_dietML <- train_data %>% dplyr::select(., dplyr::any_of(overlap_features))
+  ## reorder test columns
+  test_data_for_dietML <- test_data[names(train_data_for_dietML)]
+  
+  ## write the test and train data to file
+  readr::write_csv(x = train_data_for_dietML, file = paste0(dirname(opt$OUTPUT), "/train_data.csv"))
+  readr::write_csv(x = test_data_for_dietML, file = paste0(dirname(opt$OUTPUT), "/test_data.csv"))
+  
+  ## keep track of what type of analysis is being passed to ML
+  opt$program <- "taxaHFE-ML"
+  
+  ## source dietML
   source("/scripts/dietML.R")
+
+}
+
+##########################
+## COMPARE ALL LEVELS
+##########################
+
+if (opt$compare_all_levels) {
+  opt$shap <- FALSE
+  opt$model <- "rf"
+  source("/scripts/utilities/compare_all_levels.R")
 }
