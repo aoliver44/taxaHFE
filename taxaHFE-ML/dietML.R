@@ -57,53 +57,12 @@ if (dir.exists(paste0(dirname(opt$OUTPUT), "/ml_analysis")) == TRUE) {
 }
 
 ## read in inputs
-train_data <- ifelse(opt$disable_super_filter, 
-                     readr::read_csv(file =  paste0(tools::file_path_sans_ext(opt$OUTPUT), "_train_no_sf.csv")), 
-                     readr::read_csv(file =  paste0(tools::file_path_sans_ext(opt$OUTPUT), "_train.csv")))
-flattened_df_test <- readr::read_delim(file =  paste0(tools::file_path_sans_ext(opt$OUTPUT), "_test_raw_data.tsv.gz"))
-
-## format input ================================================================
-
-## make sure test and train have the same features
-flattened_df_test$name <- janitor::make_clean_names(flattened_df_test$name)
-test_data <- flattened_df_test %>%
-  # only select rows with same feature names as train_data features
-  dplyr::filter(., name %in% colnames(train_data)) %>%
-  # only select columns in test_metadata
-  dplyr::select(., name, dplyr::any_of(test_metadata$subject_id)) %>%
-  tibble::remove_rownames() %>%
-  tibble::column_to_rownames(., var = "name") %>%
-  t() %>%
-  as.data.frame() %>%
-  tibble::rownames_to_column(., var = "subject_id")
-
-## merge train and test data with metadata
-train_data <- merge((metadata %>% dplyr::select(., -feature_of_interest)), train_data, by = "subject_id")
-test_data <- merge(metadata, test_data, by = "subject_id")
-
-## make colnames appropriate for ML (ranger is picky)
-colnames(train_data) <- make.names(colnames(train_data))
-colnames(test_data) <- make.names(colnames(test_data))
-
-## organize the columns in test to be the same as train
-## the manual test-train split (make_splits()) is picky
-## they also have to have the same features
-## The actual error that gets thrown (even if columns are just out of order):
-## Error in `make_splits()` at scripts/models/dietML_ranger_tidy.R:41:1:
-##   ! The analysis and assessment sets must have the same columns
-overlap_features <- dplyr::intersect(colnames(test_data), colnames(train_data))
-train_data <- train_data %>% dplyr::select(., dplyr::any_of(overlap_features))
-test_data <- test_data %>% dplyr::select(., dplyr::any_of(overlap_features))
-## reorder test columns
-test_data <- test_data[names(train_data)]
-
-## write the test and train data to file
-readr::write_csv(x = train_data, file = paste0(dirname(opt$OUTPUT), "/train_data.csv"))
-readr::write_csv(x = test_data, file = paste0(dirname(opt$OUTPUT), "/test_data.csv"))
+train_data <- train_data_for_dietML
+test_data <- test_data_for_dietML
 
 ## check for label
 if ("feature_of_interest" %in% colnames(train_data) == FALSE & "feature_of_interest" %in% colnames(test_data) == FALSE) {
-  stop(paste0("feature_of_interest not found in training AND testing data"))
+  stop(paste0("label not found in training AND testing data"))
 } 
 
 ## check if classification was mis-specified
