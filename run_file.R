@@ -1,7 +1,6 @@
 #!/usr/bin/env Rscript 
 
 ## SCRIPT: taxaHFE.R ===============================================
-## AUTHOR: Andrew Oliver
 ## DATE:   Jun 26, 2024
 ##
 ## PURPOSE: To compress feature space of hierarchical organized data, and 
@@ -16,6 +15,9 @@
 ## set working dir to /home for the docker container
 setwd("/home/docker")
 
+## set target list for dietML input objects
+dietML_inputs <- list()
+
 ## load libraries & functions ==================================================
 source("/scripts/tree.R")
 source("/scripts/options.R")
@@ -24,14 +26,11 @@ source("/scripts/methods.R")
 ## add commandline options =====================================================
 
 # to use this code line-by-line in the Rstudio context, commandArgs can be overloaded to specify the desired flags
-# ex. commandArgs <- function(x) { c("example_inputs/metadata.txt", "example_inputs/microbiome_data.txt", "example_inputs/out.txt", "-s", "Sample", "-l", "Category", "-L", "3", "-n", "4", "--seed", "42") }
+# ex. commandArgs <- function(x) { c("example_inputs/metadata.txt", "example_inputs/microbiome_data.txt", "example_inputs/out.txt", "-s", "Sample", "-l", "Category", "-L", "3", "-n", "4", "--seed", "42", "-d", "-c", "0.6") }
 # these will be used by the argparser
-opt <- load_args("taxaHFE.R v2.11", 2)
+opt <- load_args("taxaHFE-ML", version = "2.0")
 
 ## Run main ====================================================================
-
-## set target list for dietML input objects
-dietML_inputs <- list()
 
 ## set random seed
 set_seed_func(opt$seed)
@@ -54,30 +53,30 @@ test_metadata  <- rsample::testing(tr_te_split)
 
 
 ## Run TaxaHFE
-method_taxaHFE(hdata = hData,
-  metadata = metadata,
-  prevalence = opt$prevalence,
-  abundance = opt$abundance,
-  lowest_level = opt$lowest_level,
-  max_level = opt$max_level,
-  cor_level = opt$cor_level,
-  ncores = opt$ncores,
-  feature_type = opt$feature_type,
-  nperm = opt$nperm,
-  disable_super_filter = opt$disable_super_filter,
-  write_both_outputs = opt$write_both_outputs,
-  write_flattened_tree = opt$write_flattened_tree,
-  target_list = dietML_inputs,
-  col_names = colnames(hData)[2:NCOL(hData)],
-  output = opt$OUTPUT,
-  seed = opt$seed
-  )
+# method_taxaHFE(hdata = hData,
+#   metadata = metadata,
+#   prevalence = opt$prevalence,
+#   abundance = opt$abundance,
+#   lowest_level = opt$lowest_level,
+#   max_level = opt$max_level,
+#   cor_level = opt$cor_level,
+#   ncores = opt$ncores,
+#   feature_type = opt$feature_type,
+#   nperm = opt$nperm,
+#   disable_super_filter = opt$disable_super_filter,
+#   write_both_outputs = opt$write_both_outputs,
+#   write_flattened_tree = opt$write_flattened_tree,
+#   target_list = dietML_inputs,
+#   col_names = colnames(hData)[2:NCOL(hData)],
+#   output = opt$OUTPUT,
+#   seed = opt$seed
+#   )
 
 ## Run TaxaHFE-ML
 method_taxaHFE_ml(hdata = hData,
   metadata = metadata,
-  prevalence = opt$prevalence,
-  abundance = opt$abundance,
+  prevalence = 0, # prevelance filter
+  abundance = 0,
   lowest_level = opt$lowest_level,
   max_level = opt$max_level,
   cor_level = opt$cor_level,
@@ -102,11 +101,11 @@ method_taxaHFE_ml(hdata = hData,
 
 method_levels(hdata = hData,
                metadata = metadata,
-               prevalence = opt$prevalence,
-               abundance = opt$abundance,
+               prevalence = 0,
+               abundance = 0,
                lowest_level = opt$lowest_level,
                max_level = opt$max_level,
-               cor_level = opt$cor_level,
+               cor_level = 0.1,
                ncores = opt$ncores,
                feature_type = opt$feature_type,
                nperm = opt$nperm,
@@ -119,7 +118,11 @@ method_levels(hdata = hData,
                seed = opt$seed
 )
 
-
 ## make sure test train in each item of list
+split_train_data(target_list = dietML_inputs, attribute_name = "train_test_attr", seed = opt$seed)
 
-## pass to dietML
+## create df for dietML to parse
+dietML_input_df <- extract_attributes(items_list = dietML_inputs)
+
+## pass to dietML if selected
+run_dietML(input_df = dietML_input_df)
