@@ -766,12 +766,12 @@ prepare_flattened_df <- function(node, metadata, disable_super_filter, col_names
   ## only take the features that win or win the superfilter
   if (disable_super_filter) {
     flattened_df <- flattened_df %>%
-      dplyr::filter(., sf_winner == TRUE)
+      dplyr::filter(., winner == TRUE)
   } else {
     flattened_df <- flattened_df %>%
-      dplyr::filter(., winner == TRUE)
+      dplyr::filter(., sf_winner == TRUE)
   }
-  
+
   ## clean up the names in case there are weird issues of duplicates
   flattened_df$name <- janitor::make_clean_names(flattened_df$name)
   
@@ -856,6 +856,13 @@ generate_outputs <- function(tree, metadata, col_names, output_location, disable
   }
 }
 
+## simple function to store objects into dietML_inputs list, with
+## custom attributes that keep track of
+## 1. program_method (taxaHFE_ML, summarized levels, etc.)
+## 2. whether superfilter was used
+## 3. is it a train or test object
+## 4. what summarized level is it
+## 5. what random seed was run
 store_dietML_inputs <- function(target_list, object, super_filter, method, train_test_attr, level_n, seed) {
   
   target_name <- paste0(method, "_", super_filter, "_", train_test_attr, "_", level_n)
@@ -876,7 +883,7 @@ store_dietML_inputs <- function(target_list, object, super_filter, method, train
 }
 
 ## same function as write_summary_files() except it just 
-## adds these objects to dietML_inputs list
+## adds these objects to dietML_inputs list.
 generate_summary_files <- function(input, metadata, target_list, object, 
                                    disable_super_filter, seed) {
   
@@ -927,13 +934,173 @@ generate_summary_files <- function(input, metadata, target_list, object,
   }
 }
 
-split_train_data <- function(target_list) {
+## loops over dietML_inputs list and checks if there is a train, test
+## version of the object (df). If there isnt, creates 2 new objects in the
+## list that is a test and a train object of that original object. The split
+## is informed from the tr_te_split code in the run_file.R
+split_train_data <- function(target_list, attribute_name, seed) {
+  # Initialize an empty vector to store indices with NA values
+  na_indices <- integer(0)
   
+  # Loop through the list
+  for (i in seq_along(target_list)) {
+    # Get the current item
+    item <- target_list[[i]]
+    
+    # Check if the item has the attribute
+    if (!is.null(attr(item, attribute_name))) {
+      # Get the value of the attribute
+      attr_value <- attr(item, attribute_name)
+      
+      # Check if the attribute value is NA
+      if (is.na(attr_value)) {
+        # Append the index to the na_indices vector
+        na_indices <- c(na_indices, i)
+      }
+      }
+    }
+  
+  for (missing_train_index in na_indices) {
+    temp_train <- dietML_inputs[[missing_train_index]] %>% as.data.frame() %>% dplyr::filter(., subject_id %in% train_metadata$subject_id)
+    dietML_inputs <<- store_dietML_inputs(target_list = dietML_inputs,
+                                          object = temp_train,
+                                          super_filter = attributes(dietML_inputs[[missing_train_index]])$superfilter,
+                                          method = attributes(dietML_inputs[[missing_train_index]])$program_method,
+                                          train_test_attr = "train",
+                                          level_n = attributes(dietML_inputs[[missing_train_index]])$level,
+                                          seed = seed
+    )
+    
+    temp_test <- dietML_inputs[[missing_train_index]] %>% as.data.frame() %>% dplyr::filter(., subject_id %in% test_metadata$subject_id)
+    dietML_inputs <<- store_dietML_inputs(target_list = dietML_inputs,
+                                          object = temp_test,
+                                          super_filter = attributes(dietML_inputs[[missing_train_index]])$superfilter,
+                                          method = attributes(dietML_inputs[[missing_train_index]])$program_method,
+                                          train_test_attr = "test",
+                                          level_n = attributes(dietML_inputs[[missing_train_index]])$level,
+                                          seed = seed
+    )
+  }
   
 }
 
-for (item in dietML_inputs) {
-  if (Filter(function(x) program_method(x)!="function", example_list)) {
+## writes every object in dietML_inputs to file
+write_list_to_csv <- function(target_list, directory = ".") {
+  # Check if the provided directory exists
+  if (!dir.exists(directory)) {
+    stop("The specified directory does not exist.")
+  }
+  
+  # Get the names of the list items
+  names_lst <- names(target_list)
+  
+  # Check if the list has names
+  if (is.null(names_lst)) {
+    stop("The list must have names for the objects.")
+  }
+  
+  # Loop through the list and write each object to a CSV file
+  for (i in seq_along(target_list)) {
+    # Get the current item and its name
+    item <- target_list[[i]]
+    item_name <- names_lst[i]
     
+    # Check for the "train_test_attr" attribute and if it is non-NA and non-null
+    train_test_attr <- attr(item, "train_test_attr")
+    if (is.null(train_test_attr) || is.na(train_test_attr)) {
+      message(paste("Skipping", item_name, ": 'train_test_attr' is NULL or NA."))
+      next
+    }
+    
+    # Create a filename for the current item
+    filename <- file.path(directory, paste0(item_name, ".csv"))
+    
+    # Check if the item is a data.frame or matrix
+    if (is.data.frame(item) || is.matrix(item)) {
+      # Write the item to a CSV file
+      readr::write_csv(item, filename)
+    } else {
+      # Print a warning if the item is not a data.frame or matrix
+      warning(paste("Item", item_name, "is not a data.frame or matrix and was not written to a CSV file."))
+    }
+  }
+  
+  # Inform the user that the process is complete
+  message("Finished writing objects to CSV files.")
+}
+
+## create a dataframe of attributes I care about (attr_to_return list) from the
+## dietML_inputs list, which i can use to pass to dietML
+extract_attributes <- function(items_list) {
+  # Initialize an empty list to store attributes for each item
+  attr_list <- list()
+  ## create a list of attributes we want to pull into a dataframe
+  attr_to_return <- c("program_method", "superfilter", "train_test_attr", "level", "seed")
+  
+  # Loop through each item in the list
+  for (i in seq_along(items_list)) {
+    # Get attributes of the current item
+    item_attr <- attributes(items_list[[i]])
+    item_attr <- subset(item_attr, names(item_attr) %in% attr_to_return)
+    item_attr <- append(item_attr, values = c("name" =  names(dietML_inputs[i])))
+    
+    # Add the item number or name for reference
+    if (is.null(item_attr)) {
+      item_attr <- list(item_name = paste0("Item_", i))
+    } else {
+      item_attr$item_name <- paste0("Item_", i)
+    }
+    
+    # Store the attributes in the list
+    attr_list[[i]] <- as.data.frame(item_attr, stringsAsFactors = FALSE)
+  }
+  
+  # Combine all attributes into one dataframe
+  combined_df <- do.call(rbind, attr_list)
+  # remove any objects that do not have a train_test_attr. These are the 
+  # objects that existed in the list prior to running the split_train_data() 
+  # funtion.
+  combined_df <- combined_df %>% dplyr::filter(., train_test_attr != "")
+  # create a general name for each method. ie instead of summarized_level_NA_train_1,
+  # the general name should be summarized_level_1
+  combined_df$general_name <- gsub(pattern = "_train|_test|_NA",replacement = "", x = combined_df$name)
+  
+  return(combined_df)
+}
+
+## run dietML based on dietML_input_df
+run_dietML <- function(input_df, n_repeat) {
+  
+  for (seed in sample(1:100000000, replace = F, size = opt$permute)) {
+    if (opt$permute > 1) {
+      ## same idea as below, need to change the random seed and it needs
+      ## to be a persistant change through sourcing the dietML script.
+      ## again, we can create a list of seeds that can be passed through
+      opt$seed <<- seed
+    }
+    for (dML_input in unique(input_df[["general_name"]])) {
+      
+      ## I dont know how else to create these objects and source script within
+      ## this function, without assigning to global env
+      ## DietML.R is looking for train_data and test_data in global env. I suppose
+      ## we could create a list of these objects and tweak dietML to take in
+      ## the list.
+      
+      train_data <<- dietML_inputs[[input_df %>% 
+                                     dplyr::filter(., general_name == dML_input & train_test_attr == "train") %>% 
+                                     dplyr::pull(name)]]
+      
+      test_data <<- dietML_inputs[[input_df %>% 
+                                    dplyr::filter(., general_name == dML_input & train_test_attr == "test") %>% 
+                                    dplyr::pull(name)]]
+      
+      ## keep track of what method is being passed to dietML
+      ## this gets printed in the results file
+      opt$program <<- dML_input
+      #TODO: make this a function that takes instead of a source. Make "program" and 
+      #"seed" and whatnot into function arguments and not something that gets written
+      #to opt!!! BANISH UNNECESSARY GLOBAL VARS!!!
+      source("/home/docker/taxaHFE-ML/dietML.R")
+    }
   }
 }
