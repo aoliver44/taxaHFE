@@ -1,7 +1,6 @@
 #!/usr/bin/env Rscript
 
 ## SCRIPT: methods.R ===================================================
-## AUTHOR: Matt Kay & Andrew Oliver
 ## DATE:   June, 24 2024
 ##
 ## PURPOSE: Holds the methods for taxaHFE and associated programs
@@ -36,28 +35,38 @@ method_taxaHFE <- function(hdata, metadata, prevalence, abundance,
     disable_super_filter = disable_super_filter
   )
 
-  ## Extract information from tree  ==============================================
+  ## write outputs =============================================================
+  
+  generate_outputs(
+    competed_tree,
+    metadata,
+    colnames(hData)[2:NCOL(hData)],
+    opt$OUTPUT, opt$disable_super_filter,
+    opt$write_both_outputs,
+    opt$write_old_files,
+    opt$write_flattened_tree,
+    opt$ncores
+  )
+  
+  ## Extract information from tree  ============================================
   ## store data in list of data for dietML
-
+  
   flattened_df <- prepare_flattened_df(node = competed_tree,
-    metadata = metadata,
-    disable_super_filter = disable_super_filter,
-    col_names = colnames(hData)[2:NCOL(hData)]
-    )
+                                       metadata = metadata,
+                                       disable_super_filter = disable_super_filter,
+                                       col_names = colnames(hData)[2:NCOL(hData)]
+  )
   
-  ## make split of data based on test_train_split
-  #code code code
-  
-  ## store test train data in list
+  ## store taxaHFE outputs in list
   dietML_inputs <<- store_dietML_inputs(target_list = dietML_inputs,
     object = flattened_df,
-    super_filter = ifelse(disable_super_filter == FALSE, "no_sf", "sf"),
+    super_filter = ifelse(disable_super_filter, "no_sf", "sf"),
     method = "taxaHFE",
     train_test_attr = NA,
     level_n = NA,
     seed = seed
     )
-
+  
 }
 
 method_taxaHFE_ml <- function(hdata, metadata, prevalence, abundance,
@@ -75,8 +84,9 @@ method_taxaHFE_ml <- function(hdata, metadata, prevalence, abundance,
 
     ## Build tree ================================================================
     hTree <- build_tree(hData_split,
-      filter_prevalence = prevalence,
-      filter_mean_abundance = abundance)
+                        filter_prevalence = prevalence,
+                        filter_mean_abundance = abundance
+    )
 
     ## Main competition ==========================================================
     competed_tree <- compete_tree(
@@ -146,14 +156,14 @@ method_taxaHFE_ml <- function(hdata, metadata, prevalence, abundance,
   ## store data in list of data for dietML
   dietML_inputs <<- store_dietML_inputs(target_list = dietML_inputs,
     object = train_data_for_dietML,
-    super_filter = ifelse(disable_super_filter == TRUE, "no_sf", "sf"),
+    super_filter = ifelse(disable_super_filter, "no_sf", "sf"),
     method = "taxaHFE_ML",
     train_test_attr = "train",
     level_n = NA,
     seed = seed)
   dietML_inputs <<- store_dietML_inputs(target_list = dietML_inputs,
     object = test_data_for_dietML,
-    super_filter = ifelse(disable_super_filter == TRUE, "no_sf", "sf"),
+    super_filter = ifelse(disable_super_filter, "no_sf", "sf"),
     method = "taxaHFE_ML",
     train_test_attr = "test",
     level_n = NA,
@@ -177,16 +187,18 @@ method_levels <- function(hdata, metadata, prevalence, abundance,
   )
   
   ## Main competition ==========================================================
+  ## fixed some competition parameters to make it much faster (for the levels,
+  ## really the tree building part is important, not the actual competition)
   competed_tree <- compete_tree(
     hTree,
-    lowest_level = lowest_level,
+    lowest_level = max(stringr::str_count(hData$clade_name, "\\|")),
     max_level = max_level, # allows for all levels to be competed. Change to 1 for pairwise comparisons
     col_names = colnames(hData)[2:NCOL(hData)],
     corr_threshold = cor_level,
     metadata = metadata,
     ncores = ncores,
     feature_type = feature_type,
-    nperm = nperm,
+    nperm = 3, # hard encoded because the levels dont need an RF competition
     disable_super_filter = disable_super_filter
   )
   
@@ -199,15 +211,11 @@ method_levels <- function(hdata, metadata, prevalence, abundance,
   generate_summary_files(input = flattened_df, 
                          metadata = metadata, 
                          target_list = dietML_inputs, 
-                         disable_super_filter = ifelse(disable_super_filter == FALSE, "no_sf", "sf"),
+                         disable_super_filter = ifelse(disable_super_filter, "no_sf", "sf"),
                          seed = seed
                         )
 }
 
-method_boruta <- function() {
-
-  
-}
 
 method_taxaHFE_time <- function() {
 
