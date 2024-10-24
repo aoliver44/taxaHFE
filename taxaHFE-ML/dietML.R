@@ -41,12 +41,10 @@ models <- c("rf", "lasso", "ridge", "enet")
 
 ## check for inputs ============================================================
 
-## quietly check to make sure /scripts wasn't overwritten
-if (file.exists("/scripts/models/dietML_ranger_tidy.R") == FALSE) {
-  stop("It appears you bind mounted docker to a virtual directory named /scripts. We
-       need to use that folder. Please restart the docker image and use a different
-       virtual directory name.")
-}
+## check to make sure dietML_input_df exists and is not empty
+if (!exists("dietML_input_df") | nrow(dietML_input_df) < 1) {
+  stop(paste0("Nothing passed to dietML."))
+} 
 
 ## check for outdir and make if not there
 if (dir.exists(paste0(dirname(opt$OUTPUT), "/ml_analysis")) == TRUE) {
@@ -56,9 +54,6 @@ if (dir.exists(paste0(dirname(opt$OUTPUT), "/ml_analysis")) == TRUE) {
   setwd(paste0(dirname(opt$OUTPUT), "/ml_analysis"))
 }
 
-## read in inputs
-train_data <- train_data_for_dietML
-test_data <- test_data_for_dietML
 
 ## check for label
 if ("feature_of_interest" %in% colnames(train_data) == FALSE & "feature_of_interest" %in% colnames(test_data) == FALSE) {
@@ -86,7 +81,7 @@ cat("\n#########################\n")
 cat("Running null model...", "\n")
 cat("#########################\n\n")
 
-source("/scripts/models/dietML_null_tidy.R")
+source("/home/docker/taxaHFE-ML/models/dietML_null_tidy.R")
 
 ## run chosen model ============================================================
 
@@ -105,18 +100,18 @@ cat("#########################\n\n")
 
 ## random forest
 if (opt$model %in% c("ranger", "rf", "randomforest")) {
-  source("/scripts/models/dietML_ranger_tidy.R")
+  source("/home/docker/taxaHFE-ML/models/dietML_ranger_tidy.R")
 }
 
 ## lasso/ridge models
 if (opt$model %in% c("lasso", "ridge")) {
-    source("/scripts/models/dietML_glmnet_tidy_ridge_lasso.R")
+    source("/home/docker/taxaHFE-ML/models/dietML_glmnet_tidy_ridge_lasso.R")
 } 
 
 
 ## elastic net models
 if (opt$model %in% c("enet", "elasticnet")) {
-    source("/scripts/models/dietML_glmnet_tidy_enet.R")
+    source("/home/docker/taxaHFE-ML/models//dietML_glmnet_tidy_enet.R")
 } 
 
 ## VIP Plots ===================================================================
@@ -147,7 +142,7 @@ if (opt$shap == TRUE) {
 
 ## Done ========================================================================
 
-save.image(file = paste0(dirname(opt$OUTPUT), "/ml_analysis/", "ML_r_workspace.rds"))
+#save.image(file = paste0(dirname(opt$OUTPUT), "/ml_analysis/", "ML_r_workspace.rds"))
 
 cat("\n#########################\n")
 cat("Done! Results written to outdir.", "\n")
