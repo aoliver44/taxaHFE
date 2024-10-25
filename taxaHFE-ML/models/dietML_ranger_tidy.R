@@ -38,6 +38,7 @@ library(ranger, quietly = T, verbose = F, warn.conflicts = F)
 ## set initial test-train split
 train <- train_data
 test  <- test_data
+
 split_from_data_frame <- make_splits(
   x = train,
   assessment = test
@@ -209,17 +210,21 @@ null_results <- results_df %>%
 full_results <- merge(workflowsets::collect_metrics(final_res), null_results, by = ".metric", all = T)
 full_results$seed <- opt$seed
 
+## keep track of what program is being run for compete all levels
+full_results$program <- opt$program
+
+
 ## write final results to file or append if file exists
-readr::write_csv(x = full_results, file = paste0(dirname(opt$OUTPUT), "/ml_analysis/", "ml_results.csv"), append = T, col_names = !file.exists(paste0(dirname(opt$OUTPUT), "/ml_analysis/", "ml_results.csv")))
+readr::write_csv(x = full_results, file = "ml_results.csv", append = T, col_names = !file.exists("ml_results.csv"))
 
 ## graphs ======================================================================
 
-hyperpar_perf_plot <- autoplot(search_res, type = "performance")
-ggplot2::ggsave(plot = hyperpar_perf_plot, filename = paste0(dirname(opt$OUTPUT), "/ml_analysis/", "training_performance.pdf"), width = 7, height = 2.5, units = "in")
-
-hyperpar_tested_plot <- autoplot(search_res, type = "parameters") + 
-  labs(x = "Iterations", y = NULL)
-ggplot2::ggsave(plot = hyperpar_tested_plot, filename = paste0(dirname(opt$OUTPUT), "/ml_analysis/", "hyperpars_tested.pdf"), width = 7, height = 2.5, units = "in")
+# hyperpar_perf_plot <- autoplot(search_res, type = "performance")
+# ggplot2::ggsave(plot = hyperpar_perf_plot, filename = paste0(dirname(opt$OUTPUT), "/ml_analysis/", "training_performance.pdf"), width = 7, height = 2.5, units = "in")
+# 
+# hyperpar_tested_plot <- autoplot(search_res, type = "parameters") + 
+#   labs(x = "Iterations", y = NULL)
+# ggplot2::ggsave(plot = hyperpar_tested_plot, filename = paste0(dirname(opt$OUTPUT), "/ml_analysis/", "hyperpars_tested.pdf"), width = 7, height = 2.5, units = "in")
 
 ## remove any doParallel job setups that may have
 ## unneccessarily hung around

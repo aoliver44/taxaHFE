@@ -33,5 +33,6 @@ COPY ./taxaHFE-ML/models/dietML_ranger_tidy.R ./scripts/models/dietML_ranger_tid
 COPY ./taxaHFE-ML/models/dietML_null_tidy.R ./scripts/models/dietML_null_tidy.R
 COPY ./taxaHFE-ML/utilities/shap_figures.R ./scripts/utilities/shap_figures.R
 COPY ./taxaHFE-ML/utilities/vip_basic.R ./scripts/utilities/vip_basic.R
+COPY ./taxaHFE-ML/utilities/compare_all_levels.R ./scripts/utilities/compare_all_levels.R
 
 ENV PATH="${PATH}:/scripts/"
