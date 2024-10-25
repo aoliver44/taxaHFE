@@ -19,7 +19,7 @@ setwd("/home/docker")
 
 ## load libraries & functions ==================================================
 source("/home/docker/tree.R")
-source("/home/docker/options_new.R")
+source("/home/docker/options.R")
 source("/home/docker/methods.R")
 
 ## add commandline options =====================================================
