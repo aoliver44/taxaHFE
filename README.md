@@ -1,4 +1,4 @@
-![test workflow](https://github.com/mmmckay/taxaHFE/actions/workflows/test.yml/badge.svg)
+![test workflow](https://github.com/aoliver44/taxaHFE/actions/workflows/test.yml/badge.svg)
 # **TaxaHFE** <a><img src='pictures/logo.png' align="right" height="150" /></a>
   A program to perform hierarchical feature engineering on data with taxonomic organization (i.e., microbiome data, dietary data)
 ## **Version 2.2 is now available!** 
@@ -89,11 +89,17 @@ docker build -t taxa_hfe:latest .
 Option 1: Run taxaHFE with **YOUR** data:
 1. Navigate to the directory containing your data, and start the docker image!
 ```
-docker run --rm -it -v `pwd`:/home/docker -w /home/docker aoliver44/taxa_hfe:latest bash
+docker run --rm -v `pwd`:/data aoliver44/taxahfe:latest [options] <METADATA> <DATA> <OUTPUT>
 
-## or with singularity
-singularity run -W `pwd` --bind `pwd`:/home/docker taxaHFE.sif bash
+## or with singularity?
+singularity run -W `pwd` --bind `pwd`:/home/docker taxaHFE.sif [options] <METADATA> <DATA> <OUTPUT>
 ```
+
+Alternatively you can use the absolute path to your data instead of `pwd` for the bind mount
+```
+docker run --rm -v /path/to/you/data:/data aoliver44/taxahfe:latest [options] <METADATA> <DATA> <OUTPUT>
+```
+
 2. Run taxaHFE
 ```
 taxaHFE [options] <METADATA> <DATA> <OUTPUT>
@@ -107,10 +113,7 @@ Option 2: Run taxaHFE on **EXAMPLE** data provided:
 git clone https://github.com/aoliver44/taxaHFE.git && cd taxaHFE
 
 ## STEP 2: RUN THE CONTAINER
-docker run --rm -it -v `pwd`:/home/docker -w /home/docker aoliver44/taxa_hfe:latest bash
-
-## STEP 3: RUN TAXAHFE 
-taxaHFE --subject_identifier Sample --label Category --lowest_level 3 --ncores 2 --seed 42 /home/docker/example_inputs/metadata.txt /home/docker/example_inputs/microbiome_data.txt /home/docker/example_inputs/output.csv
+docker run --rm -v ./example_inputs:/data aoliver44/taxahfe --subject_identifier Sample --label Category --lowest_level 3 --ncores 2 --seed 42 /data/metadata.txt /data/microbiome_data.txt /data/output.csv
 ```
 
 </br>

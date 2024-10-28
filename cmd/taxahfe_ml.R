@@ -7,27 +7,18 @@
 ##          considering data leakage. This will assess the performance (in a
 ##          ML model) of taxaHFE feature reduction
 
-## docker info =================================================================
-
-## docker command:
-## to do: are we going to eventually make the docker image have an entrypoint?
-#docker run --rm -v `PWD`/:/home/docker -w /home/docker aoliver44/taxa_hfe:latest
-
-## set working dir to /home for the docker container
-setwd("/home/docker")
-
-
 ## load libraries & functions ==================================================
-source("/home/docker/tree.R")
-source("/home/docker/options.R")
-source("/home/docker/methods.R")
+source("lib/tree.R")
+source("lib/options.R")
+source("lib/methods.R")
 
 ## add commandline options =====================================================
 
 # to use this code line-by-line in the Rstudio context, commandArgs can be overloaded to specify the desired flags
-# ex. commandArgs <- function(x) { c("/home/docker/example_inputs/metadata.txt", "/home/docker/example_inputs/microbiome_data.txt", "/home/docker/example_inputs/out.csv", "-s", "Sample", "-l", "Category", "-L", "3", "-n", "4", "--seed", "42", "--train_split", "0.8") }
+# ex. commandArgs <- function(x) { c("example_inputs/metadata.txt", "example_inputs/microbiome_data.txt", "example_inputs/out.csv", "-s", "Sample", "-l", "Category", "-L", "3", "-n", "4", "--seed", "42", "--train_split", "0.8") }
 # these will be used by the argparser
-opt <- load_args("taxaHFE-ML", version = "2.3")
+version <- Sys.getenv('TAXAHFE_VERSION')
+opt <- load_args("taxaHFE-ML", version = version)
 
 ## Run main ====================================================================
 

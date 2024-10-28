@@ -6,27 +6,18 @@
 ## PURPOSE: To compress feature space of hierarchical organized data, and 
 ##          compete feature engineering methods
 
-## docker info =================================================================
-
-## docker command:
-## to do: are we going to eventually make the docker image have an entrypoint?
-#docker run --rm -v `PWD`/:/home/docker -w /home/docker aoliver44/taxa_hfe:latest
-
-## set working dir to /home for the docker container
-setwd("/home/docker")
-
-
 ## load libraries & functions ==================================================
-source("/home/docker/tree.R")
-source("/home/docker/options_new.R")
-source("/home/docker/methods.R")
+source("lib/tree.R")
+source("lib/options.R")
+source("lib/methods.R")
 
 ## add commandline options =====================================================
 
 # to use this code line-by-line in the Rstudio context, commandArgs can be overloaded to specify the desired flags
 # ex. commandArgs <- function(x) { c("example_inputs/metadata.txt", "example_inputs/microbiome_data.txt", "example_inputs/out.txt", "-s", "Sample", "-l", "Category", "-L", "3", "-n", "4", "--seed", "42", "-wWD") }
 # these will be used by the argparser
-opt <- load_args("taxaHFE", version = "2.3")
+version <- Sys.getenv('TAXAHFE_VERSION')
+opt <- load_args("taxaHFE-ML", version = version)
 
 ## Run main ====================================================================
 

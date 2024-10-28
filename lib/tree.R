@@ -46,8 +46,8 @@ options(warn = -1)
 ## rename the subject_identifier to subject_id and
 ## rename the label to feature_of_interest
 ## metadata, should be in tab or comma separated format
-read_in_metadata <- function(input, subject_identifier, label) {
-  
+read_in_metadata <- function(data_dir, input, subject_identifier, label) {
+
   cat("\n\n", "Checking for METADATA...", "\n")
   if (file.exists(input) == FALSE) {
     stop("METADATA input not found.")
@@ -146,6 +146,9 @@ read_in_hierarchical_data <- function(input, metadata, cores) {
 ## takes in input from Flatten tree to df function output
 # write summarized abundance files for each level except taxa_tree
 write_summary_files <- function(input, metadata, output) {
+  # combine data_dir with the input paths
+  # will ignore the data_dir if the path is abosolute
+  input <- file.path(data_dir, input)
   
   ## write files for all the individual levels
   max_levels <- max(input[["depth"]])
@@ -1100,7 +1103,7 @@ run_dietML <- function(input_df, n_repeat) {
       #TODO: make this a function that takes instead of a source. Make "program" and 
       #"seed" and whatnot into function arguments and not something that gets written
       #to opt!!! BANISH UNNECESSARY GLOBAL VARS!!!
-      source("/home/docker/taxaHFE-ML/dietML.R")
+      source("lib/dietML.R")
     }
   }
 }

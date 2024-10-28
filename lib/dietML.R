@@ -7,9 +7,6 @@
 ## PURPOSE: Run classification or regression ML
 ## the dietML.R script
 
-## docker info =================================================================
-#docker run --rm -v `pwd`:/home/docker -w /home/docker aoliver44/leakage_free_taxaHFE:latest
-
 ## suppress warnings
 options(warn=-1)
 
@@ -81,7 +78,7 @@ cat("\n#########################\n")
 cat("Running null model...", "\n")
 cat("#########################\n\n")
 
-source("/home/docker/taxaHFE-ML/models/dietML_null_tidy.R")
+source("lib/models/dietML_null_tidy.R")
 
 ## run chosen model ============================================================
 
@@ -100,18 +97,18 @@ cat("#########################\n\n")
 
 ## random forest
 if (opt$model %in% c("ranger", "rf", "randomforest")) {
-  source("/home/docker/taxaHFE-ML/models/dietML_ranger_tidy.R")
+  source("lib/models/dietML_ranger_tidy.R")
 }
 
 ## lasso/ridge models
 if (opt$model %in% c("lasso", "ridge")) {
-    source("/home/docker/taxaHFE-ML/models/dietML_glmnet_tidy_ridge_lasso.R")
+    source("lib/models/dietML_glmnet_tidy_ridge_lasso.R")
 } 
 
 
 ## elastic net models
 if (opt$model %in% c("enet", "elasticnet")) {
-    source("/home/docker/taxaHFE-ML/models//dietML_glmnet_tidy_enet.R")
+    source("lib/models/dietML_glmnet_tidy_enet.R")
 } 
 
 ## VIP Plots ===================================================================
@@ -130,10 +127,10 @@ if (opt$shap == TRUE) {
   cat("#########################\n\n")
   
   if (opt$model %in% c("ranger", "rf", "randomforest")) {
-    source("/scripts/utilities/shap_figures.R")
+    source("lib/utilities/shap_figures.R")
   } else if (opt$model %in% c("enet", "elasticnet", "lasso", "ridge")) {
     cat("You are not using a RF model. We will attempt to\n calculate VIP values instead.")
-    source("/scripts/utilities/vip_basic.R")
+    source("lib/utilities/vip_basic.R")
   } else {
     cat("We are unable to calculate feature importances for\n the chosen model at this time.")
   }

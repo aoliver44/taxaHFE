@@ -44,6 +44,7 @@ initialize_parser <- function(version, program_name, description) {
   parser$add_argument('OUTPUT', metavar='OUTPUT', type="character", help="output file name (csv)")
   
   parser$add_argument('-v', '--version', action='version', version=version)
+  parser$add_argument('--data_dir', type="character", metavar="<string>", default='/data', help='Directory for data files input/output, ignored if using absolute paths')
   
   return(parser)
 }
@@ -74,7 +75,7 @@ add_taxaHFE_RM_args <- function(parser) {
 }
 
 ## load args function
-load_args <- function(program, version = "1.0") {
+load_args <- function(program, version) {
   if (program == "taxaHFE") {
     # Initialize the parser for taxaHFE
     parser <- initialize_parser(version, "taxaHFE", "Hierarchical feature engineering (HFE) for feature reduction")
@@ -95,9 +96,13 @@ load_args <- function(program, version = "1.0") {
   }
   
   # Parse the command-line arguments and return them
-  return(parser$parse_args(commandArgs(TRUE)))
+  opt <- parser$parse_args(commandArgs(TRUE))
+
+  # also normalize all input paths to the data_dir
+  # will ignore the data_dir if the path is abosolute
+  opt$METADATA <- file.path(opt$data_dir, opt$METADATA)
+  opt$DATA <- file.path(opt$data_dir, opt$DATA)
+  opt$OUTPUT <- file.path(opt$data_dir, opt$OUTPUT)
+
+  return(opt)
 }
-
-
-
-
