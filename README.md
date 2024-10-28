@@ -113,7 +113,7 @@ Option 2: Run taxaHFE on **EXAMPLE** data provided:
 git clone https://github.com/aoliver44/taxaHFE.git && cd taxaHFE
 
 ## STEP 2: RUN THE CONTAINER
-docker run --rm -v ./example_inputs:/data aoliver44/taxahfe --subject_identifier Sample --label Category --lowest_level 3 --ncores 2 --seed 42 /data/metadata.txt /data/microbiome_data.txt /data/output.csv
+docker run --rm -v ./example_inputs:/data aoliver44/taxahfe --subject_identifier Sample --label Category --lowest_level 3 --ncores 2 --seed 42 metadata.txt microbiome_data.txt output.csv
 ```
 
 </br>

@@ -1,7 +1,7 @@
 ## develop on taxaHFE using rstudio
 ## Build: docker build --platform linux/amd64 -f rstudio.dockerfile -t aoliver44/taxahfe_rstudio:2.3 .
 ## Run: 
-##  - docker run -p 8787:8787 -e PASSWORD={PASSWORD_HERE} -v `pwd`:/home/rstudio test_taxahfe_rstudio
+##  - docker run -p 8787:8787 -e PASSWORD={PASSWORD_HERE} -v `pwd`:/home/rstudio aoliver44/taxahfe_rstudio
 ##  - login at http://localhost:8787, user: rstudio, password: whatever was set in {PASSWORD_HERE}
 
 ## base r image where we have already installed the packages

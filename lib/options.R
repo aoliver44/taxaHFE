@@ -75,7 +75,12 @@ add_taxaHFE_RM_args <- function(parser) {
 }
 
 ## load args function
-load_args <- function(program, version) {
+load_args <- function(program) {
+  version <- Sys.getenv('TAXAHFE_VERSION')
+  if (version == "") {
+    version <- "0"
+  }
+
   if (program == "taxaHFE") {
     # Initialize the parser for taxaHFE
     parser <- initialize_parser(version, "taxaHFE", "Hierarchical feature engineering (HFE) for feature reduction")

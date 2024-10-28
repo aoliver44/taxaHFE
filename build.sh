@@ -13,8 +13,8 @@ fi
 echo "Building taxaHFE containers for version $VERSION"
 
 echo "Building the base image and the rstudio image..."
-docker build --platform linux/amd64 -f docker/base.dockerfile -t aoliver44/taxahfe_base:$VERSION -t aoliver44/taxahfe_base:latest .
-docker build --platform linux/amd64 -f docker/rstudio.dockerfile -t aoliver44/taxahfe_rstudio:$VERSION -t aoliver44/taxahfe_rstudio:latest .
+docker build --platform linux/amd64 -f docker/base.dockerfile --build-arg version=$VERSION -t aoliver44/taxahfe_base:$VERSION -t aoliver44/taxahfe_base:latest .
+docker build --platform linux/amd64 -f docker/rstudio.dockerfile --build-arg version=$VERSION -t aoliver44/taxahfe_rstudio:$VERSION -t aoliver44/taxahfe_rstudio:latest .
 
 echo "Building individual command containers..."
 # build args specifies which cmd/ script to use
