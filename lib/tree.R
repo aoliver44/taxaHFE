@@ -146,9 +146,6 @@ read_in_hierarchical_data <- function(input, metadata, cores) {
 ## takes in input from Flatten tree to df function output
 # write summarized abundance files for each level except taxa_tree
 write_summary_files <- function(input, metadata, output) {
-  # combine data_dir with the input paths
-  # will ignore the data_dir if the path is abosolute
-  input <- file.path(data_dir, input)
   
   ## write files for all the individual levels
   max_levels <- max(input[["depth"]])
