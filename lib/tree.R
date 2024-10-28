@@ -46,7 +46,7 @@ options(warn = -1)
 ## rename the subject_identifier to subject_id and
 ## rename the label to feature_of_interest
 ## metadata, should be in tab or comma separated format
-read_in_metadata <- function(data_dir, input, subject_identifier, label) {
+read_in_metadata <- function(input, subject_identifier, label) {
 
   cat("\n\n", "Checking for METADATA...", "\n")
   if (file.exists(input) == FALSE) {
