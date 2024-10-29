@@ -38,8 +38,8 @@ models <- c("rf", "lasso", "ridge", "enet")
 
 ## check for inputs ============================================================
 
-## check to make sure dietML_input_df exists and is not empty
-if (!exists("dietML_input_df") | nrow(dietML_input_df) < 1) {
+## check to make sure diet_ml_input_df exists and is not empty
+if (!exists("diet_ml_input_df") | nrow(diet_ml_input_df) < 1) {
   stop(paste0("Nothing passed to dietML."))
 } 
 
@@ -78,7 +78,7 @@ cat("\n#########################\n")
 cat("Running null model...", "\n")
 cat("#########################\n\n")
 
-source("lib/models/dietML_null_tidy.R")
+source("lib/models/diet_ml_null_tidy.R")
 
 ## run chosen model ============================================================
 
@@ -97,18 +97,19 @@ cat("#########################\n\n")
 
 ## random forest
 if (opt$model %in% c("ranger", "rf", "randomforest")) {
-  source("lib/models/dietML_ranger_tidy.R")
+  source("lib/models/diet_ml_ranger_tidy.R")
 }
 
 ## lasso/ridge models
+## TODO: does not exist
 if (opt$model %in% c("lasso", "ridge")) {
-    source("lib/models/dietML_glmnet_tidy_ridge_lasso.R")
+    source("lib/models/diet_ml_glmnet_tidy_ridge_lasso.R")
 } 
 
 
 ## elastic net models
 if (opt$model %in% c("enet", "elasticnet")) {
-    source("lib/models/dietML_glmnet_tidy_enet.R")
+    source("lib/models/diet_ml_glmnet_tidy_enet.R")
 } 
 
 ## VIP Plots ===================================================================

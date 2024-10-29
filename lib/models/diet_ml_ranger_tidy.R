@@ -1,7 +1,7 @@
 #!/usr/bin/env Rscript
 ## v0.3.0a.8
 
-## SCRIPT: dietML_ranger_tidy.R ===================================================
+## SCRIPT: diet_ml_ranger_tidy.R ===================================================
 ## AUTHOR: Andrew Oliver
 ## DATE:   Jan, 30 2023
 ##
@@ -50,7 +50,7 @@ folds <- rsample::vfold_cv(train, v = as.numeric(opt$folds), strata = feature_of
 ## recipe ======================================================================
 
 ## specify recipe (this is like the pre-process work)
-dietML_recipe <- 
+diet_ml_recipe <- 
   recipes::recipe(feature_of_interest ~ ., data = train) %>% 
   recipes::update_role(tidyr::any_of("subject_id"), new_role = "ID") %>% 
   recipes::step_dummy(recipes::all_nominal_predictors()) %>%
@@ -73,10 +73,10 @@ initial_mod %>% parsnip::translate()
 ## workflow ====================================================================
 
 ## define workflow
-dietML_wflow <- 
+diet_ml_wflow <- 
   workflows::workflow() %>% 
   workflows::add_model(initial_mod) %>% 
-  workflows::add_recipe(dietML_recipe)  
+  workflows::add_recipe(diet_ml_recipe)  
 
 ## set up parallel jobs ========================================================
 ## remove any doParallel job setups that may have
@@ -90,7 +90,7 @@ doParallel::registerDoParallel(cl)
 ## hyperparameters =============================================================
 
 ## define the hyper parameter set
-dietML_param_set <- parsnip::extract_parameter_set_dials(dietML_wflow)
+diet_ml_param_set <- parsnip::extract_parameter_set_dials(diet_ml_wflow)
 
 ## for random forests, set mtry to max features after correlation
 ## co-correlate features at specified threshold (get upper limit of mtry)
@@ -102,8 +102,8 @@ training_cor <- as.data.frame(training_cor) %>%
   tidyr::separate(., col = training_cor, into = c("keep", "co_correlated"), sep = "\\|", extra = "merge")
 
 ## set mtry to max features after correlation
-dietML_param_set <- 
-  dietML_param_set %>% 
+diet_ml_param_set <- 
+  diet_ml_param_set %>% 
   # Pick an upper bound for mtry: 
   recipes::update(mtry = mtry(c(2, round((NROW(training_cor) * 0.9), digits = 0))))
 
@@ -111,11 +111,11 @@ dietML_param_set <-
 if (type == "classification") {
   
   search_res <-
-    dietML_wflow %>% 
+    diet_ml_wflow %>% 
     tune::tune_bayes(
       resamples = folds,
       # To use non-default parameter ranges
-      param_info = dietML_param_set,
+      param_info = diet_ml_param_set,
       # Generate five at semi-random to start
       initial = 5,
       iter = opt$tune_length,
@@ -132,11 +132,11 @@ if (type == "classification") {
 } else if (type == "regression") {
   
   search_res <-
-    dietML_wflow %>% 
+    diet_ml_wflow %>% 
     tune::tune_bayes(
       resamples = folds,
       # To use non-default parameter ranges
-      param_info = dietML_param_set,
+      param_info = diet_ml_param_set,
       # Generate five at semi-random to start
       initial = 5,
       iter = opt$tune_length,
@@ -174,7 +174,7 @@ last_best_mod <-
 
 ## update workflow with best model
 best_tidy_workflow <- 
-  dietML_wflow %>% 
+  diet_ml_wflow %>% 
   workflows::update_model(last_best_mod)
 
 ## fit to test data

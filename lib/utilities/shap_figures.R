@@ -34,7 +34,7 @@ tryCatch( { if (length(levels(as.factor(split_from_data_frame$data$feature_of_in
   best_workflow_mod <- workflows::extract_fit_parsnip(best_workflow)
   
   ## pull out data
-  shap_data_full <- recipes::prep(dietML_recipe, split_from_data_frame$data) %>% 
+  shap_data_full <- recipes::prep(diet_ml_recipe, split_from_data_frame$data) %>% 
     recipes::juice() %>% 
     dplyr::select(-feature_of_interest, -subject_id) 
   
@@ -66,7 +66,7 @@ tryCatch( { if (length(levels(as.factor(split_from_data_frame$data$feature_of_in
   best_workflow_mod <- workflows::extract_fit_parsnip(best_workflow)
   
   ## pull out data
-  shap_data_train <- recipes::prep(dietML_recipe, train) %>% 
+  shap_data_train <- recipes::prep(diet_ml_recipe, train) %>% 
     recipes::juice() %>% 
     dplyr::select(-feature_of_interest, -subject_id) 
   
@@ -98,7 +98,7 @@ tryCatch( { if (length(levels(as.factor(split_from_data_frame$data$feature_of_in
   best_workflow_mod <- workflows::extract_fit_parsnip(best_workflow)
   
   ## pull out data
-  shap_data_test<- recipes::prep(dietML_recipe, test) %>% 
+  shap_data_test<- recipes::prep(diet_ml_recipe, test) %>% 
     recipes::juice() %>% 
     dplyr::select(-feature_of_interest, -subject_id) 
   
@@ -130,7 +130,7 @@ tryCatch( { if (length(levels(as.factor(split_from_data_frame$data$feature_of_in
     best_workflow_mod <- workflows::extract_fit_parsnip(best_workflow)
     
     ## pull out data
-    shap_data_full <- recipes::prep(dietML_recipe, split_from_data_frame$data) %>% 
+    shap_data_full <- recipes::prep(diet_ml_recipe, split_from_data_frame$data) %>% 
       recipes::juice() %>% 
       dplyr::select(-feature_of_interest, -subject_id) 
     
@@ -158,7 +158,7 @@ tryCatch( { if (length(levels(as.factor(split_from_data_frame$data$feature_of_in
     best_workflow_mod <- workflows::extract_fit_parsnip(best_workflow)
     
     ## pull out data
-    shap_data_train <- recipes::prep(dietML_recipe, train) %>% 
+    shap_data_train <- recipes::prep(diet_ml_recipe, train) %>% 
       recipes::juice() %>% 
       dplyr::select(-feature_of_interest, -subject_id) 
     
@@ -186,7 +186,7 @@ tryCatch( { if (length(levels(as.factor(split_from_data_frame$data$feature_of_in
     best_workflow_mod <- workflows::extract_fit_parsnip(best_workflow)
     
     ## pull out data
-    shap_data_test <- recipes::prep(dietML_recipe, test) %>% 
+    shap_data_test <- recipes::prep(diet_ml_recipe, test) %>% 
       recipes::juice() %>% 
       dplyr::select(-feature_of_interest, -subject_id) 
     

@@ -1,7 +1,7 @@
 #!/usr/bin/env Rscript
 ## v0.3.0a.8
 
-## SCRIPT: dietML_glmnet_tidy_enet.R ===================================================
+## SCRIPT: diet_ml_glmnet_tidy_enet.R ===================================================
 ## AUTHOR: Andrew Oliver
 ## DATE:   Jan, 30 2023
 ##
@@ -49,7 +49,7 @@ folds <- rsample::vfold_cv(train, v = as.numeric(opt$folds), strata = label, rep
 ## recipe ======================================================================
 
 ## specify recipe (this is like the pre-process work)
-dietML_recipe <- 
+diet_ml_recipe <- 
   recipes::recipe(feature_of_interest ~ ., data = train) %>% 
   recipes::update_role(tidyr::any_of("subject_id"), new_role = "ID") %>% 
   recipes::step_dummy(recipes::all_nominal_predictors()) %>%
@@ -76,10 +76,10 @@ initial_mod %>% parsnip::translate()
 ## workflow ====================================================================
 
 ## define workflow
-dietML_wflow <- 
+diet_ml_wflow <- 
   workflows::workflow() %>% 
   workflows::add_model(initial_mod) %>% 
-  workflows::add_recipe(dietML_recipe)  
+  workflows::add_recipe(diet_ml_recipe)  
 
 ## set up parallel jobs ========================================================
 ## remove any doParallel job setups that may have
@@ -93,16 +93,16 @@ doParallel::registerDoParallel(cl)
 ## hyperparameters =============================================================
 
 ## define the hyper parameter set
-dietML_param_set <- parsnip::extract_parameter_set_dials(dietML_wflow)
+diet_ml_param_set <- parsnip::extract_parameter_set_dials(diet_ml_wflow)
 
 ## set up hyper parameter search
 if (type == "classification") {
   search_res <-
-    dietML_wflow %>% 
+    diet_ml_wflow %>% 
     tune::tune_bayes(
       resamples = folds,
       # To use non-default parameter ranges
-      param_info = dietML_param_set,
+      param_info = diet_ml_param_set,
       # Generate five at semi-random to start
       initial = 5,
       iter = opt$tune_length,
@@ -118,11 +118,11 @@ if (type == "classification") {
   
 } else if (type == "regression") {
   search_res <-
-    dietML_wflow %>% 
+    diet_ml_wflow %>% 
     tune::tune_bayes(
       resamples = folds,
       # To use non-default parameter ranges
-      param_info = dietML_param_set,
+      param_info = diet_ml_param_set,
       # Generate five at semi-random to start
       initial = 5,
       iter = opt$tune_length,
@@ -167,7 +167,7 @@ if (type == "classification") {
 
 ## update workflow with best model
 best_tidy_workflow <- 
-  dietML_wflow %>% 
+  diet_ml_wflow %>% 
   workflows::update_model(last_best_mod)
 
 ## fit to test data

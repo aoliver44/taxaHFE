@@ -8,7 +8,7 @@
 
 ## docker info =================================================================
 
-method_taxaHFE <- function(hdata, metadata, prevalence, abundance,
+method_taxa_hfe <- function(hdata, metadata, prevalence, abundance,
                            lowest_level, max_level, cor_level, ncores,
                            feature_type, nperm, disable_super_filter,
                            write_both_outputs, write_flattened_tree, col_names,
@@ -58,10 +58,10 @@ method_taxaHFE <- function(hdata, metadata, prevalence, abundance,
   )
   
   ## store taxaHFE outputs in list
-  dietML_inputs <<- store_dietML_inputs(target_list = dietML_inputs,
+  diet_ml_inputs <<- store_diet_ml_inputs(target_list = diet_ml_inputs,
     object = flattened_df,
     super_filter = ifelse(disable_super_filter, "no_sf", "sf"),
-    method = "taxaHFE",
+    method = "taxa_hfe",
     train_test_attr = NA,
     level_n = NA,
     seed = seed
@@ -69,7 +69,7 @@ method_taxaHFE <- function(hdata, metadata, prevalence, abundance,
   
 }
 
-method_taxaHFE_ml <- function(hdata, metadata, prevalence, abundance,
+method_taxa_hfe_ml <- function(hdata, metadata, prevalence, abundance,
                               lowest_level, max_level, cor_level, ncores,
                               feature_type, nperm, disable_super_filter,
                               write_both_outputs, write_flattened_tree,
@@ -145,26 +145,26 @@ method_taxaHFE_ml <- function(hdata, metadata, prevalence, abundance,
   ## the manual test-train split (make_splits()) is picky
   ## they also have to have the same features
   ## The actual error that gets thrown (even if columns are just out of order):
-  ## Error in `make_splits()` at lib/models/dietML_ranger_tidy.R:41:1:
+  ## Error in `make_splits()` at lib/models/diet_ml_ranger_tidy.R:41:1:
   ##   ! The analysis and assessment sets must have the same columns
   overlap_features <- dplyr::intersect(colnames(test_data), colnames(train_data))
   test_data <- test_data %>% dplyr::select(., dplyr::any_of(overlap_features))
-  train_data_for_dietML <- train_data %>% dplyr::select(., dplyr::any_of(overlap_features))
+  train_data_for_diet_ml <- train_data %>% dplyr::select(., dplyr::any_of(overlap_features))
   ## reorder test columns
-  test_data_for_dietML <- test_data[names(train_data_for_dietML)]
+  test_data_for_diet_ml <- test_data[names(train_data_for_diet_ml)]
 
   ## store data in list of data for dietML
-  dietML_inputs <<- store_dietML_inputs(target_list = dietML_inputs,
-    object = train_data_for_dietML,
+  diet_ml_inputs <<- store_diet_ml_inputs(target_list = diet_ml_inputs,
+    object = train_data_for_diet_ml,
     super_filter = ifelse(disable_super_filter, "no_sf", "sf"),
-    method = "taxaHFE_ML",
+    method = "taxa_hfe_ml",
     train_test_attr = "train",
     level_n = NA,
     seed = seed)
-  dietML_inputs <<- store_dietML_inputs(target_list = dietML_inputs,
-    object = test_data_for_dietML,
+  diet_ml_inputs <<- store_diet_ml_inputs(target_list = diet_ml_inputs,
+    object = test_data_for_diet_ml,
     super_filter = ifelse(disable_super_filter, "no_sf", "sf"),
-    method = "taxaHFE_ML",
+    method = "taxa_hfe_ml",
     train_test_attr = "test",
     level_n = NA,
     seed = seed)
@@ -210,14 +210,14 @@ method_levels <- function(hdata, metadata, prevalence, abundance,
   ## attach the summary files to dietML_input list
   generate_summary_files(input = flattened_df, 
                          metadata = metadata, 
-                         target_list = dietML_inputs, 
+                         target_list = diet_ml_inputs, 
                          disable_super_filter = ifelse(disable_super_filter, "no_sf", "sf"),
                          seed = seed
                         )
 }
 
 
-method_taxaHFE_time <- function() {
+method_taxa_hfe_time <- function() {
 
   
 }
