@@ -5,7 +5,7 @@
 ##  - login at http://localhost:8787, user: rstudio, password: whatever was set in {PASSWORD_HERE}
 
 ## base r image where we have already installed the packages
-ARG BASE_IMAGE=aoliver44/taxa_hfe_base:latest
+ARG BASE_IMAGE=aoliver44/taxa_hfe_base
 FROM $BASE_IMAGE
 
 ## base rstudio image
