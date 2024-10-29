@@ -1,7 +1,7 @@
 #!/usr/bin/env Rscript
 ## v0.3.0a.8
 
-## SCRIPT: dietML_null_tidy.R ===================================================
+## SCRIPT: diet_ml_null_tidy.R ===================================================
 ## AUTHOR: Andrew Oliver
 ## DATE:   Mar, 20 2023
 ##
@@ -48,7 +48,7 @@ test  <- test_data
 ## recipe ======================================================================
 
 ## specify recipe (this is like the pre-process work)
-dietML_recipe <- 
+diet_ml_recipe <- 
   recipes::recipe(feature_of_interest ~ ., data = train) %>% 
   recipes::update_role(tidyr::any_of("subject_id"), new_role = "ID") %>%
   recipes::step_dummy(recipes::all_nominal_predictors()) %>%
@@ -67,16 +67,16 @@ initial_mod <- null_model() %>%
 ## workflow ====================================================================
 
 ## define workflow
-dietML_wflow <- 
+diet_ml_wflow <- 
   workflows::workflow() %>% 
   workflows::add_model(initial_mod) %>% 
-  workflows::add_recipe(dietML_recipe)  
+  workflows::add_recipe(diet_ml_recipe)  
 
 
 ## fit model ==============================================================
 
 ## fit to test data
-final_res <- parsnip::fit(dietML_wflow, test)
+final_res <- parsnip::fit(diet_ml_wflow, test)
 
 df_loop_results <- add_row(df_loop_results, truth = test$feature_of_interest)
 df_loop_results$estimate <- final_res$fit$fit$fit$value

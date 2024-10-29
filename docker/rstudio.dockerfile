@@ -1,18 +1,19 @@
 ## develop on taxaHFE using rstudio
-## Build: docker build --platform linux/amd64 -f rstudio.dockerfile -t aoliver44/taxahfe_rstudio:2.3 .
+## Build: docker build --platform linux/amd64 -f rstudio.dockerfile -t aoliver44/taxa_hfe_rstudio:2.3 .
 ## Run: 
-##  - docker run -p 8787:8787 -e PASSWORD={PASSWORD_HERE} -v `pwd`:/home/rstudio aoliver44/taxahfe_rstudio
+##  - docker run -p 8787:8787 -e PASSWORD={PASSWORD_HERE} -v `pwd`:/home/rstudio aoliver44/taxa_hfe_rstudio
 ##  - login at http://localhost:8787, user: rstudio, password: whatever was set in {PASSWORD_HERE}
 
 ## base r image where we have already installed the packages
-FROM aoliver44/taxahfe_base
+ARG BASE_IMAGE=aoliver44/taxa_hfe_base
+FROM $BASE_IMAGE
 
 ## base rstudio image
 FROM rocker/rstudio:4.2.3
 
 ## taxaHFE version, read in from `--build-arg version={}` in the docker build command
 ARG version
-ENV TAXAHFE_VERSION=${version}
+ENV TAXA_HFE_VERSION=${version}
 
 ## RENV version
 ENV RENV_VERSION=0.16.0
