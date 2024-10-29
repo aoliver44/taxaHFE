@@ -16,7 +16,7 @@ source("lib/methods.R")
 # to use this code line-by-line in the Rstudio context, commandArgs can be overloaded to specify the desired flags
 # ex. commandArgs <- function(x) { c("example_inputs/metadata.txt", "example_inputs/microbiome_data.txt", "example_inputs/out.txt", "-s", "Sample", "-l", "Category", "-L", "3", "-n", "4", "--seed", "42", "-wWD") }
 # these will be used by the argparser
-opt <- load_args("taxaHFE")
+opt <- load_args("taxa_hfe")
 
 ## Run main ====================================================================
 
@@ -24,7 +24,7 @@ opt <- load_args("taxaHFE")
 set_seed_func(opt$seed)
 
 ## set target list for dietML input objects
-dietML_inputs <- list()
+diet_ml_inputs <- list()
 
 ## check for inputs and read in read in ========================================
 ## metadata file
@@ -39,7 +39,7 @@ hData <- read_in_hierarchical_data(input = opt$DATA,
 
 
 # Run TaxaHFE
-method_taxaHFE(hdata = hData,
+method_taxa_hfe(hdata = hData,
   metadata = metadata,
   prevalence = opt$prevalence,
   abundance = opt$abundance,
@@ -52,7 +52,7 @@ method_taxaHFE(hdata = hData,
   disable_super_filter = opt$disable_super_filter,
   write_both_outputs = opt$write_both_outputs,
   write_flattened_tree = opt$write_flattened_tree,
-  target_list = dietML_inputs,
+  target_list = diet_ml_inputs,
   col_names = colnames(hData)[2:NCOL(hData)],
   output = opt$OUTPUT,
   seed = opt$seed

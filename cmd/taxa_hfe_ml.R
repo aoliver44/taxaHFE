@@ -1,4 +1,4 @@
-#!/usr/bin/env Rscript 
+#!/usr/bin/env Rscript
 
 ## SCRIPT: taxaHFE-ML.R ===============================================
 ## DATE:   Jun 26, 2024
@@ -17,7 +17,7 @@ source("lib/methods.R")
 # to use this code line-by-line in the Rstudio context, commandArgs can be overloaded to specify the desired flags
 # ex. commandArgs <- function(x) { c("example_inputs/metadata.txt", "example_inputs/microbiome_data.txt", "example_inputs/out.csv", "-s", "Sample", "-l", "Category", "-L", "3", "-n", "4", "--seed", "42", "--train_split", "0.8") }
 # these will be used by the argparser
-opt <- load_args("taxaHFE-ML")
+opt <- load_args("taxa_hfe_ml")
 
 ## Run main ====================================================================
 
@@ -25,7 +25,7 @@ opt <- load_args("taxaHFE-ML")
 set_seed_func(opt$seed)
 
 ## set target list for dietML input objects
-dietML_inputs <- list()
+diet_ml_inputs <- list()
 
 ## check for inputs and read in read in ========================================
 ## metadata file
@@ -44,7 +44,7 @@ train_metadata <- rsample::training(tr_te_split)
 test_metadata  <- rsample::testing(tr_te_split)
 
 # Run taxaHFE-ML
-method_taxaHFE_ml(hdata = hData,
+method_taxa_hfe_ml(hdata = hData,
                   metadata = metadata,
                   prevalence = opt$prevalence, 
                   abundance = opt$abundance,
@@ -65,21 +65,20 @@ method_taxaHFE_ml(hdata = hData,
                   tune_time = opt$tune_time,
                   tune_stop = opt$tune_stop,
                   shap = opt$shap,
-                  target_list = dietML_inputs,
+                  target_list = diet_ml_inputs,
                   output = opt$OUTPUT,
                   seed = opt$seed
 )
 
 ## make sure test train in each item of list
-split_train_data(target_list = dietML_inputs, attribute_name = "train_test_attr", seed = opt$seed)
+split_train_data(target_list = diet_ml_inputs, attribute_name = "train_test_attr", seed = opt$seed)
 
 ## create df for dietML to parse
-dietML_input_df <- extract_attributes(items_list = dietML_inputs)
+diet_ml_input_df <- extract_attributes(items_list = diet_ml_inputs)
 
 ## write dietML objects to file (if people want the output files that
 ## went into dietML)
-write_list_to_csv(target_list = dietML_inputs, directory = dirname(opt$OUTPUT))
+write_list_to_csv(target_list = diet_ml_inputs, directory = dirname(opt$OUTPUT))
 
 ## pass to dietML if selected
-run_dietML(input_df = dietML_input_df, n_repeat = 1)
-
+run_diet_ml(input_df = diet_ml_input_df, n_repeat = 1)
