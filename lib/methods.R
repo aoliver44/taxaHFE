@@ -145,7 +145,7 @@ method_taxaHFE_ml <- function(hdata, metadata, prevalence, abundance,
   ## the manual test-train split (make_splits()) is picky
   ## they also have to have the same features
   ## The actual error that gets thrown (even if columns are just out of order):
-  ## Error in `make_splits()` at scripts/models/dietML_ranger_tidy.R:41:1:
+  ## Error in `make_splits()` at lib/models/dietML_ranger_tidy.R:41:1:
   ##   ! The analysis and assessment sets must have the same columns
   overlap_features <- dplyr::intersect(colnames(test_data), colnames(train_data))
   test_data <- test_data %>% dplyr::select(., dplyr::any_of(overlap_features))

@@ -47,7 +47,7 @@ options(warn = -1)
 ## rename the label to feature_of_interest
 ## metadata, should be in tab or comma separated format
 read_in_metadata <- function(input, subject_identifier, label) {
-  
+
   cat("\n\n", "Checking for METADATA...", "\n")
   if (file.exists(input) == FALSE) {
     stop("METADATA input not found.")
@@ -1100,7 +1100,7 @@ run_dietML <- function(input_df, n_repeat) {
       #TODO: make this a function that takes instead of a source. Make "program" and 
       #"seed" and whatnot into function arguments and not something that gets written
       #to opt!!! BANISH UNNECESSARY GLOBAL VARS!!!
-      source("/home/docker/taxaHFE-ML/dietML.R")
+      source("lib/dietML.R")
     }
   }
 }
