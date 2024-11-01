@@ -14,7 +14,7 @@ source("lib/methods.R")
 ## add commandline options =====================================================
 
 # to use this code line-by-line in the Rstudio context, commandArgs can be overloaded to specify the desired flags
-# ex. commandArgs <- function(x) { c("example_inputs/metadata.txt", "example_inputs/microbiome_data.txt", "example_inputs/out.txt", "-s", "Sample", "-l", "Category", "-L", "3", "-n", "4", "--seed", "42", "-wWD") }
+# ex. commandArgs <- function(x) { c("metadata_time.txt", "microbiome_time.txt", "out.txt", "-s", "subject_id", "-l", "Intervention", "-L", "3", "-n", "4", "--seed", "42", "-wWD") }
 # these will be used by the argparser
 opt <- load_args("taxa_hfe")
 
@@ -55,6 +55,28 @@ method_taxa_hfe(hdata = hData,
   target_list = diet_ml_inputs,
   col_names = colnames(hData)[2:NCOL(hData)],
   output = opt$OUTPUT,
-  seed = opt$seed
+  seed = opt$seed,
+  random_effects = TRUE
   )
+
+
+## DRAFT CODE - DELETE BEFORE MERGING
+hTree <- build_tree(hData,
+                    filter_prevalence = 0.01,
+                    filter_mean_abundance = 0
+)
+
+competed_tree <- compete_tree(
+  hTree,
+  lowest_level = 3,
+  max_level = 1000, # allows for all levels to be competed. Change to 1 for pairwise comparisons
+  col_names = colnames(hData)[2:NCOL(hData)],
+  corr_threshold = 0.95,
+  metadata = metadata,
+  ncores = 4,
+  feature_type = "factor",
+  nperm = 10,
+  disable_super_filter = TRUE,
+  random_effects = TRUE
+)
 
