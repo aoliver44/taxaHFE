@@ -5,4 +5,5 @@ FROM $BASE_IMAGE
 # copy the desired command file
 COPY cmd/*.R .
 
-ENTRYPOINT [ "Rscript", "taxa_hfe_ml.R"]
+# set the data directory to the place where the data should be mounted
+ENTRYPOINT [ "Rscript", "taxa_hfe_ml.R", "--data_dir", "/data"]

@@ -5,4 +5,5 @@ FROM $BASE_IMAGE
 # copy the desired command file
 COPY cmd/*.R .
 
-ENTRYPOINT [ "Rscript", "summarized_levels.R"]
+# set the data directory to the place where the data should be mounted
+ENTRYPOINT [ "Rscript", "summarized_levels.R", "--data_dir", "/data"]
