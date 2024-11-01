@@ -13,7 +13,7 @@ library(purrr, quietly = T, verbose = F, warn.conflicts = F)
 library(ranger, quietly = T, verbose = F, warn.conflicts = F)
 library(vroom, quietly = T, verbose = F, warn.conflicts = F)
 library(tidyselect, quietly = T, verbose = F, warn.conflicts = F)
-
+library(htree, quietly = T, verbose = F, warn.conflicts = F)
 
 ## set random seed, defaults to system time
 set_seed_func <- function(seed) {
@@ -46,7 +46,7 @@ options(warn = -1)
 ## rename the subject_identifier to subject_id and
 ## rename the label to feature_of_interest
 ## metadata, should be in tab or comma separated format
-read_in_metadata <- function(input, subject_identifier, label) {
+read_in_metadata <- function(input, subject_identifier, label, random_effects) {
 
   cat("\n\n", "Checking for METADATA...", "\n")
   if (file.exists(input) == FALSE) {
@@ -392,7 +392,7 @@ build_tree <- function(df, filter_prevalence, filter_mean_abundance) {
 # for this node, evaluates correlation and rf against all descendants that have won previous rounds
 # modifies the node indicating if it is a winner against those descendants
 # OR which of 1:n descendants are winners
-compete_node <- function(node, col_names, lowest_level, max_level, corr_threshold, metadata, ncores, feature_type, nperm) {
+compete_node <- function(node, col_names, lowest_level, max_level, corr_threshold, metadata, ncores, feature_type, nperm, random_effects) {
   # skip anything lower than the lowest level (exclusive)
   if (node$level < lowest_level) {
     return()
@@ -482,7 +482,8 @@ compete_node <- function(node, col_names, lowest_level, max_level, corr_threshol
     "subject_id",
     feature_type,
     ncores,
-    nperm
+    nperm,
+    random_effects
   )
 
   # generate winner and loser name lists from the competitors (parent and non-correlated descendants), using the outcome
@@ -520,7 +521,7 @@ compete_node <- function(node, col_names, lowest_level, max_level, corr_threshol
 ## compete all winners (final RF) ==============================================
 # compete all winners, updating the tree in the process
 # TODO: combine the overlaps in this code with the code in the function above
-compete_all_winners <- function(tree, metadata, col_names, feature_type, nperm, ncores) {
+compete_all_winners <- function(tree, metadata, col_names, feature_type, nperm, ncores, random_effects) {
   # all vs all competition with winners
   # skipped rows have winner = FALSE so won't appear in this list
   competitors <- get_descendant_winners(tree, tree$height)
@@ -548,7 +549,8 @@ compete_all_winners <- function(tree, metadata, col_names, feature_type, nperm, 
     feature_of_interest = "feature_of_interest",
     subject_identifier = "subject_id",
     feature_type = feature_type,
-    ncores = ncores, nperm = nperm
+    ncores = ncores, 
+    nperm = nperm
   )
 
 
@@ -596,7 +598,7 @@ compete_all_winners <- function(tree, metadata, col_names, feature_type, nperm, 
 # metadata: the metadata associated with the input df that generated the tree
 # ncores: the number of cores to use when running the random forest
 # disable_super_filter: disables running the final competition
-compete_tree <- function(tree, modify_tree = TRUE, col_names, lowest_level = 2, max_level = 1000, corr_threshold, metadata, ncores, feature_type, nperm, disable_super_filter) {
+compete_tree <- function(tree, modify_tree = TRUE, col_names, lowest_level = 2, max_level = 1000, corr_threshold, metadata, ncores, feature_type, nperm, disable_super_filter, random_effects) {
   # if not modifying the input tree, create a copy of the tree to perform the competition
   if (!modify_tree) tree <- data.tree::Clone(tree)
 
@@ -604,9 +606,9 @@ compete_tree <- function(tree, modify_tree = TRUE, col_names, lowest_level = 2, 
 
   # perform the competition, modifying the tree (which may or may not be a clone of the input)
   tree$Do(
-    function(node, col_names, lowest_level, max_level, corr_threshold, metadata, ncores, feature_type, nperm) {
+    function(node, col_names, lowest_level, max_level, corr_threshold, metadata, ncores, feature_type, nperm, random_effects) {
       pb$tick()
-      compete_node(node, col_names, lowest_level, max_level, corr_threshold, metadata, ncores, feature_type, nperm)
+      compete_node(node, col_names, lowest_level, max_level, corr_threshold, metadata, ncores, feature_type, nperm, random_effects)
     },
     col_names = col_names,
     lowest_level = lowest_level,
@@ -616,7 +618,8 @@ compete_tree <- function(tree, modify_tree = TRUE, col_names, lowest_level = 2, 
     ncores = ncores,
     feature_type = feature_type,
     nperm = nperm,
-    traversal = "post-order"
+    traversal = "post-order",
+    random_effects = random_effects
   )
 
   # compete all winners
@@ -628,7 +631,8 @@ compete_tree <- function(tree, modify_tree = TRUE, col_names, lowest_level = 2, 
       col_names = col_names,
       feature_type = feature_type,
       nperm = nperm * 10,
-      ncores = ncores
+      ncores = ncores,
+      random_effects
     )
   } else {
     cat(" Skipping super filter\n")
@@ -652,7 +656,7 @@ calculate_correlation <- function(df, corrThreshold) {
 
 ## rf competition function =====================================================
 # TODO: document these inputs
-rf_competition <- function(df, metadata, parent_descendent_competition, feature_of_interest = "feature_of_interest", subject_identifier = "subject_id", feature_type, ncores, nperm) {
+rf_competition <- function(df, metadata, parent_descendent_competition, feature_of_interest = "feature_of_interest", subject_identifier = "subject_id", feature_type, ncores, nperm, random_effects) {
   ## get a list of the covariates in order to remove them from the RF winners
   ## later, so the only RF winners are taxa
   covariates <- metadata %>%
@@ -663,38 +667,47 @@ rf_competition <- function(df, metadata, parent_descendent_competition, feature_
   merged_data <- merged_data %>% tidyr::drop_na()
   # clean node names so ranger doesnt throw an error
   merged_data <- tibble::column_to_rownames(merged_data, var = "Row.names")
-  data_colnames <- colnames(merged_data)
   merged_data <- merged_data %>% janitor::clean_names()
-
+  
   # determine if rf regression or classification should be run
   if (feature_type == "factor") {
     response_formula <- as.formula(paste("as.factor(", feature_of_interest, ") ~ .", sep = ""))
+    control=list(se=TRUE, classify=TRUE, ncores = ncores)
   } else {
     response_formula <- as.formula(paste("as.numeric(", feature_of_interest, ") ~ .", sep = ""))
+    control=list(se=TRUE, classify=FALSE, ncores = ncores)
   }
-
+  
   # progress bar for the final rf competition
   # will only be incremented/shown if parent_descendent_competition == FALSE
   pb <- progress::progress_bar$new(format = " Competing final winners [:bar] :percent in :elapsed", total = nperm, clear = FALSE, width = 60)
-
+  
   # run ranger, setting parameters such as
   # random seed
   # num.threads number of threads to five ranger
-  run_ranger <- function(seed) {
+  run_rf <- function(seed, random_effects) {
     if (!parent_descendent_competition) pb$tick()
-
-    ranger::ranger(response_formula, data = merged_data, importance = "impurity_corrected", seed = seed, sample.fraction = 1, replace = TRUE, num.threads = ncores)$variable.importance %>%
-      as.data.frame() %>%
-      dplyr::rename(., "importance" = ".") %>%
-      tibble::rownames_to_column(var = "taxa")
+    
+    if (random_effects) {
+      re_rf <- htree::hrf(x=merged_data,id=merged_data$individual,time=merged_data$time,yindx="feature_of_interest", control = control)
+      re_vi=varimp_hrf(re_rf, parallel = FALSE)
+      re_vi %>% dplyr::select(1, 4) %>% dplyr::rename(., "taxa" = 1, "importance" = 2)
+      
+    } else {
+      ranger::ranger(response_formula, data = merged_data, importance = "impurity_corrected", seed = seed, sample.fraction = 1, replace = TRUE, num.threads = ncores)$variable.importance %>%
+        as.data.frame() %>%
+        dplyr::rename(., "importance" = ".") %>%
+        tibble::rownames_to_column(var = "taxa")
+    }
   }
-
+  
   # run the above function across nperm random seeds and average the vip scores
-  model_importance <- purrr::map_df(sample(1:1000000, nperm), run_ranger) %>%
+  model_importance <- purrr::map_df(sample(1:1000000, nperm), 
+                                    function(seed) run_rf(seed, random_effects = random_effects)) %>%
     dplyr::group_by(taxa) %>%
     dplyr::summarise(., average = mean(importance)) %>%
     dplyr::filter(., taxa %!in% covariates)
-
+  
   # if this is not a parent vs descendent competition
   # return the ids of competitors whose scores meet the following thresholds:
   #   - greater than the average score
@@ -702,18 +715,18 @@ rf_competition <- function(df, metadata, parent_descendent_competition, feature_
   if (!parent_descendent_competition) {
     return(
       gsub(pattern = "x", replacement = "", x = model_importance %>%
-        dplyr::filter(., average > mean(average)) %>%
-        dplyr::filter(., average > 0) %>%
-        dplyr::pull(., taxa))
+             dplyr::filter(., average > mean(average)) %>%
+             dplyr::filter(., average > 0) %>%
+             dplyr::pull(., taxa))
     )
   }
-
+  
   # otherwise
   # if top score is the parent, parent wins, else grab the children who
   # beat the parent's score
   # specify the parent column, which is the score to beat
   parentColumn <- janitor::make_clean_names(colnames(df)[1])
-
+  
   if ((model_importance %>% arrange(desc(average)) %>% pull(taxa))[1] == parentColumn) {
     return(gsub(pattern = "x", replacement = "", x = parentColumn))
   } else {
@@ -1102,5 +1115,16 @@ run_diet_ml <- function(input_df, n_repeat) {
       #to opt!!! BANISH UNNECESSARY GLOBAL VARS!!!
       source("lib/diet_ml.R")
     }
+  }
+}
+
+## helps to dynamically choose B and R in the historical random forest
+find_closest_addends <- function(target) {
+  # Start with half of the target to find the largest numbers
+  for (i in floor(target / 2):1) {
+    # Calculate the other addend
+    j <- target - i
+    # Return the pair of numbers
+    return(c(i, j))
   }
 }
