@@ -12,7 +12,7 @@ method_taxa_hfe <- function(hdata, metadata, prevalence, abundance,
                            lowest_level, max_level, cor_level, ncores,
                            feature_type, nperm, disable_super_filter,
                            write_both_outputs, write_flattened_tree, col_names,
-                           target_list, output, seed) {
+                           target_list, output, seed, random_effects) {
   ## Build tree ================================================================
   cat("\n\n", "###########################\n", "Building Tree...\n", "###########################\n\n")
   cat("This may take a few minutes depending on how many features you have.\n")
@@ -32,7 +32,8 @@ method_taxa_hfe <- function(hdata, metadata, prevalence, abundance,
     ncores = ncores,
     feature_type = feature_type,
     nperm = nperm,
-    disable_super_filter = disable_super_filter
+    disable_super_filter = disable_super_filter,
+    random_effects = random_effects
   )
 
   ## write outputs =============================================================
@@ -217,7 +218,7 @@ method_levels <- function(hdata, metadata, prevalence, abundance,
 }
 
 
-method_taxa_hfe_time <- function() {
+method_taxa_hfe_re <- function() {
 
   
 }
