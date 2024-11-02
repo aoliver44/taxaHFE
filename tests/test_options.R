@@ -23,7 +23,7 @@ test_that("initialize_parser works", {
       .package = 'argparse'
     )
 
-    expect_error(parser$parse_args(flags), version)
+    expect_error(parser$parse_args(flags), "wrong")
   })
 
   test_that("parser prints help message when passed -h", {
