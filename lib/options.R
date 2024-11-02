@@ -1,4 +1,4 @@
-#!/usr/bin/env Rscript
+library(argparse)
 
 suppressPackageStartupMessages(library(argparse, quietly = TRUE, verbose = FALSE, warn.conflicts = FALSE))
 
