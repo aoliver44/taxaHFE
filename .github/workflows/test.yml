@@ -16,6 +16,14 @@ jobs:
           r-version: 'renv'
       
       - uses: r-lib/actions/setup-renv@v2
+      
+      # TODO: add these deps to renv so they can be cached
+      - name: Install test dependencies
+        run: |
+          install.packages("remotes")
+          remotes::install_cran("covr")
+          install.packages("testthat")
+        shell: Rscript {0}
 
       # goal is to match a single file of functions with a tests file, to generate coverage
       - name: Test coverage
