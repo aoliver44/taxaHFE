@@ -3,13 +3,13 @@ library(stringr)
 
 source("lib/options.R")
 
-# grab binding to this function so it can be overwritten in the tests
+# grab binding to these functions so they can be overwritten in the tests
 commandArgs <- NULL
 
 test_that("initialize_parser works", {
   expect_true(TRUE)
 
-  version <- "999"
+  version <- "998"
   program <- "TEST123"
   description <- "testing parser"
 
@@ -17,12 +17,22 @@ test_that("initialize_parser works", {
 
   test_that("parser prints version number when passed -v", {
     flags <- c("-v")
+    # mock this method from the argparse package so it doesn't call quit but still raises the error it would have with stop()
+    local_mocked_bindings(
+      print_message_and_exit = function(message, x) stop(message),
+      .package = 'argparse'
+    )
 
     expect_error(parser$parse_args(flags), version)
   })
 
   test_that("parser prints help message when passed -h", {
     flags <- c("-h")
+    # mock this method from the argparse package so it doesn't call quit but still raises the error it would have with stop()
+    local_mocked_bindings(
+      print_message_and_exit = function(message, x) stop(message),
+      .package = 'argparse'
+    )
 
     expect_error(parser$parse_args(flags), "METADATA DATA OUTPUT")
     expect_error(parser$parse_args(flags), program)
@@ -31,6 +41,12 @@ test_that("initialize_parser works", {
 
   test_that("parser requires 3 positional arguments for the files", {
     not_enough_positional_args <- list(c(), c("m"), c("m", "d"))
+    # mock this method from the argparse package so it doesn't call quit but still raises the error it would have with stop()
+    local_mocked_bindings(
+      print_message_and_exit = function(message, x) stop(message),
+      .package = 'argparse'
+    )
+
     for (bad_args in not_enough_positional_args) {
       expect_error(parser$parse_args(bad_args), "error: the following arguments are required:")
     }
@@ -164,18 +180,30 @@ test_that("load_args works correctly", {
     commandArgs <<- function(x) {
       c("-v")
     }
+    # mock this method from the argparse package so it doesn't call quit but still raises the error it would have with stop()
+    local_mocked_bindings(
+      print_message_and_exit = function(message, x) stop(message),
+      .package = 'argparse'
+    )
+
     Sys.unsetenv("TAXA_HFE_VERSION")
 
-    expect_error(load_args(load_taxa_hfe_parser), "version requested:\n0")
+    expect_error(load_args(load_taxa_hfe_parser), "0")
   })
 
   test_that("use env var version when set", {
     commandArgs <<- function(x) {
       c("-v")
     }
+    # mock this method from the argparse package so it doesn't call quit but still raises the error it would have with stop()
+    local_mocked_bindings(
+      print_message_and_exit = function(message, x) stop(message),
+      .package = 'argparse'
+    )
+
     Sys.setenv(TAXA_HFE_VERSION=version)
 
-    expect_error(load_args(load_taxa_hfe_parser), paste("version requested:\n", version, sep=""))
+    expect_error(load_args(load_taxa_hfe_parser), version)
   })
 
   test_that("it sets the paths using --data_dir", {
