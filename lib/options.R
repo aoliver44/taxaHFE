@@ -8,42 +8,58 @@ add_argument <- function(parser, argument_params) {
   do.call(parser$add_argument, argument_params)
 }
 
-# these are the argument groups, each list correesponds to the function arguments passed to parser$add_argument
+# these are the argument groups, each list corresponds to an argument grouping
+# name and description are used to generate the argument group
+# args represents the group of actual flags, the function arguments passed to parser$add_argument
 # each of these is grouped to be used inside a parser$add_argument_group
-# these are pulled outside into objects so they can be referenced during testing
-# see add_taxa_hfe_base_args() for an example
-taxa_hfe_base_args <- list(
-  subject_indentifier=list("-s", "--subject_identifier", type="character", metavar="<string>", default="subject_id", help="Metadata column name containing subject IDs"),
-  label=list("-l", "--label", type="character", metavar="<string>", default="feature_of_interest", help="Metadata column name of interest for ML"),
-  feature_type=list("-t", "--feature_type", type="character", metavar="<string>", default="factor", help="Is the ML label a factor or numeric"),
-  abundance=list("-a", "--abundance", type="numeric", metavar="<numeric>", default="0", help="Minimum mean abundance of feature"),
-  prevalence=list("-p", "--prevalence", type="numeric", metavar="<numeric>", default="0.01", help="Minimum prevalence of feature"),
-  lowest_level=list("-L", "--lowest_level", type="integer", metavar="<numeric>", default="2", help="Most general level allowed to compete"),
-  max_level=list("-m", "--max_level", type="integer", metavar="<numeric>", default="1000", help="How many hierarchical levels should be allowed to compete"),
-  cor_level=list("-c", "--cor_level", type="numeric", metavar="<numeric>", default="0.95", help="Initial pearson correlation filter"),
-  disable_super_filter=list("-d", "--disable_super_filter", action="store_true", help="Disable running of the super filter (final forest competition)"),
-  write_old_files=list("-w", "--write_old_files", action="store_true", help="Write individual level files and old HFE files"),
-  write_flattened_tree=list("-W", "--write_flattened_tree", action="store_true", help="Write a compressed backup of the entire competed tree"),
-  disable_super_filter=list("-D", "--write_both_outputs", action="store_true", help="Write an output for pre and post super filter results, overridden by --disable_super_filter"),
-  nperm=list("--nperm", type="integer", metavar="<numeric>", default="40", help="Number of taxaHFE RF permutations"),
-  ncores=list("-n", "--ncores", type="integer", metavar="<numeric>", default="2", help="Number of CPU cores to use"),
-  seed=list("--seed", type="numeric", metavar="<numeric>", help="Set a random numeric seed. If None, defaults to system time")
-)
-
-taxa_hfe_ml_args <- list(
-  train_split=list("--train_split", type="numeric", metavar="<numeric>", default="0.8", help="Percentage of samples to use for training"),
-  model=list("--model", type="character", metavar="<string>", default="rf", choices=c("rf", "enet", "none"), help="ML model to use"),
-  folds=list("--folds", type="numeric", metavar="<numeric>", default="10", help="Number of CV folds for tuning"),
-  metric=list("--metric", type="character", metavar="<string>", default="bal_accuracy", choices=c("roc_auc", "bal_accuracy", "accuracy", "mae", "rmse", "rsq", "kap", "f_meas", "ccc"), help="Metric to optimize"),
-  tune_length=list("--tune_length", type="numeric", metavar="<numeric>", default="80", help="Number of hyperparameter combinations to sample"),
-  tune_time=list("--tune_time", type="numeric", metavar="<numeric>", default="2", help="Time for hyperparameter search (in hours)"),
-  tune_stop=list("--tune_stop", type="numeric", metavar="<numeric>", default="10", help="Number of HP iterations without improvement before stopping"),
-  permute=list("--permute", type="numeric", metavar="<numeric>", default="1", help="Number of times to permute the ML assessment process, resulting in n different test/train split inputs"),
-  shap=list("--shap", action="store_true", help="Calculate SHAP values")
+# these are pulled outside into objects so they can be referenced during testing and easily added to
+# to add a new parse group
+# 1. Add a new group to this list, including a name, desc, and group of actual args
+# 2. Add a new method for loading the args, ex. load_taxa_hfe_ml_args, all these do is hold the desired argument groups and call return(load_args(...))
+# 3. Add a new item to test_flag_values in test_options.R, including an non-default value for each flag to test
+# 4. Add a new item to parser_flag_values_map in test_options.R that references the new load_taxa_hfe_*** method and the desired flag values
+argument_groups <- list(
+  taxa_hfe_base_args=list(
+    name="TaxaHFE arguments",
+    desc="Options to pass to TaxaHFE",
+    args=list(
+      subject_indentifier=list("-s", "--subject_identifier", type="character", metavar="<string>", default="subject_id", help="Metadata column name containing subject IDs"),
+      label=list("-l", "--label", type="character", metavar="<string>", default="feature_of_interest", help="Metadata column name of interest for ML"),
+      feature_type=list("-t", "--feature_type", type="character", metavar="<string>", default="factor", help="Is the ML label a factor or numeric"),
+      abundance=list("-a", "--abundance", type="numeric", metavar="<numeric>", default="0", help="Minimum mean abundance of feature"),
+      prevalence=list("-p", "--prevalence", type="numeric", metavar="<numeric>", default="0.01", help="Minimum prevalence of feature"),
+      lowest_level=list("-L", "--lowest_level", type="integer", metavar="<numeric>", default="2", help="Most general level allowed to compete"),
+      max_level=list("-m", "--max_level", type="integer", metavar="<numeric>", default="1000", help="How many hierarchical levels should be allowed to compete"),
+      cor_level=list("-c", "--cor_level", type="numeric", metavar="<numeric>", default="0.95", help="Initial pearson correlation filter"),
+      disable_super_filter=list("-d", "--disable_super_filter", action="store_true", help="Disable running of the super filter (final forest competition)"),
+      write_old_files=list("-w", "--write_old_files", action="store_true", help="Write individual level files and old HFE files"),
+      write_flattened_tree=list("-W", "--write_flattened_tree", action="store_true", help="Write a compressed backup of the entire competed tree"),
+      disable_super_filter=list("-D", "--write_both_outputs", action="store_true", help="Write an output for pre and post super filter results, overridden by --disable_super_filter"),
+      nperm=list("--nperm", type="integer", metavar="<numeric>", default="40", help="Number of taxaHFE RF permutations"),
+      ncores=list("-n", "--ncores", type="integer", metavar="<numeric>", default="2", help="Number of CPU cores to use"),
+      seed=list("--seed", type="numeric", metavar="<numeric>", help="Set a random numeric seed. If None, defaults to system time")
+    )
+  ),
+  taxa_hfe_ml_args=list(
+    name="TaxaHFE-ML specific arguments",
+    desc="Options to pass to TaxaHFE-ML for machine learning and SHAP analysis of TaxaHFE features",
+    args=list(
+      train_split=list("--train_split", type="numeric", metavar="<numeric>", default="0.8", help="Percentage of samples to use for training"),
+      model=list("--model", type="character", metavar="<string>", default="rf", choices=c("rf", "enet", "none"), help="ML model to use"),
+      folds=list("--folds", type="numeric", metavar="<numeric>", default="10", help="Number of CV folds for tuning"),
+      metric=list("--metric", type="character", metavar="<string>", default="bal_accuracy", choices=c("roc_auc", "bal_accuracy", "accuracy", "mae", "rmse", "rsq", "kap", "f_meas", "ccc"), help="Metric to optimize"),
+      tune_length=list("--tune_length", type="numeric", metavar="<numeric>", default="80", help="Number of hyperparameter combinations to sample"),
+      tune_time=list("--tune_time", type="numeric", metavar="<numeric>", default="2", help="Time for hyperparameter search (in hours)"),
+      tune_stop=list("--tune_stop", type="numeric", metavar="<numeric>", default="10", help="Number of HP iterations without improvement before stopping"),
+      permute=list("--permute", type="numeric", metavar="<numeric>", default="1", help="Number of times to permute the ML assessment process, resulting in n different test/train split inputs"),
+      shap=list("--shap", action="store_true", help="Calculate SHAP values")
+    )
+  )
 )
 
 # Function to initialize parser for a program
-initialize_parser <- function(version, program_name, description) {
+# this takes in the data to make the parser but does not run it
+initialize_parser <- function(version, program_name, description, argument_groups) {
   parser <- argparse::ArgumentParser(
     description=description,
     usage=paste(program_name, "[options] METADATA DATA OUTPUT"),
@@ -58,6 +74,14 @@ initialize_parser <- function(version, program_name, description) {
   parser$add_argument("-v", "--version", action="version", version=version)
   parser$add_argument("--data_dir", type="character", metavar="<string>", default=".", help="Directory for MEATDATA, DATA, and OUTPUT, ignored if using absolute paths. Defaults to the current directory")
 
+  # add the arguments from the passed in argument_groups
+  for (arg_group in argument_groups) {
+    parser_group <- parser$add_argument_group(arg_group$name, arg_group$desc)
+    for (arg in arg_group$args) {
+      add_argument(parser_group, arg)
+    }
+  }
+
   return(parser)
 }
 
@@ -65,35 +89,19 @@ validate_options <- function(opts) {
 
 }
 
-# Function to add base arguments common to all programs
-add_taxa_hfe_base_args <- function(parser) {
-  parser_group <- parser$add_argument_group("TaxaHFE arguments", "Options to pass to TaxaHFE")
-  for (flag_args in taxa_hfe_base_args) {
-    add_argument(parser_group, flag_args)
-  }
-
-  return(parser)
-}
-
-# Function to add taxaHFE-ML specific arguments
-add_taxa_hfe_ml_args <- function(parser) {
-  parser_group <- parser$add_argument_group("TaxaHFE-ML specific arguments", "Options to pass to TaxaHFE-ML for machine learning and SHAP analysis of TaxaHFE features")
-  for (flag_args in taxa_hfe_ml_args) {
-    add_argument(parser_group, flag_args)
-  }
-
-  return(parser)
-}
-
-load_args <- function(load_parser_function) {
+# load the args for a program
+# - loads version from env
+# - initilizes the parser with the desired argument groups
+# - runs the parser and returns the arguments
+load_args <- function(program_name, description, argument_groups) {
   # load version from the environment, defaulting to 0
   version <- Sys.getenv("TAXA_HFE_VERSION")
   if (version == "") {
     version <- "0"
   }
 
-  # load the parser
-  parser <- load_parser_function(version)
+  # load the parser, including any arguments groups
+  parser <- initialize_parser(version, program_name, description, argument_groups)
 
   # Parse the command-line arguments and return them
   opts <- parser$parse_args(commandArgs(TRUE))
@@ -109,30 +117,23 @@ load_args <- function(load_parser_function) {
   }
 
   # TODO: validate the args
+  # the method does nothing right now
+  validate_options(opts)
 
   return(opts)
 }
 
-
-load_taxa_hfe_parser <- function(version) {
-  parser <- initialize_parser(version, "taxa_hfe", "Hierarchical feature engineering (HFE) for feature reduction")
-  parser <- add_taxa_hfe_base_args(parser)
-
-  return(parser)
-}
-
 load_taxa_hfe_args <- function() {
-  return(load_args(load_taxa_hfe_parser))
-}
+  arg_groups <- list(argument_groups$taxa_hfe_base_args)
 
-load_taxa_hfe_ml_parser <- function(version) {
-  parser <- initialize_parser(version, "taxa_hfe_ml", "Hierarchical feature engineering (HFE) with ML")
-  parser <- add_taxa_hfe_base_args(parser)
-  parser <- add_taxa_hfe_ml_args(parser)
-
-  return(parser)
+  return(load_args("taxa_hfe", "Hierarchical feature engineering (HFE) for feature reduction", arg_groups))
 }
 
 load_taxa_hfe_ml_args <- function() {
-  return(load_args(load_taxa_hfe_ml_parser))
+  arg_groups <- list(
+    argument_groups$taxa_hfe_base_args,
+    argument_groups$taxa_hfe_ml_args
+  )
+
+  return(load_args("taxa_hfe_ml", "Hierarchical feature engineering (HFE) with ML", arg_groups))
 }

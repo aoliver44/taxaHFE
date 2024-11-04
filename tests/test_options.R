@@ -6,14 +6,14 @@ source("lib/options.R")
 # grab binding to these functions so they can be overwritten in the tests
 commandArgs <- NULL
 
-test_that("initialize_parser works", {
+test_that("initialize_parser works as expected", {
   expect_true(TRUE)
 
   version <- "998"
   program <- "TEST123"
   description <- "testing parser"
 
-  parser <- initialize_parser(version, program, description)
+  parser <- initialize_parser(version, program, description, list())
 
   test_that("parser prints version number when passed -v", {
     flags <- c("-v")
@@ -71,6 +71,101 @@ test_that("initialize_parser works", {
     opts <- parser$parse_args(flags)
     expect_equal(opts$data_dir, "/data")
   })
+
+  test_that("argument group loading works", {
+    arg_group <- list(
+      name="arg group name",
+      desc="arg group description",
+      args=list(
+        foo=list("-f", "--foo", type="character", metavar="<string>", default="bar", help="test arg in arg group")
+      )
+    )
+
+    parser <- initialize_parser(version, program, description, list(arg_group))
+
+    test_that("help text includes arg group info", {
+      # mock this method from the argparse package so it doesn't call quit but still raises the error it would have with stop()
+      local_mocked_bindings(
+        print_message_and_exit = function(message, x) stop(message),
+        .package = 'argparse'
+      )
+      flags <- c("-h")
+
+      expect_error(parser$parse_args(flags), arg_group$name)
+      expect_error(parser$parse_args(flags), arg_group$desc)
+      expect_error(parser$parse_args(flags), arg_group$args$foo$help)
+    })
+
+    flags <- c("m", "d", "o", "-f", "baz")
+    opts <- parser$parse_args(flags)
+    expect_equal(opts$foo, "baz")
+  })
+})
+
+test_that("load_args works correctly", {
+  expect_true(TRUE)
+
+  version <- "999"
+  program <- "TEST123"
+  description <- "testing parser"
+
+  test_that("defaults to version 0 when no version is set in the env", {
+    commandArgs <<- function(x) {
+      c("-v")
+    }
+    # mock this method from the argparse package so it doesn't call quit but still raises the error it would have with stop()
+    local_mocked_bindings(
+      print_message_and_exit = function(message, x) stop(message),
+      .package = 'argparse'
+    )
+
+    Sys.unsetenv("TAXA_HFE_VERSION")
+
+    expect_error(load_args(program, description, list()), "0")
+  })
+
+  test_that("use env var version when set", {
+    commandArgs <<- function(x) {
+      c("-v")
+    }
+    # mock this method from the argparse package so it doesn't call quit but still raises the error it would have with stop()
+    local_mocked_bindings(
+      print_message_and_exit = function(message, x) stop(message),
+      .package = 'argparse'
+    )
+
+    Sys.setenv(TAXA_HFE_VERSION=version)
+
+    expect_error(load_args(program, description, list()), version)
+  })
+
+  test_that("it sets the paths using --data_dir", {
+    commandArgs <<- function(x) {
+      c("--data_dir", "/path", "m.txt", "d.txt", "o.txt")
+    }
+
+    expect_no_error(opts <- load_args(program, description, list()))
+    expect_equal(opts$METADATA, "/path/m.txt")
+    expect_equal(opts$DATA, "/path/d.txt")
+    expect_equal(opts$OUTPUT, "/path/o.txt")
+  })
+
+  test_that("ignores --data_dir when paths are already linked to real files", {
+    # need to create tmp files so they will be detected and no resolved against
+    tmp_files <- list("/tmp/m.txt", "/tmp/d.txt", "/tmp/o.txt")
+    for (f in tmp_files) {
+      file.create(f)
+    }
+
+    commandArgs <<- function(x) {
+      c("--data_dir", "/path", tmp_files)
+    }
+
+    expect_no_error(opts <- load_args(program, description, list()))
+    expect_equal(opts$METADATA, "/tmp/m.txt")
+    expect_equal(opts$DATA, "/tmp/d.txt")
+    expect_equal(opts$OUTPUT, "/tmp/o.txt")
+  })
 })
 
 # for each flag, provide the optiions the flag can be as well as a value to set the flag to that isn't the default
@@ -106,43 +201,49 @@ test_flag_values <- list(
   )
 )
 
-test_that("loading parsers work", {
+test_that("program arg loaders work", {
   expect_true(TRUE)
 
   version <- "999"
   program <- "TEST123"
   description <- "testing parser"
-  base_flags <- c("m", "d", "o")
+  commandArgs <<- function(x) {
+    c("m", "d", "o")
+  }
+
+  # mapping of parser to the flags it handles, including a value to test setting the flag with
+  # when adding new argument groups, add a new item to this list
+  parser_flag_values_map <- list(
+    # base taxa hfe flags
+    list(
+      load_arg_function=load_taxa_hfe_args,
+      flag_values=test_flag_values$taxa_hfe_base_flags
+    ),
+    # taxa hfe ml flags, includes base taxa hfe flags
+    list(
+      load_arg_function=load_taxa_hfe_ml_args,
+      flag_values=c(test_flag_values$taxa_hfe_base_flags, test_flag_values$taxa_hfe_ml_flags)
+    )
+  )
 
   test_that("parsers load with default values", {
-    parsers <- list(load_taxa_hfe_parser(version), load_taxa_hfe_ml_parser(version))
-
-    for (parser in parsers) {
-      expect_no_error(parser$parse_args(base_flags))
+    for (parser in parser_flag_values_map) {
+      expect_no_error(parser$load_arg_function())
     }
   })
 
   test_that("parsers set flags as expected", {
-    # mapping of parser to the flags it handles, including a value to test setting the flag with
-    parser_flag_values_map <- list(
-      # base taca hfe flags
-      list(
-        parser=load_taxa_hfe_parser(version),
-        flag_values=test_flag_values$taxa_hfe_base_flags
-      ),
-      # taxa hfe ml flags, includes base taxa hfe flags
-      list(
-        parser=load_taxa_hfe_ml_parser(version),
-        flag_values=c(test_flag_values$taxa_hfe_base_flags, test_flag_values$taxa_hfe_ml_flags)
-      )
-    )
+    base_flags <- c("m", "d", "o")
 
     for (parser_flag_values in parser_flag_values_map) {
-      parser <- parser_flag_values$parser
+      load_arg_function <- parser_flag_values$load_arg_function
       flags_to_test <- parser_flag_values$flag_values
 
       # get default opts for all flags to compare against set values
-      default_opts <- parser$parse_args(base_flags)
+      commandArgs <<- function(x) {
+        base_flags
+      }
+      default_opts <- load_arg_function()
 
       for (flag_name in names(flags_to_test)) {
         flag_test_obj <- flags_to_test[[flag_name]]
@@ -156,7 +257,10 @@ test_that("loading parsers work", {
           if (!is.logical(flag_test_obj$value)) {
             flags <- c(flags, as.character(flag_test_obj$value))
           }
-          opts <- parser$parse_args(flags)
+          commandArgs <<- function(x) {
+            flags
+          }
+          opts <- load_arg_function()
 
           # ensure the value is set correctly in the parsed options
           # and also does not match the default
@@ -167,79 +271,4 @@ test_that("loading parsers work", {
       }
     }
   })
-})
-
-test_that("load_args works correctly", {
-  expect_true(TRUE)
-
-  version <- "999"
-  program <- "TEST123"
-  description <- "testing parser"
-
-  test_that("defaults to version 0 when no version is set in the env", {
-    commandArgs <<- function(x) {
-      c("-v")
-    }
-    # mock this method from the argparse package so it doesn't call quit but still raises the error it would have with stop()
-    local_mocked_bindings(
-      print_message_and_exit = function(message, x) stop(message),
-      .package = 'argparse'
-    )
-
-    Sys.unsetenv("TAXA_HFE_VERSION")
-
-    expect_error(load_args(load_taxa_hfe_parser), "0")
-  })
-
-  test_that("use env var version when set", {
-    commandArgs <<- function(x) {
-      c("-v")
-    }
-    # mock this method from the argparse package so it doesn't call quit but still raises the error it would have with stop()
-    local_mocked_bindings(
-      print_message_and_exit = function(message, x) stop(message),
-      .package = 'argparse'
-    )
-
-    Sys.setenv(TAXA_HFE_VERSION=version)
-
-    expect_error(load_args(load_taxa_hfe_parser), version)
-  })
-
-  test_that("it sets the paths using --data_dir", {
-    commandArgs <<- function(x) {
-      c("--data_dir", "/path", "m.txt", "d.txt", "o.txt")
-    }
-
-    expect_no_error(opts <- load_args(load_taxa_hfe_parser))
-    expect_equal(opts$METADATA, "/path/m.txt")
-    expect_equal(opts$DATA, "/path/d.txt")
-    expect_equal(opts$OUTPUT, "/path/o.txt")
-  })
-
-  test_that("ignores --data_dir when paths are already linked to real files", {
-    # need to create tmp files so they will be detected and no resolved against
-    tmp_files <- list("/tmp/m.txt", "/tmp/d.txt", "/tmp/o.txt")
-    for (f in tmp_files) {
-      file.create(f)
-    }
-
-    commandArgs <<- function(x) {
-      c("--data_dir", "/path", tmp_files)
-    }
-
-    expect_no_error(opts <- load_args(load_taxa_hfe_parser))
-    expect_equal(opts$METADATA, "/tmp/m.txt")
-    expect_equal(opts$DATA, "/tmp/d.txt")
-    expect_equal(opts$OUTPUT, "/tmp/o.txt")
-  })
-})
-
-test_that("load fuction don't error", {
-  commandArgs <<- function(x) {
-    c("m", "d", "o")
-  }
-
-  expect_no_error(load_taxa_hfe_args())
-  expect_no_error(load_taxa_hfe_ml_args())
 })
