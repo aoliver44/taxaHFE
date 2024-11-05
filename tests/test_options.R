@@ -121,7 +121,7 @@ test_that("load_args works correctly", {
 
     Sys.unsetenv("TAXA_HFE_VERSION")
 
-    expect_error(load_args(program, description, list()), "0")
+    expect_error(load_args(program, description, argument_groups = list()), "0")
   })
 
   test_that("use env var version when set", {
@@ -136,7 +136,7 @@ test_that("load_args works correctly", {
 
     Sys.setenv(TAXA_HFE_VERSION=version)
 
-    expect_error(load_args(program, description, list()), version)
+    expect_error(load_args(program, description, argument_groups = list()), version)
   })
 
   test_that("it sets the paths using --data_dir", {
@@ -144,7 +144,7 @@ test_that("load_args works correctly", {
       c("--data_dir", "/path", "m.txt", "d.txt", "o.txt")
     }
 
-    expect_no_error(opts <- load_args(program, description, list()))
+    expect_no_error(opts <- load_args(program, description, argument_groups = list()))
     expect_equal(opts$METADATA, "/path/m.txt")
     expect_equal(opts$DATA, "/path/d.txt")
     expect_equal(opts$OUTPUT, "/path/o.txt")
@@ -161,7 +161,7 @@ test_that("load_args works correctly", {
       c("--data_dir", "/path", tmp_files)
     }
 
-    expect_no_error(opts <- load_args(program, description, list()))
+    expect_no_error(opts <- load_args(program, description, argument_groups = list()))
     expect_equal(opts$METADATA, "/tmp/m.txt")
     expect_equal(opts$DATA, "/tmp/d.txt")
     expect_equal(opts$OUTPUT, "/tmp/o.txt")
@@ -233,7 +233,7 @@ test_that("program arg loaders work", {
   })
 
   test_that("parsers set flags as expected", {
-    base_flags <- c("m", "d", "o")
+    base_flags <- c("m.txt", "d.txt", "o.txt")
 
     for (parser_flag_values in parser_flag_values_map) {
       load_arg_function <- parser_flag_values$load_arg_function

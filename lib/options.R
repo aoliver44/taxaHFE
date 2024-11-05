@@ -2,12 +2,6 @@ library(argparse)
 
 suppressPackageStartupMessages(library(argparse, quietly = TRUE, verbose = FALSE, warn.conflicts = FALSE))
 
-# helper so we can set argument values in one place for easier modificaiton and testing
-# do.call allows for the list() to be exapnded into the args for the add_argument function
-add_argument <- function(parser, argument_params) {
-  do.call(parser$add_argument, argument_params)
-}
-
 # these are the argument groups, each list corresponds to an argument grouping
 # name and description are used to generate the argument group
 # args represents the group of actual flags, the function arguments passed to parser$add_argument
@@ -28,7 +22,7 @@ argument_groups <- list(
       feature_type=list("-t", "--feature_type", type="character", metavar="<string>", default="factor", help="Is the ML label a factor or numeric"),
       abundance=list("-a", "--abundance", type="numeric", metavar="<numeric>", default="0", help="Minimum mean abundance of feature"),
       prevalence=list("-p", "--prevalence", type="numeric", metavar="<numeric>", default="0.01", help="Minimum prevalence of feature"),
-      lowest_level=list("-L", "--lowest_level", type="integer", metavar="<numeric>", default="2", help="Most general level allowed to compete"),
+      lowest_level=list("-L", "--lowest_level", type="integer", metavar="<numeric>", default="3", help="Most general level allowed to compete"),
       max_level=list("-m", "--max_level", type="integer", metavar="<numeric>", default="1000", help="How many hierarchical levels should be allowed to compete"),
       cor_level=list("-c", "--cor_level", type="numeric", metavar="<numeric>", default="0.95", help="Initial pearson correlation filter"),
       disable_super_filter=list("-d", "--disable_super_filter", action="store_true", help="Disable running of the super filter (final forest competition)"),
@@ -78,7 +72,7 @@ initialize_parser <- function(version, program_name, description, argument_group
   for (arg_group in argument_groups) {
     parser_group <- parser$add_argument_group(arg_group$name, arg_group$desc)
     for (arg in arg_group$args) {
-      add_argument(parser_group, arg)
+      do.call(parser_group$add_argument, arg)
     }
   }
 
@@ -91,7 +85,7 @@ validate_options <- function(opts) {
 
 # load the args for a program
 # - loads version from env
-# - initilizes the parser with the desired argument groups
+# - initializes the parser with the desired argument groups
 # - runs the parser and returns the arguments
 load_args <- function(program_name, description, argument_groups) {
   # load version from the environment, defaulting to 0
