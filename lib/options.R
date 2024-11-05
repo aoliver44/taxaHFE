@@ -15,7 +15,7 @@ argument_groups <- list(
     name="TaxaHFE arguments",
     desc="Options to pass to TaxaHFE",
     args=list(
-      subject_indentifier=list("-s", "--subject_identifier", type="character", metavar="<string>", default="subject_id", help="Metadata column name containing subject IDs"),
+      subject_identifier=list("-s", "--subject_identifier", type="character", metavar="<string>", default="subject_id", help="Metadata column name containing subject IDs"),
       label=list("-l", "--label", type="character", metavar="<string>", default="feature_of_interest", help="Metadata column name of interest for ML"),
       feature_type=list("-t", "--feature_type", type="character", metavar="<string>", default="factor", help="Is the ML label a factor or numeric"),
       abundance=list("-a", "--abundance", type="numeric", metavar="<numeric>", default="0", help="Minimum mean abundance of feature"),
@@ -26,7 +26,7 @@ argument_groups <- list(
       disable_super_filter=list("-d", "--disable_super_filter", action="store_true", help="Disable running of the super filter (final forest competition)"),
       write_old_files=list("-w", "--write_old_files", action="store_true", help="Write individual level files and old HFE files"),
       write_flattened_tree=list("-W", "--write_flattened_tree", action="store_true", help="Write a compressed backup of the entire competed tree"),
-      disable_super_filter=list("-D", "--write_both_outputs", action="store_true", help="Write an output for pre and post super filter results, overridden by --disable_super_filter"),
+      write_both_outputs=list("-D", "--write_both_outputs", action="store_true", help="Write an output for pre and post super filter results, overridden by --disable_super_filter"),
       nperm=list("--nperm", type="integer", metavar="<numeric>", default="40", help="Number of taxaHFE RF permutations"),
       ncores=list("-n", "--ncores", type="integer", metavar="<numeric>", default="2", help="Number of CPU cores to use"),
       seed=list("--seed", type="numeric", metavar="<numeric>", help="Set a random numeric seed. If None, defaults to system time")

@@ -171,7 +171,7 @@ test_that("load_args works correctly", {
 # for each flag, provide the optiions the flag can be as well as a value to set the flag to that isn't the default
 # this is kept separate from the list in the options.R file so flag changes will be detected in tests
 test_flag_values <- list(
-  taxa_hfe_base_flags=list(
+  taxa_hfe_base_args=list(
     subject_identifier=list(flags=list("-s", "--subject_identifier"), value="sid"),
     label=list(flags=list("-l", "--label"), value="label_factor"),
     feature_type=list(flags=list("-t", "--feature_type"), value="ftype"),
@@ -188,7 +188,7 @@ test_flag_values <- list(
     ncores=list(flags=list("-n", "--ncores"), value=1),
     seed=list(flags=list("--seed"), value=314159)
   ),
-  taxa_hfe_ml_flags=list(
+  taxa_hfe_ml_args=list(
     train_split=list(flags=list("--train_split"), value=0.7),
     model=list(flags=list("--model"), value="enet"),
     folds=list(flags=list("--folds"), value=11),
@@ -217,14 +217,24 @@ test_that("program arg loaders work", {
     # base taxa hfe flags
     list(
       load_arg_function=load_taxa_hfe_args,
-      flag_values=test_flag_values$taxa_hfe_base_flags
+      flag_values=test_flag_values$taxa_hfe_base_args
     ),
     # taxa hfe ml flags, includes base taxa hfe flags
     list(
       load_arg_function=load_taxa_hfe_ml_args,
-      flag_values=c(test_flag_values$taxa_hfe_base_flags, test_flag_values$taxa_hfe_ml_flags)
+      flag_values=c(test_flag_values$taxa_hfe_base_args, test_flag_values$taxa_hfe_ml_args)
     )
   )
+
+  test_that("every flag is tested", {
+    for (group_name in names(test_flag_values)) {
+      test_flags <- test_flag_values[[group_name]]
+      actual_flags <- argument_groups[[group_name]]
+      for (flag in names(actual_flags$args)) {
+        expect_true(flag %in% names(test_flags), info = flag)
+      }
+    }
+  })
 
   test_that("parsers load with default values", {
     for (parser in parser_flag_values_map) {
