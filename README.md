@@ -89,7 +89,7 @@ docker build -t taxa_hfe:latest .
 Option 1: Run taxaHFE with **YOUR** data:
 1. Navigate to the directory containing your data, and start the docker image!
 ```
-docker run --rm -v `pwd`:/data aoliver44/taxa_hfe:latest [options] <METADATA> <DATA> <OUTPUT>
+docker run --rm -v -it `pwd`:/data aoliver44/taxa_hfe:latest [options] <METADATA> <DATA> <OUTPUT>
 
 ## or with singularity?
 singularity run -W `pwd` --bind `pwd`:/home/docker taxaHFE.sif [options] <METADATA> <DATA> <OUTPUT>
@@ -97,7 +97,7 @@ singularity run -W `pwd` --bind `pwd`:/home/docker taxaHFE.sif [options] <METADA
 
 Alternatively you can use the absolute path to your data instead of `pwd` for the bind mount
 ```
-docker run --rm -v /path/to/you/data:/data aoliver44/taxahfe:latest [options] <METADATA> <DATA> <OUTPUT>
+docker run --rm -it -v /path/to/you/data:/data aoliver44/taxahfe:latest [options] <METADATA> <DATA> <OUTPUT>
 ```
 
 2. Run taxaHFE
@@ -113,7 +113,7 @@ Option 2: Run taxaHFE on **EXAMPLE** data provided:
 git clone https://github.com/aoliver44/taxaHFE.git && cd taxaHFE
 
 ## STEP 2: RUN THE CONTAINER
-docker run --rm -v ./example_inputs:/data aoliver44/taxa_hfe --subject_identifier Sample --label Category --lowest_level 3 --ncores 2 --seed 42 metadata.txt microbiome_data.txt output.csv
+docker run --rm -it -v ./example_inputs:/data aoliver44/taxa_hfe --subject_identifier Sample --label Category --lowest_level 3 --ncores 2 --seed 42 metadata.txt microbiome_data.txt output.csv
 ```
 
 </br>
