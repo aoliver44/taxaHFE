@@ -1,5 +1,3 @@
-library(argparse)
-
 suppressPackageStartupMessages(library(argparse, quietly = TRUE, verbose = FALSE, warn.conflicts = FALSE))
 
 # these are the argument groups, each list corresponds to an argument grouping
