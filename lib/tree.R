@@ -7,13 +7,14 @@ library(tibble, quietly = T, verbose = F, warn.conflicts = F)
 library(progress, quietly = T, verbose = F, warn.conflicts = F)
 library(data.tree, quietly = T, verbose = F, warn.conflicts = F)
 library(dplyr, quietly = T, verbose = F, warn.conflicts = F)
+options(dplyr.summarise.inform = FALSE)
 library(corrr, quietly = T, verbose = F, warn.conflicts = F)
 library(tibble, quietly = T, verbose = F, warn.conflicts = F)
 library(purrr, quietly = T, verbose = F, warn.conflicts = F)
 library(ranger, quietly = T, verbose = F, warn.conflicts = F)
 library(vroom, quietly = T, verbose = F, warn.conflicts = F)
 library(tidyselect, quietly = T, verbose = F, warn.conflicts = F)
-library(htree, quietly = T, verbose = F, warn.conflicts = F)
+library(recipes, quietly = T, verbose = F, warn.conflicts = F)
 
 ## set random seed, defaults to system time
 set_seed_func <- function(seed) {
@@ -46,7 +47,7 @@ options(warn = -1)
 ## rename the subject_identifier to subject_id and
 ## rename the label to feature_of_interest
 ## metadata, should be in tab or comma separated format
-read_in_metadata <- function(input, subject_identifier, label, random_effects) {
+read_in_metadata <- function(input, subject_identifier, label, feature_type, random_effects, limit_covariates = TRUE, k) {
 
   cat("\n\n", "Checking for METADATA...", "\n")
   if (file.exists(input) == FALSE) {
@@ -71,7 +72,7 @@ read_in_metadata <- function(input, subject_identifier, label, random_effects) {
   
   ## check and make sure there are not too many metadata columns
   ## we will allow 10 total columns (8 columns of additional covariates)
-  if (ncol(metadata) > 10) {
+  if (ncol(metadata) > 10 & limit_covariates) {
     stop("Please only provide subject, label, and up to 8 additional covariates in the metadata file.")
   }
   
@@ -86,6 +87,22 @@ read_in_metadata <- function(input, subject_identifier, label, random_effects) {
   ## this is an effort to clean names for the RF later, which will complain big time
   ## if there are symbols or just numbers in your subject IDs
   metadata$subject_id <- metadata$subject_id %>% janitor::make_clean_names(use_make_names = F)
+  
+  ## for now, we convert continous response to k levels for a random effects run
+  if (random_effects) {
+    if (FALSE %in% (c("individual", "time") %in% colnames(metadata))) {
+      stop("You specified random effects, you must have metadata columns named individual and time")
+    }
+    if (feature_type == "numeric") {
+      ## this is real ugly code, from SO (https://stackoverflow.com/questions/39906180/consistent-cluster-order-with-kmeans-in-r)
+      ## basically it calculates the kmeans and sorts the clusters based on the center means
+      ## with those centered means, it applies the cluster index to each sample. Without this,
+      ## cluster 2 may repersent the largest values of feature of interest and cluster 3 may repersent the smallest.
+      metadata$cluster <- paste0("feature_of_interest_", kmeans(metadata$feature_of_interest, centers = sort(kmeans(metadata$feature_of_interest, centers = k)$centers))$cluster)
+      metadata <- metadata %>% dplyr::select(., -feature_of_interest) %>% dplyr::rename(., "feature_of_interest" = "cluster")
+    }
+  }
+  
   return(metadata)
 }
 
@@ -550,7 +567,8 @@ compete_all_winners <- function(tree, metadata, col_names, feature_type, nperm, 
     subject_identifier = "subject_id",
     feature_type = feature_type,
     ncores = ncores, 
-    nperm = nperm
+    nperm = nperm,
+    random_effects = random_effects
   )
 
 
@@ -672,10 +690,16 @@ rf_competition <- function(df, metadata, parent_descendent_competition, feature_
   # determine if rf regression or classification should be run
   if (feature_type == "factor") {
     response_formula <- as.formula(paste("as.factor(", feature_of_interest, ") ~ .", sep = ""))
-    control=list(se=TRUE, classify=TRUE, ncores = ncores)
+    if (random_effects) {
+      merged_data_avg_abund_rf <- prep_re_data(input = merged_data, feature_type = "factor", abund = TRUE)
+      merged_data_slope_rf <- prep_re_data(input = merged_data, feature_type = "factor", abund = FALSE)
+    }
   } else {
     response_formula <- as.formula(paste("as.numeric(", feature_of_interest, ") ~ .", sep = ""))
-    control=list(se=TRUE, classify=FALSE, ncores = ncores)
+    if (random_effects) {
+      merged_data_avg_abund_rf <- prep_re_data(input = merged_data, feature_type = "numeric", abund = TRUE)
+      merged_data_slope_rf <- prep_re_data(input = merged_data, feature_type = "numeric", abund = FALSE)
+    }
   }
   
   # progress bar for the final rf competition
@@ -689,9 +713,16 @@ rf_competition <- function(df, metadata, parent_descendent_competition, feature_
     if (!parent_descendent_competition) pb$tick()
     
     if (random_effects) {
-      re_rf <- htree::hrf(x=merged_data,id=merged_data$individual,time=merged_data$time,yindx="feature_of_interest", control = control)
-      re_vi=varimp_hrf(re_rf, parallel = FALSE)
-      re_vi %>% dplyr::select(1, 4) %>% dplyr::rename(., "taxa" = 1, "importance" = 2)
+      ranger_avg_abundance <- ranger::ranger(response_formula, data = merged_data_avg_abund_rf, importance = "impurity_corrected", seed = seed, sample.fraction = 1, replace = TRUE, num.threads = ncores)$variable.importance %>%
+        as.data.frame() %>%
+        dplyr::rename(., "importance" = ".") %>%
+        tibble::rownames_to_column(var = "taxa") 
+      ranger_slope <- ranger::ranger(response_formula, data = merged_data_slope_rf, importance = "impurity_corrected", seed = seed, sample.fraction = 1, replace = TRUE, num.threads = ncores)$variable.importance %>%
+        as.data.frame() %>%
+        dplyr::rename(., "importance" = ".") %>%
+        tibble::rownames_to_column(var = "taxa") 
+      ranger_result <- merge(ranger_avg_abundance, ranger_slope, by = "taxa", all = T)
+      ranger_result %>% dplyr::mutate(., importance = (importance.x + importance.y)/2) %>% dplyr::select(., -importance.x, -importance.y)
       
     } else {
       ranger::ranger(response_formula, data = merged_data, importance = "impurity_corrected", seed = seed, sample.fraction = 1, replace = TRUE, num.threads = ncores)$variable.importance %>%
@@ -1118,13 +1149,62 @@ run_diet_ml <- function(input_df, n_repeat) {
   }
 }
 
-## helps to dynamically choose B and R in the historical random forest
-find_closest_addends <- function(target) {
-  # Start with half of the target to find the largest numbers
-  for (i in floor(target / 2):1) {
-    # Calculate the other addend
-    j <- target - i
-    # Return the pair of numbers
-    return(c(i, j))
-  }
+## prep data for random effects random forest
+## input needs to be formated as merged data prior to RF
+## if abund = TRUE, calc avg abund, else calc avg slope
+prep_re_data <- function(input, feature_type, abund) {
+  
+  ## onehot encode any factors (only factors should be those from covariates)
+  merged_data_hotencode <- input %>%
+    recipes::recipe(~ .) %>% 
+    recipes::step_dummy(recipes::all_nominal_predictors(), -feature_of_interest, -individual, -time) %>% 
+    recipes::prep() %>% 
+    recipes::bake(input) 
+  
+  
+  ## if response is factor, average abundance across label levels
+  ## also average slope of features within individual and label levels
+  if (feature_type == "factor") {
+    ## abund analysis ##
+    
+    ## average abundance within level and feature_of_interest
+    merged_data_avg_abund <- merged_data_hotencode %>% 
+      dplyr::group_by(., individual, feature_of_interest) %>% dplyr::summarise(., across(where(is.numeric), mean)) %>%
+      dplyr::ungroup() 
+    
+    ## remove individual and time columns from dataset for RF
+    merged_data_avg_abund_rf <- merged_data_avg_abund %>% dplyr::select(., -individual, -time)
+    
+    if (abund) {
+      return(merged_data_avg_abund_rf)
+    } else {
+      ## slope analysis ##
+      
+      ## all numerical data
+      numerical_cols <- input %>% select(where(is.numeric)) %>% colnames()
+      
+      ## get the separate averages for the one hot encoded factors from above
+      one_hot_encoded_cov <- merged_data_avg_abund %>%
+        dplyr::select(., -dplyr::any_of(numerical_cols), feature_of_interest)
+      
+      ## get the slopes of the features within feature of interest, across time
+      merged_data_slope <- merged_data_hotencode %>% 
+        dplyr::select(., dplyr::any_of(numerical_cols), individual, feature_of_interest) %>%
+        group_by(individual, feature_of_interest) %>%
+        summarise(across(is.numeric,
+                         list(slope = ~lm(. ~ as.numeric(time))$coef[2]))) %>%
+        dplyr::mutate(across(everything(), ~replace_na(.x, 0))) %>%
+        dplyr::select(., -time_slope)
+      
+      ## remove slope from colname
+      colnames(merged_data_slope) <- gsub(pattern = "_slope", replacement = "", x = colnames(merged_data_slope))
+      
+      ## merge back with factor covariates
+      merged_data_slope_rf <- merge(one_hot_encoded_cov, merged_data_slope, by = c("individual", "feature_of_interest"))
+      merged_data_slope_rf <- merged_data_slope_rf %>% dplyr::select(., -dplyr::any_of(c("individual", "time")))
+      
+      return(merged_data_slope_rf)
+    }
+  } 
 }
+  
