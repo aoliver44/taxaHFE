@@ -32,6 +32,7 @@ diet_ml_inputs <- list()
 metadata <- read_in_metadata(input = opts$METADATA,
                              subject_identifier = opts$subject_identifier,
                              label = opts$label, 
+                             feature_type = opts$feature_type, 
                              random_effects = opts$random_effects, 
                              limit_covariates = TRUE, 
                              k = opts$k_splits)
