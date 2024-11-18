@@ -168,13 +168,14 @@ test_that("load_args works correctly", {
   })
 })
 
-# for each flag, provide the optiions the flag can be as well as a value to set the flag to that isn't the default
+# for each flag, provide the options the flag can be as well as a value to set the flag to that isn't the default
 # this is kept separate from the list in the options.R file so flag changes will be detected in tests
 test_flag_values <- list(
   taxa_hfe_base_args=list(
     subject_identifier=list(flags=list("-s", "--subject_identifier"), value="sid"),
     label=list(flags=list("-l", "--label"), value="label_factor"),
     feature_type=list(flags=list("-t", "--feature_type"), value="ftype"),
+    random_effects=list(flags=list("-R", "--random_effects"), value=TRUE),
     abundance=list(flags=list("-a", "--abundance"), value=0.9),
     prevalence=list(flags=list("-p", "--prevalence"), value=0.02),
     lowest_level=list(flags=list("-L", "--lowest_level"), value=0),
