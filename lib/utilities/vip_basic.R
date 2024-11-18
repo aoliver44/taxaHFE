@@ -18,7 +18,7 @@ vip.error.occured <- FALSE
 
 tryCatch( { if ((type == "classification") && (length(levels(as.factor(split_from_data_frame$data$feature_of_interest))) == 2) || (type == "regression")) {
   if (type == "regression") {
-    gg_label <- opt$label
+    gg_label <- opts$label
   } else {
     gg_label <- levels(as.factor(split_from_data_frame$data$feature_of_interest))[1]
   }
@@ -40,7 +40,7 @@ importance_plot_full <- final_fit %>%
   theme_minimal()
 
 ggplot2::ggsave(plot = importance_plot_full, 
-                filename = paste0(dirname(opt$OUTPUT), "/ml_analysis/", "importance_plot_full.pdf"),
+                filename = paste0(dirname(opts$OUTPUT), "/ml_analysis/", "importance_plot_full.pdf"),
                 width = pmax((0.1 * max(nchar(colnames(input)))), 6), height = 4.5, units = "in")
 
 ## Run on factor models: Train Data
@@ -61,7 +61,7 @@ importance_plot_train <- final_fit %>%
   theme_minimal()
 
 ggplot2::ggsave(plot = importance_plot_train, 
-                filename = paste0(dirname(opt$OUTPUT), "/ml_analysis/", "importance_plot_train.pdf"),
+                filename = paste0(dirname(opts$OUTPUT), "/ml_analysis/", "importance_plot_train.pdf"),
                 width = pmax((0.1 * max(nchar(colnames(train)))), 6), height = 4.5, units = "in")
 
 ## Run on factor models: Test Data
@@ -82,7 +82,7 @@ importance_plot_test <- final_fit %>%
   theme_minimal()
 
 ggplot2::ggsave(plot = importance_plot_test, 
-                filename = paste0(dirname(opt$OUTPUT), "/ml_analysis/", "importance_plot_test.pdf"),
+                filename = paste0(dirname(opts$OUTPUT), "/ml_analysis/", "importance_plot_test.pdf"),
                 width = pmax((0.1 * max(nchar(colnames(test)))), 6), height = 4.5, units = "in")
 }
   
