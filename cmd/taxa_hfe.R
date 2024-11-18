@@ -58,25 +58,3 @@ method_taxa_hfe(hdata = hData,
   seed = opt$seed,
   random_effects = TRUE
   )
-
-
-## DRAFT CODE - DELETE BEFORE MERGING
-hTree <- build_tree(hData,
-                    filter_prevalence = 0.01,
-                    filter_mean_abundance = 0
-)
-
-competed_tree <- compete_tree(
-  hTree,
-  lowest_level = 3,
-  max_level = 1000, # allows for all levels to be competed. Change to 1 for pairwise comparisons
-  col_names = colnames(hData)[2:NCOL(hData)],
-  corr_threshold = 0.95,
-  metadata = metadata,
-  ncores = 4,
-  feature_type = "factor",
-  nperm = 10,
-  disable_super_filter = TRUE,
-  random_effects = TRUE
-)
-
