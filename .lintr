@@ -1,3 +1,4 @@
 linters: linters_with_defaults(
-    line_length_linter = NULL
+    line_length_linter = NULL,
+    infix_spaces_linter = NULL
   )
