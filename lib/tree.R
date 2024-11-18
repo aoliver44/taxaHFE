@@ -18,12 +18,12 @@ library(recipes, quietly = T, verbose = F, warn.conflicts = F)
 ## set random seed, defaults to system time
 set_seed_func <- function(seed) {
   if (!is.null(seed)) {
-    opt$seed <<- as.numeric(opt$seed)
+    opts$seed <<- as.numeric(opts$seed)
     set.seed(seed)
   } else {
     message('No random seed set. Using system time!')
-    opt$seed <<- as.numeric(Sys.time())
-    set.seed(opt$seed)
+    opts$seed <<- as.numeric(Sys.time())
+    set.seed(opts$seed)
   }
 }
 
@@ -1114,12 +1114,12 @@ extract_attributes <- function(items_list) {
 ## run dietML based on diet_ml_input_df
 run_diet_ml <- function(input_df, n_repeat) {
   
-  for (seed in sample(1:100000000, replace = F, size = opt$permute)) {
-    if (opt$permute > 1) {
+  for (seed in sample(1:100000000, replace = F, size = opts$permute)) {
+    if (opts$permute > 1) {
       ## same idea as below, need to change the random seed and it needs
       ## to be a persistant change through sourcing the dietML script.
       ## again, we can create a list of seeds that can be passed through
-      opt$seed <<- seed
+      opts$seed <<- seed
     }
     for (dML_input in unique(input_df[["general_name"]])) {
       
@@ -1139,7 +1139,7 @@ run_diet_ml <- function(input_df, n_repeat) {
       
       ## keep track of what method is being passed to dietML
       ## this gets printed in the results file
-      opt$program <<- dML_input
+      opts$program <<- dML_input
       #TODO: make this a function that takes instead of a source. Make "program" and 
       #"seed" and whatnot into function arguments and not something that gets written
       #to opt!!! BANISH UNNECESSARY GLOBAL VARS!!!
