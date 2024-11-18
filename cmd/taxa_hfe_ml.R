@@ -31,7 +31,10 @@ diet_ml_inputs <- list()
 ## metadata file
 metadata <- read_in_metadata(input = opts$METADATA,
                              subject_identifier = opts$subject_identifier,
-                             label = opts$label)
+                             label = opts$label, 
+                             random_effects = opts$random_effects, 
+                             limit_covariates = TRUE, 
+                             k = opts$k_splits)
 
 ## hierarchical data file ======================================================
 hData <- read_in_hierarchical_data(input = opts$DATA,
@@ -67,7 +70,8 @@ method_taxa_hfe_ml(hdata = hData,
                   shap = opts$shap,
                   target_list = diet_ml_inputs,
                   output = opts$OUTPUT,
-                  seed = opts$seed
+                  seed = opts$seed,
+                  random_effects = opts$random_effects
 )
 
 ## make sure test train in each item of list
