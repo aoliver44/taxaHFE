@@ -41,11 +41,11 @@ method_taxa_hfe <- function(hdata, metadata, prevalence, abundance,
     competed_tree,
     metadata,
     colnames(hData)[2:NCOL(hData)],
-    opt$OUTPUT, opt$disable_super_filter,
-    opt$write_both_outputs,
-    opt$write_old_files,
-    opt$write_flattened_tree,
-    opt$ncores
+    opts$OUTPUT, opts$disable_super_filter,
+    opts$write_both_outputs,
+    opts$write_old_files,
+    opts$write_flattened_tree,
+    opts$ncores
   )
   
   ## Extract information from tree  ============================================

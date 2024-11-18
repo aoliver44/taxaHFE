@@ -1,5 +1,4 @@
 ## HFE FUNCTIONS
-## v2.11
 
 library(janitor, quietly = T, verbose = F, warn.conflicts = F)
 library(tidyr, quietly = T, verbose = F, warn.conflicts = F)
