@@ -54,8 +54,8 @@ method_taxa_hfe(hdata = hData,
   write_flattened_tree = opts$write_flattened_tree,
   target_list = diet_ml_inputs,
   col_names = colnames(hData)[2:NCOL(hData)],
-  output = opt$OUTPUT,
-  seed = opt$seed,
-  random_effects = opt$random_effects
+  output = opts$OUTPUT,
+  seed = opts$seed,
+  random_effects = opts$random_effects
   )
 
