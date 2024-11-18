@@ -12,7 +12,7 @@ method_taxa_hfe <- function(hdata, metadata, prevalence, abundance,
                            lowest_level, max_level, cor_level, ncores,
                            feature_type, nperm, disable_super_filter,
                            write_both_outputs, write_flattened_tree, col_names,
-                           target_list, output, seed) {
+                           target_list, output, seed, random_effects) {
   ## Build tree ================================================================
   cat("\n\n", "###########################\n", "Building Tree...\n", "###########################\n\n")
   cat("This may take a few minutes depending on how many features you have.\n")
@@ -32,7 +32,8 @@ method_taxa_hfe <- function(hdata, metadata, prevalence, abundance,
     ncores = ncores,
     feature_type = feature_type,
     nperm = nperm,
-    disable_super_filter = disable_super_filter
+    disable_super_filter = disable_super_filter, 
+    random_effects = random_effects
   )
 
   ## write outputs =============================================================
@@ -74,7 +75,7 @@ method_taxa_hfe_ml <- function(hdata, metadata, prevalence, abundance,
                               feature_type, nperm, disable_super_filter,
                               write_both_outputs, write_flattened_tree,
                               train_split, model, folds, metric, tune_length,
-                              tune_time, tune_stop, shap, target_list, output, seed) {
+                              tune_time, tune_stop, shap, target_list, output, seed, random_effects) {
 
   count <- 1
 
@@ -102,7 +103,8 @@ method_taxa_hfe_ml <- function(hdata, metadata, prevalence, abundance,
       feature_type = feature_type,
       # if in train loop (count = 1), nperm as specified, else count = 2, barely permute the RF competitions
       nperm = switch(count, {nperm}, {as.numeric(3)}),
-      disable_super_filter = disable_super_filter
+      disable_super_filter = disable_super_filter,
+      random_effects = random_effects
     )
 
     ## Extract information from tree  ============================================
@@ -176,7 +178,7 @@ method_levels <- function(hdata, metadata, prevalence, abundance,
                           lowest_level, max_level, cor_level, ncores,
                           feature_type, nperm, disable_super_filter,
                           write_both_outputs, write_flattened_tree, col_names,
-                          target_list, output, seed) {
+                          target_list, output, seed, random_effects) {
   
   ## Build tree ================================================================
   cat("\n\n", "###########################\n", "Building Tree...\n", "###########################\n\n")
@@ -199,7 +201,8 @@ method_levels <- function(hdata, metadata, prevalence, abundance,
     ncores = ncores,
     feature_type = feature_type,
     nperm = 3, # hard encoded because the levels dont need an RF competition
-    disable_super_filter = disable_super_filter
+    disable_super_filter = disable_super_filter,
+    random_effects = random_effects
   )
   
   ## flatten the data
@@ -216,8 +219,3 @@ method_levels <- function(hdata, metadata, prevalence, abundance,
                         )
 }
 
-
-method_taxa_hfe_time <- function() {
-
-  
-}
