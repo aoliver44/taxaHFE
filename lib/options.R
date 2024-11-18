@@ -19,6 +19,7 @@ argument_groups <- list(
       label=list("-l", "--label", type="character", metavar="<string>", default="feature_of_interest", help="Metadata column name of interest for ML"),
       feature_type=list("-t", "--feature_type", type="character", metavar="<string>", default="factor", help="Is the ML label a factor or numeric"),
       random_effects=list("-R", "--random_effects", action="store_true", help="Consider repeated measures. Note: columns 'individual' and 'time' must be present."),
+      k_splits=list("-k", "--k_splits", type="numeric", metavar="<numeric>", default="3", help="We use kmeans to factorize a numeric response for repeated measures. How many categories should we create?"),
       abundance=list("-a", "--abundance", type="numeric", metavar="<numeric>", default="0", help="Minimum mean abundance of feature"),
       prevalence=list("-p", "--prevalence", type="numeric", metavar="<numeric>", default="0.01", help="Minimum prevalence of feature"),
       lowest_level=list("-L", "--lowest_level", type="integer", metavar="<numeric>", default="3", help="Most general level allowed to compete"),

@@ -176,6 +176,7 @@ test_flag_values <- list(
     label=list(flags=list("-l", "--label"), value="label_factor"),
     feature_type=list(flags=list("-t", "--feature_type"), value="ftype"),
     random_effects=list(flags=list("-R", "--random_effects"), value=TRUE),
+    k_splits=list(flags=list("-k", "--k_splits"), value=4),
     abundance=list(flags=list("-a", "--abundance"), value=0.9),
     prevalence=list(flags=list("-p", "--prevalence"), value=0.02),
     lowest_level=list(flags=list("-L", "--lowest_level"), value=0),
