@@ -10,9 +10,6 @@
 ## suppress warnings
 options(warn=-1)
 
-## set working dir to /home for the docker container
-setwd("/home/docker")
-
 ## load libraries ==============================================================
 library(readr, quietly = T, verbose = F, warn.conflicts = F)
 library(dplyr, quietly = T, verbose = F, warn.conflicts = F)
@@ -44,11 +41,8 @@ if (!exists("diet_ml_input_df") | nrow(diet_ml_input_df) < 1) {
 } 
 
 ## check for outdir and make if not there
-if (dir.exists(paste0(dirname(opts$OUTPUT), "/ml_analysis")) == TRUE) {
-  setwd(paste0(dirname(opts$OUTPUT), "/ml_analysis"))
-} else {
+if (dir.exists(paste0(dirname(opts$OUTPUT), "/ml_analysis")) != TRUE) {
   dir.create(path = paste0(dirname(opts$OUTPUT), "/ml_analysis"))
-  setwd(paste0(dirname(opts$OUTPUT), "/ml_analysis"))
 }
 
 
