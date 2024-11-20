@@ -117,21 +117,20 @@ method_taxa_hfe_ml <- function(hdata, metadata, prevalence, abundance,
       flattened_df_test <- flatten_tree_with_metadata(competed_tree)
       col_names = colnames(hData_split)[2:NCOL(hData_split)]
       colnames(flattened_df_test)[11:NCOL(flattened_df_test)] <- col_names
-
-      ## make sure test and train have the same features
-      flattened_df_test$name <- janitor::make_clean_names(flattened_df_test$name)
+      
+      ## clean pathString names and use these, they will always be unique
+      ## downside, longer names
+      flattened_df_test$pathString <- flattened_df_test$pathString %>% janitor::make_clean_names()
+      flattened_df_test$pathString <- gsub(pattern = "taxa_tree_", replacement = "", x = flattened_df_test$pathString)
+      
       test_data <- flattened_df_test %>%
-        # only select rows with same feature names as train_data features
-        dplyr::filter(., name %in% colnames(train_data)) %>%
-        # only select columns in test_metadata
-        dplyr::select(., name, dplyr::any_of(test_metadata$subject_id)) %>%
+        dplyr::select(., pathString, 11:dplyr::last_col()) %>%
         tibble::remove_rownames() %>%
-        tibble::column_to_rownames(., var = "name") %>%
+        tibble::column_to_rownames(., var = "pathString") %>%
         t() %>%
         as.data.frame() %>%
-        tibble::rownames_to_column(., var = "subject_id")
-
-      ## merge test data with metadata
+        tibble::rownames_to_column(var = "subject_id")
+      
       test_data <- merge(metadata, test_data, by = "subject_id")
     }
     
