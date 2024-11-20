@@ -39,6 +39,12 @@ library(ranger, quietly = T, verbose = F, warn.conflicts = F)
 train <- train_data
 test  <- test_data
 
+## remove individual and train if random effects
+if (opts$random_effects) {
+  train_data <- train_data %>% dplyr::select(., -dplyr::any_of(c("individual", "time")))
+  test_data <- test_data %>% dplyr::select(., -dplyr::any_of(c("individual", "time")))
+}
+
 split_from_data_frame <- make_splits(
   x = train,
   assessment = test
@@ -215,7 +221,8 @@ full_results$program <- opts$program
 
 
 ## write final results to file or append if file exists
-readr::write_csv(x = full_results, file = "ml_results.csv", append = T, col_names = !file.exists("ml_results.csv"))
+readr::write_csv(x = full_results, file =paste0(dirname(opts$OUTPUT), "/ml_analysis/ml_results.csv"), 
+                 append = T, col_names = !file.exists(paste0(dirname(opts$OUTPUT), "/ml_analysis/ml_results.csv")))
 
 ## graphs ======================================================================
 

@@ -38,6 +38,13 @@ suppressPackageStartupMessages(library(glmnet, quietly = T, verbose = F, warn.co
 ## set initial test-train split
 train <- train_data
 test  <- test_data
+
+## remove individual and train if random effects
+if (opts$random_effects) {
+  train_data <- train_data %>% dplyr::select(., -dplyr::any_of(c("individual", "time")))
+  test_data <- test_data %>% dplyr::select(., -dplyr::any_of(c("individual", "time")))
+}
+
 split_from_data_frame <- make_splits(
   x = train,
   assessment = test
@@ -206,7 +213,8 @@ full_results <- merge(workflowsets::collect_metrics(final_res), null_results, by
 full_results$seed <- opts$seed
 
 ## write final results to file or append if file exists
-readr::write_csv(x = full_results, file = paste0(opts$outdir, "ml_results.csv"), append = T, col_names = !file.exists(paste0(opts$outdir, "ml_results.csv")))
+readr::write_csv(x = full_results, file =paste0(dirname(opts$OUTPUT), "/ml_analysis/ml_results.csv"), 
+                 append = T, col_names = !file.exists(paste0(dirname(opts$OUTPUT), "/ml_analysis/ml_results.csv")))
 
 
 ## graphs ======================================================================

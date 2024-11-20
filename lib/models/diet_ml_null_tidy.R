@@ -45,6 +45,12 @@ if (opts$feature_type == "factor") {
 train <- train_data
 test  <- test_data
 
+## remove individual and train if random effects
+if (opts$random_effects) {
+  train_data <- train_data %>% dplyr::select(., -dplyr::any_of(c("individual", "time")))
+  test_data <- test_data %>% dplyr::select(., -dplyr::any_of(c("individual", "time")))
+}
+
 ## recipe ======================================================================
 
 ## specify recipe (this is like the pre-process work)
@@ -119,8 +125,8 @@ if (opts$feature_type == "factor") {
 ## write df ====================================================================
 
 ## write table of results to file
-readr::write_csv(x = results_df, file ="dummy_model_results.csv", 
-                 append = T, col_names = !file.exists("dummy_model_results.csv"))
+readr::write_csv(x = results_df, file =paste0(dirname(opts$OUTPUT), "/ml_analysis/dummy_model_results.csv"), 
+                 append = T, col_names = !file.exists(paste0(dirname(opts$OUTPUT), "/ml_analysis/dummy_model_results.csv")))
 
 ## show the final results
 cat("Performance of NULL model:", "\n")
