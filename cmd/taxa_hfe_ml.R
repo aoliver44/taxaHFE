@@ -31,7 +31,11 @@ diet_ml_inputs <- list()
 ## metadata file
 metadata <- read_in_metadata(input = opts$METADATA,
                              subject_identifier = opts$subject_identifier,
-                             label = opts$label)
+                             label = opts$label, 
+                             feature_type = opts$feature_type, 
+                             random_effects = opts$random_effects, 
+                             limit_covariates = TRUE, 
+                             k = opts$k_splits)
 
 ## hierarchical data file ======================================================
 hData <- read_in_hierarchical_data(input = opts$DATA,
@@ -67,7 +71,8 @@ method_taxa_hfe_ml(hdata = hData,
                   shap = opts$shap,
                   target_list = diet_ml_inputs,
                   output = opts$OUTPUT,
-                  seed = opts$seed
+                  seed = opts$seed,
+                  random_effects = opts$random_effects
 )
 
 ## make sure test train in each item of list
@@ -81,4 +86,4 @@ diet_ml_input_df <- extract_attributes(items_list = diet_ml_inputs)
 write_list_to_csv(target_list = diet_ml_inputs, directory = dirname(opts$OUTPUT))
 
 ## pass to dietML if selected
-run_diet_ml(input_df = diet_ml_input_df, n_repeat = 1)
+run_diet_ml(input_df = diet_ml_input_df, n_repeat = opts$permute)

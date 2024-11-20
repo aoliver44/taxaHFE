@@ -46,10 +46,10 @@ tryCatch( { if (length(levels(as.factor(split_from_data_frame$data$feature_of_in
   
   ## make shap plot
   importance_plot_full_1 <- shapviz::sv_importance(sv_full, kind = "bee", show_numbers = TRUE, bee_width = 0.2, max_display = 10) + 
-    ggtitle(label = paste0("SHAP: ", opt$label, " (full data)")) + 
+    ggtitle(label = paste0("SHAP: ", opts$label, " (full data)")) + 
     labs(x = paste0("predictive of ", levels(as.factor(split_from_data_frame$data$feature_of_interest))[2], " < SHAP > ", "predictive of ", levels(as.factor(split_from_data_frame$data$feature_of_interest))[1])) + 
     theme_bw(base_size = 14)
-  ggplot2::ggsave(plot = importance_plot_full_1, filename = paste0(dirname(opt$OUTPUT), "/ml_analysis/", "importance_plot_full_1.pdf"), width = pmax((0.1 * max(nchar(colnames(sv_full$X)))), 6), height = 4.5, units = "in")
+  ggplot2::ggsave(plot = importance_plot_full_1, filename = paste0(dirname(opts$OUTPUT), "/ml_analysis/", "importance_plot_full_1.pdf"), width = pmax((0.1 * max(nchar(colnames(sv_full$X)))), 6), height = 4.5, units = "in")
   
   #####################
   ## TRAIN DATA 1
@@ -78,10 +78,10 @@ tryCatch( { if (length(levels(as.factor(split_from_data_frame$data$feature_of_in
   
   ## make shap plot
   importance_plot_train_1 <- shapviz::sv_importance(sv_train, kind = "bee", show_numbers = TRUE, bee_width = 0.2, max_display = 10) + 
-    ggtitle(label = paste0("SHAP: ", opt$label, " (train data)")) + 
+    ggtitle(label = paste0("SHAP: ", opts$label, " (train data)")) + 
     labs(x = paste0("predictive of ", levels(as.factor(split_from_data_frame$data$feature_of_interest))[2], " < SHAP > ", "predictive of ", levels(as.factor(split_from_data_frame$data$feature_of_interest))[1])) + 
     theme_bw(base_size = 14)
-  ggplot2::ggsave(plot = importance_plot_train_1, filename = paste0(dirname(opt$OUTPUT), "/ml_analysis/", "importance_plot_train_1.pdf"), width = pmax((0.1 * max(nchar(colnames(sv_train$X)))), 6), height = 4.5, units = "in")
+  ggplot2::ggsave(plot = importance_plot_train_1, filename = paste0(dirname(opts$OUTPUT), "/ml_analysis/", "importance_plot_train_1.pdf"), width = pmax((0.1 * max(nchar(colnames(sv_train$X)))), 6), height = 4.5, units = "in")
   
   #####################
   ## TEST DATA 1
@@ -110,14 +110,14 @@ tryCatch( { if (length(levels(as.factor(split_from_data_frame$data$feature_of_in
   
   ## make shap plot
   importance_plot_test_1 <- shapviz::sv_importance(sv_test, kind = "bee", show_numbers = TRUE, bee_width = 0.2, max_display = 10) + 
-    ggtitle(label = paste0("SHAP: ", opt$label, " (test data)")) + 
+    ggtitle(label = paste0("SHAP: ", opts$label, " (test data)")) + 
     labs(x = paste0("predictive of ", levels(as.factor(split_from_data_frame$data$feature_of_interest))[2], " < SHAP > ", "predictive of ", levels(as.factor(split_from_data_frame$data$feature_of_interest))[1])) + 
     theme_bw(base_size = 14)
-  ggplot2::ggsave(plot = importance_plot_test_1, filename = paste0(dirname(opt$OUTPUT), "/ml_analysis/", "importance_plot_test_1.pdf"), width = pmax((0.1 * max(nchar(colnames(sv_test$X)))), 6), height = 4.5, units = "in")
+  ggplot2::ggsave(plot = importance_plot_test_1, filename = paste0(dirname(opts$OUTPUT), "/ml_analysis/", "importance_plot_test_1.pdf"), width = pmax((0.1 * max(nchar(colnames(sv_test$X)))), 6), height = 4.5, units = "in")
   
   } 
   
-  if ((type == "regression") && (opt$model == "rf")) {
+  if ((type == "regression") && (opts$model == "rf")) {
     
     ## Prediction wrapper
     pfun <- function(object, newdata) {
@@ -142,8 +142,8 @@ tryCatch( { if (length(levels(as.factor(split_from_data_frame$data$feature_of_in
     
     ## make shap plot
     importance_plot_full <- shapviz::sv_importance(sv_full, kind = "bee", show_numbers = TRUE, bee_width = 0.2, max_display = 10) + 
-      ggtitle(label = paste0("SHAP: ", opt$label, " (full data)")) + theme_bw(base_size = 14)
-    ggplot2::ggsave(plot = importance_plot_full, filename = paste0(dirname(opt$OUTPUT), "/ml_analysis/", "importance_plot_full.pdf"), width = pmax((0.1 * max(nchar(colnames(sv_full$X)))), 6), height = 4.5, units = "in")
+      ggtitle(label = paste0("SHAP: ", opts$label, " (full data)")) + theme_bw(base_size = 14)
+    ggplot2::ggsave(plot = importance_plot_full, filename = paste0(dirname(opts$OUTPUT), "/ml_analysis/", "importance_plot_full.pdf"), width = pmax((0.1 * max(nchar(colnames(sv_full$X)))), 6), height = 4.5, units = "in")
     
     #######################
     
@@ -170,8 +170,8 @@ tryCatch( { if (length(levels(as.factor(split_from_data_frame$data$feature_of_in
     
     ## make shap plot
     importance_plot_train <- shapviz::sv_importance(sv_train, kind = "bee", show_numbers = TRUE, bee_width = 0.2, max_display = 10) + 
-      ggtitle(label = paste0("SHAP: ", opt$label, " (train)")) + theme_bw(base_size = 14)
-    ggplot2::ggsave(plot = importance_plot_train, filename = paste0(dirname(opt$OUTPUT), "/ml_analysis/", "importance_plot_train.pdf"), width = pmax((0.1 * max(nchar(colnames(sv_train$X)))), 6), height = 4.5, units = "in")
+      ggtitle(label = paste0("SHAP: ", opts$label, " (train)")) + theme_bw(base_size = 14)
+    ggplot2::ggsave(plot = importance_plot_train, filename = paste0(dirname(opts$OUTPUT), "/ml_analysis/", "importance_plot_train.pdf"), width = pmax((0.1 * max(nchar(colnames(sv_train$X)))), 6), height = 4.5, units = "in")
     
     ####################
     
@@ -198,8 +198,8 @@ tryCatch( { if (length(levels(as.factor(split_from_data_frame$data$feature_of_in
     
     ## make shap plot
     importance_plot_test <- shapviz::sv_importance(sv_test, kind = "bee", show_numbers = TRUE, bee_width = 0.2, max_display = 10) + 
-      ggtitle(label = paste0("SHAP: ", opt$label, " (test)")) + theme_bw(base_size = 14)
-    ggplot2::ggsave(plot = importance_plot_test, filename = paste0(dirname(opt$OUTPUT), "/ml_analysis/", "importance_plot_test.pdf"), width = pmax((0.1 * max(nchar(colnames(sv_test$X)))), 6), height = 4.5, units = "in")
+      ggtitle(label = paste0("SHAP: ", opts$label, " (test)")) + theme_bw(base_size = 14)
+    ggplot2::ggsave(plot = importance_plot_test, filename = paste0(dirname(opts$OUTPUT), "/ml_analysis/", "importance_plot_test.pdf"), width = pmax((0.1 * max(nchar(colnames(sv_test$X)))), 6), height = 4.5, units = "in")
     
     ####################
     

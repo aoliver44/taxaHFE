@@ -16,7 +16,7 @@ options(warn=-1)
 `%!in%` <- Negate(`%in%`)
 
 ## set seed
-set.seed(as.numeric(opt$seed))
+set.seed(as.numeric(opts$seed))
 
 ## load libraries ==============================================================
 
@@ -26,24 +26,30 @@ suppressPackageStartupMessages(library(tidymodels, quietly = T, verbose = F, war
 
 ## create results df ===========================================================
 
-if (opt$feature_type == "factor") {
+if (opts$feature_type == "factor") {
   results_df <- data.frame(seed = numeric(), bal_accuracy = numeric(), f_meas = numeric(), accuracy = numeric(), stringsAsFactors = F)
-} else if (opt$feature_type == "numeric") {
+} else if (opts$feature_type == "numeric") {
   results_df <- data.frame(seed = numeric(), mae = numeric(), rmse = numeric(), ccc = numeric(), stringsAsFactors = F)
 }
 
 ## interate over null model ====================================================
 
   
-if (opt$feature_type == "factor") {
+if (opts$feature_type == "factor") {
   df_loop_results <- data.frame(truth = character(), estimate = character(), stringsAsFactors = F)
-} else if (opt$feature_type == "numeric") {
+} else if (opts$feature_type == "numeric") {
   df_loop_results <- data.frame(truth = numeric(), estimate = numeric(), stringsAsFactors = F)
 }
 
 ## set initial test-train split
 train <- train_data
 test  <- test_data
+
+## remove individual and train if random effects
+if (opts$random_effects) {
+  train_data <- train_data %>% dplyr::select(., -dplyr::any_of(c("individual", "time")))
+  test_data <- test_data %>% dplyr::select(., -dplyr::any_of(c("individual", "time")))
+}
 
 ## recipe ======================================================================
 
@@ -52,7 +58,7 @@ diet_ml_recipe <-
   recipes::recipe(feature_of_interest ~ ., data = train) %>% 
   recipes::update_role(tidyr::any_of("subject_id"), new_role = "ID") %>%
   recipes::step_dummy(recipes::all_nominal_predictors()) %>%
-  recipes::step_corr(all_numeric_predictors(), threshold = as.numeric(opt$cor_level)) %>%
+  recipes::step_corr(all_numeric_predictors(), threshold = as.numeric(opts$cor_level)) %>%
   recipes::step_zv(all_predictors())
 
 
@@ -81,7 +87,7 @@ final_res <- parsnip::fit(diet_ml_wflow, test)
 df_loop_results <- add_row(df_loop_results, truth = test$feature_of_interest)
 df_loop_results$estimate <- final_res$fit$fit$fit$value
 
-if (opt$feature_type == "factor") {
+if (opts$feature_type == "factor") {
   df_loop_results$estimate <- factor(x = df_loop_results$estimate, levels = levels(as.factor(df_loop_results$truth)))
   results_df <- results_df %>% 
     tibble::add_row(., bal_accuracy = 
@@ -96,8 +102,8 @@ if (opt$feature_type == "factor") {
                       yardstick::f_meas_vec(truth = as.factor(df_loop_results$truth), 
                                               estimate = as.factor(df_loop_results$estimate), 
                                               data = df_loop_results),
-                    seed = opt$seed)
-} else if (opt$feature_type == "numeric") {
+                    seed = opts$seed)
+} else if (opts$feature_type == "numeric") {
   results_df <- results_df %>% 
     tibble::add_row(., mae = 
                       yardstick::mae_vec(truth = df_loop_results$truth, 
@@ -110,7 +116,7 @@ if (opt$feature_type == "factor") {
                     ccc = yardstick::ccc_vec(truth = df_loop_results$truth, 
                                           estimate = df_loop_results$estimate, 
                                           data = df_loop_results),
-                    seed = opt$seed)
+                    seed = opts$seed)
   
 }
   
@@ -119,11 +125,11 @@ if (opt$feature_type == "factor") {
 ## write df ====================================================================
 
 ## write table of results to file
-readr::write_csv(x = results_df, file ="dummy_model_results.csv", 
-                 append = T, col_names = !file.exists("dummy_model_results.csv"))
+readr::write_csv(x = results_df, file =paste0(dirname(opts$OUTPUT), "/ml_analysis/dummy_model_results.csv"), 
+                 append = T, col_names = !file.exists(paste0(dirname(opts$OUTPUT), "/ml_analysis/dummy_model_results.csv")))
 
 ## show the final results
 cat("Performance of NULL model:", "\n")
-cat("Label: ", opt$label, "\n")
+cat("Label: ", opts$label, "\n")
 print(results_df %>% dplyr::select(-seed) %>% dplyr::summarise_all(., ~mean(.x)))
 

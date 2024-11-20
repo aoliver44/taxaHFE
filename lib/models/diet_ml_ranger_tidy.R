@@ -22,7 +22,7 @@ options(warn=-1)
 `%!in%` <- Negate(`%in%`)
 
 ## set seed
-set.seed(as.numeric(opt$seed))
+set.seed(as.numeric(opts$seed))
 
 ## load libraries ==============================================================
 
@@ -39,13 +39,19 @@ library(ranger, quietly = T, verbose = F, warn.conflicts = F)
 train <- train_data
 test  <- test_data
 
+## remove individual and train if random effects
+if (opts$random_effects) {
+  train_data <- train_data %>% dplyr::select(., -dplyr::any_of(c("individual", "time")))
+  test_data <- test_data %>% dplyr::select(., -dplyr::any_of(c("individual", "time")))
+}
+
 split_from_data_frame <- make_splits(
   x = train,
   assessment = test
 )
 
 ## set resampling scheme
-folds <- rsample::vfold_cv(train, v = as.numeric(opt$folds), strata = feature_of_interest, repeats = 3)
+folds <- rsample::vfold_cv(train, v = as.numeric(opts$folds), strata = feature_of_interest, repeats = 3)
 
 ## recipe ======================================================================
 
@@ -54,7 +60,7 @@ diet_ml_recipe <-
   recipes::recipe(feature_of_interest ~ ., data = train) %>% 
   recipes::update_role(tidyr::any_of("subject_id"), new_role = "ID") %>% 
   recipes::step_dummy(recipes::all_nominal_predictors()) %>%
-  recipes::step_corr(recipes::all_numeric_predictors(), threshold = as.numeric(opt$cor_level), use = "everything") %>%
+  recipes::step_corr(recipes::all_numeric_predictors(), threshold = as.numeric(opts$cor_level), use = "everything") %>%
   recipes::step_zv(recipes::all_predictors())
 
 ## ML engine ===================================================================
@@ -84,7 +90,7 @@ diet_ml_wflow <-
 unregister_dopar()
 
 ## register parallel cluster
-cl <- parallel::makePSOCKcluster(as.numeric(opt$ncores))
+cl <- parallel::makePSOCKcluster(as.numeric(opts$ncores))
 doParallel::registerDoParallel(cl)
 
 ## hyperparameters =============================================================
@@ -95,7 +101,7 @@ diet_ml_param_set <- parsnip::extract_parameter_set_dials(diet_ml_wflow)
 ## for random forests, set mtry to max features after correlation
 ## co-correlate features at specified threshold (get upper limit of mtry)
 training_cor <- mikropml:::group_correlated_features(train %>% dplyr::select(where(is.numeric)) %>% dplyr::select(., -dplyr::any_of(c("feature_of_interest", "subject_id"))), 
-                                                      corr_thresh = as.numeric(opt$cor_level), group_neg_corr = T)
+                                                      corr_thresh = as.numeric(opts$cor_level), group_neg_corr = T)
 
 ## make dataframe of what is correlated at specified threshold.
 training_cor <- as.data.frame(training_cor) %>% 
@@ -118,15 +124,15 @@ if (type == "classification") {
       param_info = diet_ml_param_set,
       # Generate five at semi-random to start
       initial = 5,
-      iter = opt$tune_length,
+      iter = opts$tune_length,
       # How to measure performance?
       metrics = yardstick::metric_set(bal_accuracy, roc_auc, accuracy, kap, f_meas),
-      control = tune::control_bayes(no_improve = as.numeric(opt$tune_stop),
+      control = tune::control_bayes(no_improve = as.numeric(opts$tune_stop),
                                     uncertain = 5,
                                     verbose = FALSE,
                                     parallel_over = "resamples",
-                                    time_limit = as.numeric(opt$tune_time),
-                                    seed = as.numeric(opt$seed))
+                                    time_limit = as.numeric(opts$tune_time),
+                                    seed = as.numeric(opts$seed))
     )
   
 } else if (type == "regression") {
@@ -139,15 +145,15 @@ if (type == "classification") {
       param_info = diet_ml_param_set,
       # Generate five at semi-random to start
       initial = 5,
-      iter = opt$tune_length,
+      iter = opts$tune_length,
       # How to measure performance?
       metrics = yardstick::metric_set(mae, rmse, rsq, ccc),
-      control = tune::control_bayes(no_improve = as.numeric(opt$tune_stop),
+      control = tune::control_bayes(no_improve = as.numeric(opts$tune_stop),
                                     uncertain = 5,
                                     verbose = FALSE,
                                     parallel_over = "resamples",
-                                    time_limit = as.numeric(opt$tune_time),
-                                    seed = as.numeric(opt$seed))
+                                    time_limit = as.numeric(opts$tune_time),
+                                    seed = as.numeric(opts$seed))
     )
 }
 
@@ -164,12 +170,12 @@ unregister_dopar()
 ## get the best parameters from tuning
 best_mod <- 
     search_res %>% 
-    tune::select_best(metric = opt$metric)
+    tune::select_best(metric = opts$metric)
 
 ## create the last model based on best parameters
 last_best_mod <- 
   parsnip::rand_forest(mtry = best_mod$mtry, min_n = best_mod$min_n) %>% 
-  parsnip::set_engine("ranger", num.threads = as.numeric(opt$ncores), importance = "none") %>% 
+  parsnip::set_engine("ranger", num.threads = as.numeric(opts$ncores), importance = "none") %>% 
   parsnip::set_mode(type)
 
 ## update workflow with best model
@@ -195,8 +201,8 @@ cat("##################\n\n")
 
 ## show the final results
 cat("Performance of test set:", "\n")
-cat("Label: ", opt$label, "\n")
-cat("Model: ", opt$model, "\n")
+cat("Label: ", opts$label, "\n")
+cat("Model: ", opts$model, "\n")
 print(workflowsets::collect_metrics(final_res))
 
 ## merge null results with trained results and write table
@@ -208,23 +214,24 @@ null_results <- results_df %>%
   tibble::rownames_to_column(var = ".metric") %>% 
   dplyr::rename(., "null_model_avg" = 2)
 full_results <- merge(workflowsets::collect_metrics(final_res), null_results, by = ".metric", all = T)
-full_results$seed <- opt$seed
+full_results$seed <- opts$seed
 
 ## keep track of what program is being run for compete all levels
-full_results$program <- opt$program
+full_results$program <- opts$program
 
 
 ## write final results to file or append if file exists
-readr::write_csv(x = full_results, file = "ml_results.csv", append = T, col_names = !file.exists("ml_results.csv"))
+readr::write_csv(x = full_results, file =paste0(dirname(opts$OUTPUT), "/ml_analysis/ml_results.csv"), 
+                 append = T, col_names = !file.exists(paste0(dirname(opts$OUTPUT), "/ml_analysis/ml_results.csv")))
 
 ## graphs ======================================================================
 
 # hyperpar_perf_plot <- autoplot(search_res, type = "performance")
-# ggplot2::ggsave(plot = hyperpar_perf_plot, filename = paste0(dirname(opt$OUTPUT), "/ml_analysis/", "training_performance.pdf"), width = 7, height = 2.5, units = "in")
+# ggplot2::ggsave(plot = hyperpar_perf_plot, filename = paste0(dirname(opts$OUTPUT), "/ml_analysis/", "training_performance.pdf"), width = 7, height = 2.5, units = "in")
 # 
 # hyperpar_tested_plot <- autoplot(search_res, type = "parameters") + 
 #   labs(x = "Iterations", y = NULL)
-# ggplot2::ggsave(plot = hyperpar_tested_plot, filename = paste0(dirname(opt$OUTPUT), "/ml_analysis/", "hyperpars_tested.pdf"), width = 7, height = 2.5, units = "in")
+# ggplot2::ggsave(plot = hyperpar_tested_plot, filename = paste0(dirname(opts$OUTPUT), "/ml_analysis/", "hyperpars_tested.pdf"), width = 7, height = 2.5, units = "in")
 
 ## remove any doParallel job setups that may have
 ## unneccessarily hung around

@@ -10,9 +10,6 @@
 ## suppress warnings
 options(warn=-1)
 
-## set working dir to /home for the docker container
-setwd("/home/docker")
-
 ## load libraries ==============================================================
 library(readr, quietly = T, verbose = F, warn.conflicts = F)
 library(dplyr, quietly = T, verbose = F, warn.conflicts = F)
@@ -44,11 +41,8 @@ if (!exists("diet_ml_input_df") | nrow(diet_ml_input_df) < 1) {
 } 
 
 ## check for outdir and make if not there
-if (dir.exists(paste0(dirname(opt$OUTPUT), "/ml_analysis")) == TRUE) {
-  setwd(paste0(dirname(opt$OUTPUT), "/ml_analysis"))
-} else {
-  dir.create(path = paste0(dirname(opt$OUTPUT), "/ml_analysis"))
-  setwd(paste0(dirname(opt$OUTPUT), "/ml_analysis"))
+if (dir.exists(paste0(dirname(opts$OUTPUT), "/ml_analysis")) != TRUE) {
+  dir.create(path = paste0(dirname(opts$OUTPUT), "/ml_analysis"))
 }
 
 
@@ -58,7 +52,7 @@ if ("feature_of_interest" %in% colnames(train_data) == FALSE & "feature_of_inter
 } 
 
 ## check if classification was mis-specified
-if (opt$feature_type == "factor") {
+if (opts$feature_type == "factor") {
   type <<- "classification"
   if(length(levels(as.factor(metadata$feature_of_interest))) > 9)
   stop("You are trying to predict 10 or more classes. That is a bit much. Did you mean to do regression?")
@@ -83,7 +77,7 @@ source("lib/models/diet_ml_null_tidy.R")
 ## run chosen model ============================================================
 
 ## check if user input model
-if (opt$model %!in% models) {
+if (opts$model %!in% models) {
   cat("\n#########################\n")
   cat("ERROR: model not found", "\n")
   cat("Please choose one of the following models for --model ", "\n")
@@ -96,40 +90,40 @@ cat("Running model...", "\n")
 cat("#########################\n\n")
 
 ## random forest
-if (opt$model %in% c("ranger", "rf", "randomforest")) {
+if (opts$model %in% c("ranger", "rf", "randomforest")) {
   source("lib/models/diet_ml_ranger_tidy.R")
 }
 
 ## lasso/ridge models
 ## TODO: does not exist
-if (opt$model %in% c("lasso", "ridge")) {
+if (opts$model %in% c("lasso", "ridge")) {
     source("lib/models/diet_ml_glmnet_tidy_ridge_lasso.R")
 } 
 
 
 ## elastic net models
-if (opt$model %in% c("enet", "elasticnet")) {
+if (opts$model %in% c("enet", "elasticnet")) {
     source("lib/models/diet_ml_glmnet_tidy_enet.R")
 } 
 
 ## VIP Plots ===================================================================
 ## For all:
 # vip <- caret::varImp(object = training_fit)
-# pdf(file = paste0(opt$outdir, "vip_plot.pdf"), width=15, height=5)
+# pdf(file = paste0(opts$outdir, "vip_plot.pdf"), width=15, height=5)
 # plot(vip, top = pmin(NROW(vip$importance), 20))
 # suppressMessages(dev.off())
 
 ## SHAP explanation ============================================================
 
-if (opt$shap == TRUE) {
+if (opts$shap == TRUE) {
   
   cat("\n#########################\n")
   cat("Calculating Feature Importance", "\n")
   cat("#########################\n\n")
   
-  if (opt$model %in% c("ranger", "rf", "randomforest")) {
+  if (opts$model %in% c("ranger", "rf", "randomforest")) {
     source("lib/utilities/shap_figures.R")
-  } else if (opt$model %in% c("enet", "elasticnet", "lasso", "ridge")) {
+  } else if (opts$model %in% c("enet", "elasticnet", "lasso", "ridge")) {
     cat("You are not using a RF model. We will attempt to\n calculate VIP values instead.")
     source("lib/utilities/vip_basic.R")
   } else {
@@ -140,7 +134,7 @@ if (opt$shap == TRUE) {
 
 ## Done ========================================================================
 
-#save.image(file = paste0(dirname(opt$OUTPUT), "/ml_analysis/", "ML_r_workspace.rds"))
+#save.image(file = paste0(dirname(opts$OUTPUT), "/ml_analysis/", "ML_r_workspace.rds"))
 
 cat("\n#########################\n")
 cat("Done! Results written to outdir.", "\n")

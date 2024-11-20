@@ -30,7 +30,11 @@ diet_ml_inputs <- list()
 ## metadata file
 metadata <- read_in_metadata(input = opts$METADATA,
                              subject_identifier = opts$subject_identifier,
-                             label = opts$label)
+                             label = opts$label, 
+                             feature_type = opts$feature_type,
+                             random_effects = opts$random_effects, 
+                             limit_covariates = TRUE, 
+                             k = opts$k_splits)
 
 ## hierarchical data file ======================================================
 hData <- read_in_hierarchical_data(input = opts$DATA,
@@ -55,6 +59,7 @@ method_taxa_hfe(hdata = hData,
   target_list = diet_ml_inputs,
   col_names = colnames(hData)[2:NCOL(hData)],
   output = opts$OUTPUT,
-  seed = opts$seed
+  seed = opts$seed,
+  random_effects = opts$random_effects
   )
 
