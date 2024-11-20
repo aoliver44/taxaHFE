@@ -715,10 +715,16 @@ rf_competition <- function(df, metadata, parent_descendent_competition, feature_
       ranger_avg_abundance <- ranger::ranger(response_formula, data = merged_data_avg_abund_rf, importance = "impurity_corrected", seed = seed, sample.fraction = 1, replace = TRUE, num.threads = ncores)$variable.importance %>%
         as.data.frame() %>%
         dplyr::rename(., "importance" = ".") %>%
+        dplyr::mutate(., importance_rank = rank(importance)) %>%
+        dplyr::select(., -importance) %>%
+        dplyr::rename(., "importance" = "importance_rank") %>%
         tibble::rownames_to_column(var = "taxa") 
       ranger_slope <- ranger::ranger(response_formula, data = merged_data_slope_rf, importance = "impurity_corrected", seed = seed, sample.fraction = 1, replace = TRUE, num.threads = ncores)$variable.importance %>%
         as.data.frame() %>%
         dplyr::rename(., "importance" = ".") %>%
+        dplyr::mutate(., importance_rank = rank(importance)) %>%
+        dplyr::select(., -importance) %>%
+        dplyr::rename(., "importance" = "importance_rank") %>%
         tibble::rownames_to_column(var = "taxa") 
       ranger_result <- merge(ranger_avg_abundance, ranger_slope, by = "taxa", all = T)
       ranger_result %>% dplyr::mutate(., importance = (importance.x + importance.y)/2) %>% dplyr::select(., -importance.x, -importance.y)
@@ -757,7 +763,15 @@ rf_competition <- function(df, metadata, parent_descendent_competition, feature_
   # specify the parent column, which is the score to beat
   parentColumn <- janitor::make_clean_names(colnames(df)[1])
   
-  if ((model_importance %>% arrange(desc(average)) %>% pull(taxa))[1] == parentColumn) {
+  ## create a check to make sure the top 2 features are not tied
+  tie_check <- model_importance %>% dplyr::arrange(desc(average)) %>% dplyr::slice_head(n = 2)
+  if (tie_check$average[1] == tie_check$average[2]) {
+    if (parentColumn %in% tie_check$taxa) {
+      model_importance$average[model_importance$taxa == parentColumn] <- model_importance$average[model_importance$taxa == parentColumn] + 0.000001
+    }
+  }
+  
+  if ((model_importance %>% dplyr::arrange(desc(average)) %>% dplyr::pull(taxa))[1] == parentColumn) {
     return(gsub(pattern = "x", replacement = "", x = parentColumn))
   } else {
     parent_importance <- model_importance$average[model_importance$taxa == parentColumn]
@@ -814,15 +828,16 @@ prepare_flattened_df <- function(node, metadata, disable_super_filter, col_names
     flattened_df <- flattened_df %>%
       dplyr::filter(., sf_winner == TRUE)
   }
-
-  ## clean up the names in case there are weird issues of duplicates
-  flattened_df$name <- janitor::make_clean_names(flattened_df$name)
   
-  ## get rid of all the run information
+  ## clean pathString names and use these, they will always be unique
+  ## downside, longer names
+  flattened_df$pathString <- flattened_df$pathString %>% janitor::make_clean_names()
+  flattened_df$pathString <- gsub(pattern = "taxa_tree_", replacement = "", x = flattened_df$pathString)
+  
   flattened_df <- flattened_df %>%
-    dplyr::select(., name, 11:dplyr::last_col()) %>%
+    dplyr::select(., pathString, 11:dplyr::last_col()) %>%
     tibble::remove_rownames() %>%
-    tibble::column_to_rownames(., var = "name") %>%
+    tibble::column_to_rownames(., var = "pathString") %>%
     t() %>%
     as.data.frame() %>%
     tibble::rownames_to_column(var = "subject_id")
@@ -835,10 +850,16 @@ prepare_flattened_df <- function(node, metadata, disable_super_filter, col_names
 
 # write an output file containing the HFE results
 write_output_file <- function(flattened_df, metadata, output_location, file_suffix) {
+  
+  ## clean pathString names and use these, they will always be unique
+  ## downside, longer names
+  flattened_df$pathString <- flattened_df$pathString %>% janitor::make_clean_names()
+  flattened_df$pathString <- gsub(pattern = "taxa_tree_", replacement = "", x = flattened_df$pathString)
+  
   output <- flattened_df %>%
-    dplyr::select(., name, 11:dplyr::last_col()) %>%
+    dplyr::select(., pathString, 11:dplyr::last_col()) %>%
     tibble::remove_rownames() %>%
-    tibble::column_to_rownames(., var = "name") %>%
+    tibble::column_to_rownames(., var = "pathString") %>%
     t() %>%
     as.data.frame() %>%
     tibble::rownames_to_column(var = "subject_id")
@@ -944,25 +965,23 @@ generate_summary_files <- function(input, metadata, target_list, object,
     
     ## select different levels 1>i and write them to file
     ## only select features that passed prevalence and abundance thresholds
-    file_summary <- input %>%
-      dplyr::filter(., depth == i & passed_prevelance == TRUE & passed_abundance == TRUE) %>%
-      dplyr::select(., name, 11:dplyr::last_col())
+    flattened_df <- input %>% dplyr::filter(., depth == i & passed_prevelance == TRUE & passed_abundance == TRUE) 
     
-    ## there are fringe cases where some levels are named the same but
-    ## are part of different clades ie
-    ## k_bacteria|p_firmicutes|c_CFG_10299
-    ## k_bacteria|p_actinobacteria|c_CFG_10299
-    file_summary$name <- file_summary$name %>% janitor::make_clean_names()
-    file_summary <- file_summary %>%
+    ## clean pathString names and use these, they will always be unique
+    ## downside, longer names
+    flattened_df$pathString <- flattened_df$pathString %>% janitor::make_clean_names()
+    flattened_df$pathString <- gsub(pattern = "taxa_tree_", replacement = "", x = flattened_df$pathString)
+    
+    output <- flattened_df %>%
+      dplyr::select(., pathString, 11:dplyr::last_col()) %>%
       tibble::remove_rownames() %>%
-      tibble::column_to_rownames(., var = "name") %>%
+      tibble::column_to_rownames(., var = "pathString") %>%
       t() %>%
       as.data.frame() %>%
-      tibble::rownames_to_column(., var = "subject_id") %>%
-      janitor::clean_names()
+      tibble::rownames_to_column(var = "subject_id")
     
     ## merge with metadata
-    level <- merge(metadata, file_summary, by = "subject_id")
+    level <- merge(metadata, output, by = "subject_id")
     
     diet_ml_inputs <<- store_diet_ml_inputs(target_list = diet_ml_inputs,
                                           object = level,
@@ -1114,8 +1133,8 @@ extract_attributes <- function(items_list) {
 ## run dietML based on diet_ml_input_df
 run_diet_ml <- function(input_df, n_repeat) {
   
-  for (seed in sample(1:100000000, replace = F, size = opts$permute)) {
-    if (opts$permute > 1) {
+  for (seed in sample(1:100000000, replace = F, size = n_repeat)) {
+    if (n_repeat > 1) {
       ## same idea as below, need to change the random seed and it needs
       ## to be a persistant change through sourcing the dietML script.
       ## again, we can create a list of seeds that can be passed through
@@ -1184,7 +1203,7 @@ prep_re_data <- function(input, feature_type, abund) {
       
       ## get the separate averages for the one hot encoded factors from above
       one_hot_encoded_cov <- merged_data_avg_abund %>%
-        dplyr::select(., -dplyr::any_of(numerical_cols), feature_of_interest)
+        dplyr::select(., -dplyr::any_of(numerical_cols), feature_of_interest, individual)
       
       ## get the slopes of the features within feature of interest, across time
       merged_data_slope <- merged_data_hotencode %>% 
@@ -1199,7 +1218,7 @@ prep_re_data <- function(input, feature_type, abund) {
       colnames(merged_data_slope) <- gsub(pattern = "_slope", replacement = "", x = colnames(merged_data_slope))
       
       ## merge back with factor covariates
-      merged_data_slope_rf <- merge(one_hot_encoded_cov, merged_data_slope, by = c("individual", "feature_of_interest"))
+      merged_data_slope_rf <- merge(one_hot_encoded_cov, merged_data_slope, by = c("individual", "feature_of_interest"), all = TRUE)
       merged_data_slope_rf <- merged_data_slope_rf %>% dplyr::select(., -dplyr::any_of(c("individual", "time")))
       
       return(merged_data_slope_rf)
