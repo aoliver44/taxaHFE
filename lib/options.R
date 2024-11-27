@@ -1,3 +1,5 @@
+source("lib/validators.R")
+
 suppressPackageStartupMessages(library(argparse, quietly = TRUE, verbose = FALSE, warn.conflicts = FALSE))
 
 # these are the argument groups, each list corresponds to an argument grouping
@@ -51,6 +53,13 @@ argument_groups <- list(
   )
 )
 
+# flag name mapped to a validator function
+# validator functions always have the signature function(flag_name, flag_value) and quit() when they are not satisfied
+# or cat a warning message for warnings
+validators <- list(
+  cor_level=validate_numeric(min=0, max=1, min_warning=list(.8, "correlation below this level makes no sense"))
+)
+
 # Function to initialize parser for a program
 # this takes in the data to make the parser but does not run it
 initialize_parser <- function(version, program_name, description, argument_groups) {
@@ -80,7 +89,9 @@ initialize_parser <- function(version, program_name, description, argument_group
 }
 
 validate_options <- function(opts) {
-
+  # for (flag_to_validate in names(validators)) {
+  #   validators[[flag_to_validate]](flag_to_validate, opts[[flag_to_validate]])
+  # }
 }
 
 # load the args for a program
