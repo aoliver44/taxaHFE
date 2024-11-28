@@ -58,7 +58,7 @@ argument_groups <- list(
 # this method should cat an error and quit() when they are not satisfied
 # or cat a warning message
 validators <- list(
-  cor_level=validate_numeric(min=0, max=1, min_warning=list(.6, "correlation below this level makes no sense")),
+  cor_level=validate_numeric(min=0, max=1, min_warning=list(.6, "correlation below this level makes no sense"))
 )
 
 # Function to initialize parser for a program
