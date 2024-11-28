@@ -54,10 +54,11 @@ argument_groups <- list(
 )
 
 # flag name mapped to a validator function
-# validator functions always have the signature function(flag_name, flag_value) and quit() when they are not satisfied
-# or cat a warning message for warnings
+# validator functions always have the signature function(flag_name, flag_value, all_flags)
+# this method should cat an error and quit() when they are not satisfied
+# or cat a warning message
 validators <- list(
-  cor_level=validate_numeric(min=0, max=1, min_warning=list(.8, "correlation below this level makes no sense"))
+  cor_level=validate_numeric(min=0, max=1, min_warning=list(.6, "correlation below this level makes no sense")),
 )
 
 # Function to initialize parser for a program
@@ -89,9 +90,9 @@ initialize_parser <- function(version, program_name, description, argument_group
 }
 
 validate_options <- function(opts) {
-  # for (flag_to_validate in names(validators)) {
-  #   validators[[flag_to_validate]](flag_to_validate, opts[[flag_to_validate]])
-  # }
+  for (flag_to_validate in names(validators)) {
+    validators[[flag_to_validate]](flag_to_validate, opts[[flag_to_validate]], opts)
+  }
 }
 
 # load the args for a program
