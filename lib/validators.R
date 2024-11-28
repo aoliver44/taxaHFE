@@ -26,7 +26,7 @@ validate_numeric <- function (min=NULL, max=NULL, min_warning=NULL, max_warning=
     }
 
     if (!is.null(min_warning)) {
-      if (!(is.vector(min_warning) && length(min_warning) == 2 && is.numeric(min_warning[[1]]))) {
+      if (!(is.list(min_warning) && length(min_warning) == 2 && is.numeric(min_warning[[1]]))) {
         cat(sprintf("'min_warning' validate_numeric value for %s must be a length 2 list of (numeric, character)\n", flag_name))
         quit(status = 1)
       }
@@ -36,7 +36,7 @@ validate_numeric <- function (min=NULL, max=NULL, min_warning=NULL, max_warning=
     }
 
     if (!is.null(max_warning)) {
-      if (!(is.vector(max_warning) && length(max_warning) == 2 && is.numeric(max_warning[[1]]))) {
+      if (!(is.list(max_warning) && length(max_warning) == 2 && is.numeric(max_warning[[1]]))) {
         cat(sprintf("'max_warning' validate_numeric value for %s must be a length 2 list of (numeric, character)\n", flag_name))
         quit(status = 1)
       }
