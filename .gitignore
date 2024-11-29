@@ -12,3 +12,11 @@ home.Rproj
 .config
 .Rhistory
 /example_inputs/make_time_files/
+example_inputs/run_helper.R
+example_inputs/random_effects_comparisons.R
+/example_inputs/ml_analysis/
+example_inputs/hmp.tsv
+example_inputs/hmp_metadata.tsv
+example_inputs/metadata-mars.tsv
+.RData
+example_inputs/species-mars.tsv
