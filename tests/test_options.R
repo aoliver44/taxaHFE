@@ -304,8 +304,8 @@ test_that("program arg loaders work", {
             commandArgs <<- function(x) {
               flags
             }
-            opts <- load_arg_function()
-
+            
+            expect_message(load_arg_function())
             expect_equal(quit_called, TRUE, info=sprintf("flag: %s, error_value: %s did not produce an error", flag, error_value))
           }
           
