@@ -5,43 +5,37 @@ validate_numeric <- function (min=NULL, max=NULL, min_warning=NULL, max_warning=
   return(function(flag_name, flag_value, all_flags) {
     if (!is.null(min)) {
       if (!is.numeric(min)) {
-        cat(sprintf("'min' validate_numeric value for %s must be numeric\n", flag_name))
-        quit(status = 1)
+        stop(sprintf("'min' validate_numeric value for %s must be numeric", flag_name))
       }
       if (flag_value < min) {
-        cat(sprintf("Flag %s must be greater than or equal to %s (current value: %s)\n", flag_name, min, flag_value)) 
-        quit(status = 1)
+        stop(sprintf("Flag %s must be greater than or equal to %s (current value: %s)", flag_name, min, flag_value)) 
       }
     }
     
     if (!is.null(max)) {
       if (!is.numeric(max)) {
-        cat(sprintf("'max' validate_numeric value for %s must be numeric\n", flag_name))
-        quit(status = 1)
+        stop(sprintf("'max' validate_numeric value for %s must be numeric", flag_name))
       }
       if (flag_value > max) {
-        cat(sprintf("Flag %s must be less than or equal to %s (current value: %s)\n", flag_name, max, flag_value)) 
-        quit(status = 1)
+        stop(sprintf("Flag %s must be less than or equal to %s (current value: %s)", flag_name, max, flag_value)) 
       }
     }
 
     if (!is.null(min_warning)) {
       if (!(is.list(min_warning) && length(min_warning) == 2 && is.numeric(min_warning[[1]]))) {
-        cat(sprintf("'min_warning' validate_numeric value for %s must be a length 2 list of (numeric, character)\n", flag_name))
-        quit(status = 1)
+        stop(sprintf("'min_warning' validate_numeric value for %s must be a length 2 list of (numeric, character)", flag_name))
       }
       if (flag_value < min_warning[[1]]) {
-        cat(sprintf("Warning: for best results, flag %s should be greater than or equal to %s (current value: %s); %s\n", flag_name, min_warning[[1]], flag_value, min_warning[[2]])) 
+        warning(sprintf("Warning: for best results, flag %s should be greater than or equal to %s (current value: %s); %s", flag_name, min_warning[[1]], flag_value, min_warning[[2]])) 
       }
     }
 
     if (!is.null(max_warning)) {
       if (!(is.list(max_warning) && length(max_warning) == 2 && is.numeric(max_warning[[1]]))) {
-        cat(sprintf("'max_warning' validate_numeric value for %s must be a length 2 list of (numeric, character)\n", flag_name))
-        quit(status = 1)
+        stop(sprintf("'max_warning' validate_numeric value for %s must be a length 2 list of (numeric, character)", flag_name))
       }
       if (flag_value > max_warning[[1]]) {
-        cat(sprintf("Warning: for best results, flag %s should be less than or equal to %s (current value: %s); %s\n", flag_name, max_warning[[1]], flag_value, max_warning[[2]])) 
+        warning(sprintf("Warning: for best results, flag %s should be less than or equal to %s (current value: %s); %s", flag_name, max_warning[[1]], flag_value, max_warning[[2]])) 
       }
     }
   })

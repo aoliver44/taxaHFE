@@ -10,8 +10,9 @@ suppressPackageStartupMessages(library(argparse, quietly = TRUE, verbose = FALSE
 # to add a new parse group
 # 1. Add a new group to this list, including a name, desc, and group of actual args
 # 2. Add a new method for loading the args, ex. load_taxa_hfe_ml_args, all these do is hold the desired argument groups and call return(load_args(...))
-# 3. Add a new item to test_flag_values in test_options.R, including an non-default value for each flag to test
-# 4. Add a new item to parser_flag_values_map in test_options.R that references the new load_taxa_hfe_*** method and the desired flag values
+# 3. Add a new entry to validators for any flag that needs validation
+# 4. Add a new item to test_flag_values in test_options.R, including an non-default value for each flag to test, and any errors/warnings that should be tested as well
+# 5. Add a new item to parser_flag_values_map in test_options.R that references the new load_taxa_hfe_*** method and the desired flag values
 argument_groups <- list(
   taxa_hfe_base_args=list(
     name="TaxaHFE arguments",
@@ -89,9 +90,19 @@ initialize_parser <- function(version, program_name, description, argument_group
   return(parser)
 }
 
+# validate options loops through the validators and runs their validation functions
+# if an error is returned by one of those functions, it will be cat-ed out and then quit is called
 validate_options <- function(opts) {
   for (flag_to_validate in names(validators)) {
-    validators[[flag_to_validate]](flag_to_validate, opts[[flag_to_validate]], opts)
+    # skip any validators not matching a flag
+    if (is.null(opts[[flag_to_validate]])) next
+
+    tryCatch({
+      validators[[flag_to_validate]](flag_to_validate, opts[[flag_to_validate]], opts)
+    }, error = function(e) {
+      message(e$message)
+      quit(status = 1)
+    })
   }
 }
 
@@ -122,8 +133,7 @@ load_args <- function(program_name, description, argument_groups) {
     }
   }
 
-  # TODO: validate the args
-  # the method does nothing right now
+  # run the validators against the parsed flags
   validate_options(opts)
 
   return(opts)
