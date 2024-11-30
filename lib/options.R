@@ -71,8 +71,7 @@ validators <- list(
   train_split=validate_numeric(min=0, max=1, min_warning=list(0.5, "a train test split below 50-50 is very unusual")),
   folds=validate_numeric(min=2, max_warning=list(11, "a value above 10 may result in very small splits")),
   tune_time=validate_numeric(min=0.1, max_warning=list(20, "spending excessive time tuning hyperparameters my not result in substaintal increases in accuracy")),
-  permute=validate_numeric(min=1, max_warning=list(11, "you are about to permute the ML assessment pipeline more than 10 times, which is likely unnecessary")),
-  
+  permute=validate_numeric(min=1, max_warning=list(11, "you are about to permute the ML assessment pipeline more than 10 times, which is likely unnecessary"))
 )
 
 # Function to initialize parser for a program
