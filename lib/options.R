@@ -65,7 +65,7 @@ validators <- list(
   prevalence=validate_numeric(min=0, max=1),
   abundance=validate_numeric(min=0),
   lowest_level=validate_numeric(min=1, min_warning=list(2, "values below 2 may include an artificial taxonomic root")),
-  max_level=validate_numeric(min=1, max=1000, max_warning=list(16, "you have many hierarchial levels, which may increase run time")),
+  max_level=validate_numeric(min=1, max=1000, max_warning=list(16, "you have many hierarchical levels, which may increase run time")),
   ncores=validate_numeric(min=1, max=parallel::detectCores()),
   nperm=validate_numeric(min=1, max=99999, max_warning=list(200, "this nperm value is high and will likely increase run time")),
   train_split=validate_numeric(min=0, max=1, min_warning=list(0.5, "a train test split below 50-50 is very unusual")),
