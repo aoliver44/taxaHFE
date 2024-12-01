@@ -180,7 +180,7 @@ test_flag_values <- list(
     random_effects=list(flags=list("-R", "--random_effects"), value=TRUE),
     k_splits=list(flags=list("-k", "--k_splits"), value=4, errors=list(-1), warnings=list(10)),
     abundance=list(flags=list("-a", "--abundance"), value=0.9, errors=list(-1)),
-    prevalence=list(flags=list("-p", "--prevalence"), value=0.02, errors=list(-1, 2)),
+    prevalence=list(flags=list("-p", "--prevalence"), value=0.02, errors=list(-1,2)),
     lowest_level=list(flags=list("-L", "--lowest_level"), value=4, warnings=list(2), errors=list(-1)),
     max_level=list(flags=list("-m", "--max_level"), value=10, warnings=list(30, 500)),
     cor_level=list(flags=list("-c", "--cor_level"), value=.99, errors=list(-1, 2), warnings=list(.4)),
@@ -193,7 +193,7 @@ test_flag_values <- list(
     seed=list(flags=list("--seed"), value=314159)
   ),
   taxa_hfe_ml_args=list(
-    train_split=list(flags=list("--train_split"), value=0.7, errors=list(-1, 2), warnings=list(0.4)),
+    train_split=list(flags=list("--train_split"), value=0.7, errors=list(-1,2), warnings=list(0.4)),
     model=list(flags=list("--model"), value="enet"),
     folds=list(flags=list("--folds"), value=5, errors=list(-1,0), warnings=list(12)),
     metric=list(flags=list("--metric"), value="accuracy"),
