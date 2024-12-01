@@ -65,9 +65,19 @@ read_in_metadata <- function(input, subject_identifier, label, feature_type, ran
   # feature of interest. Drop NA samples.
   metadata <- suppressMessages(readr::read_delim(file = input, delim = delim)) %>%
     dplyr::rename(., "subject_id" = subject_identifier) %>%
-    rename(., "feature_of_interest" = label) %>%
-    dplyr::filter(., !is.na(subject_id)) %>%
-    janitor::clean_names()
+    rename(., "feature_of_interest" = label)
+  
+  ## make check for NAs and warn user how many rows were dropped
+  original_row_count <- nrow(metadata)
+  metadata <- metadata %>% tidyr::drop_na() %>% janitor::clean_names()
+  new_row_count <- nrow(metadata)
+  
+  if (original_row_count > new_row_count) {
+    warning(paste0((original_row_count - new_row_count), " number of metadata rows were dropped because they contained NAs"), immediate. = TRUE)
+    if ((original_row_count - new_row_count) <= 0) {
+      stop("All rows were dropped in NA removal.")
+    }
+  }
   
   ## check and make sure there are not too many metadata columns
   ## we will allow 10 total columns (8 columns of additional covariates)
@@ -152,6 +162,11 @@ read_in_hierarchical_data <- function(input, metadata, cores) {
   }
   if (colnames(hData)[1] != "clade_name") {
     hData <- hData %>% dplyr::relocate(., "clade_name")
+  }
+  
+  ## check and make sure there are no NAs in hData
+  if (anyNA(hData)) {
+    stop("Please remove NAs from your hierarchical data input.")
   }
   
   ## write input to file
