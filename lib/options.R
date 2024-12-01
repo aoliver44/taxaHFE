@@ -56,9 +56,19 @@ argument_groups <- list(
 )
 
 # flag name mapped to a validator function
-# validator functions always have the signature function(flag_name, flag_value, all_flags)
-# this method should cat an error and quit() when they are not satisfied
-# or cat a warning message
+# validator functions always have the signature function(flag_name, flag_value, opts)
+# this method should stop(error_message) when they are not satisfied
+# or warning(message)
+# ex.
+# validate_some_flag <- function(flag_name, flag_value, opts) {
+#   # check values as needed
+#   # all_flags is fully parsed 
+#   if (error) {
+#     stop(error_message)
+#   } else if (warning) {
+#     warning(warning_message)
+#   }
+# }
 validators <- list(
   cor_level=validate_numeric(min=0, max=1, min_warning=list(0.6, "correlation below 0.6 is departing from the spirit of this competition - to group things that likely contain redundant information")),
   k_splits=validate_numeric(min=2, max_warning=list(6, "these are a lot of splits...using this many splits with small data is probably unwise")),
