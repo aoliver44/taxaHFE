@@ -1,6 +1,7 @@
 source("lib/validators.R")
 
 suppressPackageStartupMessages(library(argparse, quietly = TRUE, verbose = FALSE, warn.conflicts = FALSE))
+suppressPackageStartupMessages(library(parallel, quietly = TRUE, verbose = FALSE, warn.conflicts = FALSE))
 
 # these are the argument groups, each list corresponds to an argument grouping
 # name and description are used to generate the argument group
@@ -26,7 +27,7 @@ argument_groups <- list(
       abundance=list("-a", "--abundance", type="numeric", metavar="<numeric>", default="0", help="Minimum mean abundance of feature"),
       prevalence=list("-p", "--prevalence", type="numeric", metavar="<numeric>", default="0.01", help="Minimum prevalence of feature"),
       lowest_level=list("-L", "--lowest_level", type="integer", metavar="<numeric>", default="3", help="Most general level allowed to compete"),
-      max_level=list("-m", "--max_level", type="integer", metavar="<numeric>", default="1000", help="How many hierarchical levels should be allowed to compete"),
+      max_level=list("-m", "--max_level", type="integer", metavar="<numeric>", default="15", help="How many hierarchical levels should be allowed to compete"),
       cor_level=list("-c", "--cor_level", type="numeric", metavar="<numeric>", default="0.95", help="Initial pearson correlation filter"),
       disable_super_filter=list("-d", "--disable_super_filter", action="store_true", help="Disable running of the super filter (final forest competition)"),
       write_old_files=list("-w", "--write_old_files", action="store_true", help="Write individual level files and old HFE files"),
@@ -46,7 +47,7 @@ argument_groups <- list(
       folds=list("--folds", type="numeric", metavar="<numeric>", default="10", help="Number of CV folds for tuning"),
       metric=list("--metric", type="character", metavar="<string>", default="bal_accuracy", choices=c("roc_auc", "bal_accuracy", "accuracy", "mae", "rmse", "rsq", "kap", "f_meas", "ccc"), help="Metric to optimize"),
       tune_length=list("--tune_length", type="numeric", metavar="<numeric>", default="80", help="Number of hyperparameter combinations to sample"),
-      tune_time=list("--tune_time", type="numeric", metavar="<numeric>", default="2", help="Time for hyperparameter search (in hours)"),
+      tune_time=list("--tune_time", type="numeric", metavar="<numeric>", default="2", help="Time for hyperparameter search (in minutes)"),
       tune_stop=list("--tune_stop", type="numeric", metavar="<numeric>", default="10", help="Number of HP iterations without improvement before stopping"),
       permute=list("--permute", type="numeric", metavar="<numeric>", default="1", help="Number of times to permute the ML assessment process, resulting in n different test/train split inputs"),
       shap=list("--shap", action="store_true", help="Calculate SHAP values")
@@ -55,11 +56,32 @@ argument_groups <- list(
 )
 
 # flag name mapped to a validator function
-# validator functions always have the signature function(flag_name, flag_value, all_flags)
-# this method should cat an error and quit() when they are not satisfied
-# or cat a warning message
+# validator functions always have the signature function(flag_name, flag_value, opts)
+# this method should stop(error_message) when they are not satisfied
+# or warning(message)
+# ex.
+# validate_some_flag <- function(flag_name, flag_value, opts) {
+#   # check values as needed
+#   # all_flags is fully parsed 
+#   if (error) {
+#     stop(error_message)
+#   } else if (warning) {
+#     warning(warning_message)
+#   }
+# }
 validators <- list(
-  cor_level=validate_numeric(min=0, max=1, min_warning=list(.6, "correlation below this level makes no sense"))
+  cor_level=validate_numeric(min=0, max=1, min_warning=list(0.6, "correlation below 0.6 is departing from the spirit of this competition - to group things that likely contain redundant information")),
+  k_splits=validate_numeric(min=2, max_warning=list(6, "these are a lot of splits...using this many splits with small data is probably unwise")),
+  prevalence=validate_numeric(min=0, max=1),
+  abundance=validate_numeric(min=0),
+  lowest_level=validate_numeric(min=1, min_warning=list(2, "values below 2 may include an artificial taxonomic root")),
+  max_level=validate_numeric(min=1, max=1000, max_warning=list(16, "you have many hierarchical levels, which may increase run time")),
+  ncores=validate_numeric(min=1, max=parallel::detectCores()),
+  nperm=validate_numeric(min=1, max=99999, max_warning=list(200, "this nperm value is high and will likely increase run time")),
+  train_split=validate_numeric(min=0, max=1, min_warning=list(0.5, "a train test split below 50-50 is very unusual")),
+  folds=validate_numeric(min=2, max_warning=list(11, "a value above 10 may result in very small splits")),
+  tune_time=validate_numeric(min=0.1, max_warning=list(20, "spending excessive time tuning hyperparameters my not result in substaintal increases in accuracy")),
+  permute=validate_numeric(min=1, max_warning=list(11, "you are about to permute the ML assessment pipeline more than 10 times, which is likely unnecessary"))
 )
 
 # Function to initialize parser for a program
