@@ -181,7 +181,7 @@ test_flag_values <- list(
     k_splits=list(flags=list("-k", "--k_splits"), value=4, errors=list(-1), warnings=list(10)),
     abundance=list(flags=list("-a", "--abundance"), value=0.9, errors=list(-1)),
     prevalence=list(flags=list("-p", "--prevalence"), value=0.02, errors=list(-1,2)),
-    lowest_level=list(flags=list("-L", "--lowest_level"), value=4, warnings=list(2), errors=list(-1)),
+    lowest_level=list(flags=list("-L", "--lowest_level"), value=4, warnings=list(1), errors=list(-1)),
     max_level=list(flags=list("-m", "--max_level"), value=10, warnings=list(30, 500)),
     cor_level=list(flags=list("-c", "--cor_level"), value=.99, errors=list(-1, 2), warnings=list(.4)),
     disable_super_filter=list(flags=list("-d", "--disable_super_filter"), value=TRUE),
@@ -219,12 +219,12 @@ test_that("program arg loaders work", {
   # when adding new argument groups, add a new item to this list
   parser_flag_values_map <- list(
     # base taxa hfe flags
-    list(
+    taxa_hfe_base_args=list(
       load_arg_function=load_taxa_hfe_args,
       flag_values=test_flag_values$taxa_hfe_base_args
     ),
     # taxa hfe ml flags, includes base taxa hfe flags
-    list(
+    taxa_hfe_ml_args=list(
       load_arg_function=load_taxa_hfe_ml_args,
       flag_values=c(test_flag_values$taxa_hfe_base_args, test_flag_values$taxa_hfe_ml_args)
     )
@@ -232,10 +232,12 @@ test_that("program arg loaders work", {
 
   test_that("every flag is tested", {
     for (group_name in names(test_flag_values)) {
+      expect_true(group_name %in% names(argument_groups), info = sprintf("%s flag group not tested in test_flag_values", group_name))
+
       test_flags <- test_flag_values[[group_name]]
       actual_flags <- argument_groups[[group_name]]
       for (flag in names(actual_flags$args)) {
-        expect_true(flag %in% names(test_flags), info = flag)
+        expect_true(flag %in% names(test_flags), info = sprintf("%s is not tested in test_flag_values, add flag to correct test argument group", flag))
       }
     }
   })
@@ -247,9 +249,12 @@ test_that("program arg loaders work", {
   })
 
   test_that("parsers set flags as expected", {
+    expect_true(TRUE)
+
     base_flags <- c("m.txt", "d.txt", "o.txt")
 
-    for (parser_flag_values in parser_flag_values_map) {
+    for (parser_name in names(parser_flag_values_map)) {
+      parser_flag_values <- parser_flag_values_map[[parser_name]]
       load_arg_function <- parser_flag_values$load_arg_function
       flags_to_test <- parser_flag_values$flag_values
 
@@ -267,70 +272,87 @@ test_that("program arg loaders work", {
         # ensure the value is set correctly in the parsed options
         # and also does not match the default
         for (flag in flag_test_obj$flags) {
-          # test a good non-default value works
-          flags <- c(base_flags, flag)
-          if (!is.logical(flag_test_obj$value)) {
-            flags <- c(flags, as.character(flag_test_obj$value))
-          }
-          commandArgs <<- function(x) {
-            flags
-          }
-          opts <- load_arg_function()
-
-          # ensure the value is set correctly in the parsed options
-          # and also does not match the default
-          # wrap the values in identical here because a flag without a default is NULL and can't be compared directly to its set value
-          expect_equal(opts[[flag_name]], flag_test_obj$value, info=sprintf("flag: %s, value: %s", flag, flag_test_obj$value))
-          expect_false(identical(opts[[flag_name]], default_opts[[flag_name]]), info=sprintf("flag: %s, value: %s", flag, flag_test_obj$value))
-
-          # test that errors produce errors
-          for (error_value in flag_test_obj$errors) {
-            # add flag to base values
-            if (is.logical(error_value)) {
-              if (error_value) {
-                flags <- c(base_flags, flag)
-              }
-            } else {
-              flags <- c(base_flags, flag)
-              flags <- c(flags, as.character(error_value))
-            }
-
-            # overload the quit() function
-            # instead of exiting, it will switch quit_called to TRUE so we can test if it was called
-            quit_called <<- FALSE
-            quit <<- function(...) {
-              quit_called <<- TRUE
+          test_that("valid non-default value is parsed for flag", {
+            # test a good non-default value works
+            flags <- c(base_flags, flag)
+            if (!is.logical(flag_test_obj$value)) {
+              flags <- c(flags, as.character(flag_test_obj$value))
             }
             commandArgs <<- function(x) {
               flags
             }
-            
-            expect_message(load_arg_function())
-            expect_equal(quit_called, TRUE, info=sprintf("flag: %s, error_value: %s did not produce an error", flag, error_value))
-          }
-          
-          # test that warning values are produced
-          for (warning_value in flag_test_obj$warnings) {
-            # add flag to base values
-            if (is.logical(warning_value)) {
-              if (warning_value) {
-                flags <- c(base_flags, flag)
-              }
-            } else {
-              flags <- c(base_flags, flag)
-              flags <- c(flags, as.character(warning_value))
-            }
-
             quit_called <<- FALSE
             quit <<- function(...) {
               quit_called <<- TRUE
             }
-            commandArgs <<- function(x) {
-              flags
+
+            expect_no_warning(opts <- load_arg_function(), message = sprintf("parser: %s, flag_name: %s, flag: %s, value: %s - parsing valid value produces warning", parser_name, flag_name, flag, flag_test_obj$value))
+
+            # ensure the value is set correctly in the parsed options
+            # and also does not match the default
+            # wrap the values in identical here because a flag without a default is NULL and can't be compared directly to its set value
+            expect_equal(opts[[flag_name]], flag_test_obj$value, info = sprintf("parser: %s, flag_name: %s, flag: %s, value: %s - flag not set to expected value", parser_name, flag_name, flag, flag_test_obj$value))
+            expect_false(identical(opts[[flag_name]], default_opts[[flag_name]]), info = sprintf("parser: %s, flag_name: %s, flag: %s, value: %s - flag set to default value", parser_name, flag_name, flag, flag_test_obj$value))
+            expect_false(quit_called, info = sprintf("parser: %s, flag_name: %s, flag: %s, value: %s - quit called during valid value test", parser_name, flag_name, flag, flag_test_obj$value))
+          })
+
+          test_that("flag parse generates error/quit when expected", {
+            expect_true(TRUE)
+
+            # test that errors produce errors
+            for (error_value in flag_test_obj$errors) {
+              # add flag to base values
+              if (is.logical(error_value)) {
+                if (error_value) {
+                  flags <- c(base_flags, flag)
+                }
+              } else {
+                flags <- c(base_flags, flag)
+                flags <- c(flags, as.character(error_value))
+              }
+
+              # overload the quit() function
+              # instead of exiting, it will switch quit_called to TRUE so we can test if it was called
+              quit_called <<- FALSE
+              quit <<- function(...) {
+                quit_called <<- TRUE
+              }
+              commandArgs <<- function(x) {
+                flags
+              }
+
+              expect_message(load_arg_function(), info = sprintf("parser: %s, flag_name: %s, flag: %s, value: %s - expected flag error did not produce error message", parser_name, flag_name, flag, error_value))
+              expect_equal(quit_called, TRUE, info = sprintf("parser: %s, flag_name: %s, flag: %s, value: %s - did not call quit on error", parser_name, flag_name, flag, error_value))
             }
-            expect_warning(load_arg_function())
-            expect_equal(quit_called, FALSE, info=sprintf("flag: %s, warning_value: %s produced an error", flag, error_value))
-          }
+          })
+
+          test_that("flag parse generates warnings when expected", {
+            expect_true(TRUE)
+
+            # test that warning values are produced
+            for (warning_value in flag_test_obj$warnings) {
+              # add flag to base values
+              if (is.logical(warning_value)) {
+                if (warning_value) {
+                  flags <- c(base_flags, flag)
+                }
+              } else {
+                flags <- c(base_flags, flag)
+                flags <- c(flags, as.character(warning_value))
+              }
+
+              quit_called <<- FALSE
+              quit <<- function(...) {
+                quit_called <<- TRUE
+              }
+              commandArgs <<- function(x) {
+                flags
+              }
+
+              expect_warning(load_arg_function(), info = sprintf("parser: %s, flag_name: %s, flag: %s, value: %s - expected flag warning did not produce warning message", parser_name, flag_name, flag, warning_value))
+              expect_equal(quit_called, FALSE, info = sprintf("parser: %s, flag_name: %s, flag: %s, value: %s - expected warning produced a quit instead", parser_name, flag_name, flag, warning_value))
+            }
+          })
         }
       }
     }
