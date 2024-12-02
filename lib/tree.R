@@ -65,11 +65,12 @@ read_in_metadata <- function(input, subject_identifier, label, feature_type, ran
   # feature of interest. Drop NA samples.
   metadata <- suppressMessages(readr::read_delim(file = input, delim = delim)) %>%
     dplyr::rename(., "subject_id" = subject_identifier) %>%
-    rename(., "feature_of_interest" = label)
+    rename(., "feature_of_interest" = label) %>% 
+    janitor::clean_names()
   
   ## make check for NAs and warn user how many rows were dropped
   original_row_count <- nrow(metadata)
-  metadata <- metadata %>% tidyr::drop_na() %>% janitor::clean_names()
+  metadata <- metadata %>% tidyr::drop_na()
   new_row_count <- nrow(metadata)
   
   if (original_row_count > new_row_count) {
