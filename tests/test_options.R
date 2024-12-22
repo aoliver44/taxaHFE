@@ -6,7 +6,6 @@ source("lib/options.R")
 # grab binding to these functions so they can be overwritten in the tests
 commandArgs <- NULL
 quit <- NULL
-Sys.time <- NULL
 
 test_that("initialize_parser works as expected", {
   expect_true(TRUE)
