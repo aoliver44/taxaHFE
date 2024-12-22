@@ -186,14 +186,16 @@ test_that("load_args works correctly", {
 
     test_that("sets the seed from the flag", {
       # seed set
+      seed <- 42
       # will be used directly in set.seed()
       commandArgs <<- function(x) {
-        c("--seed", "42", "m", "d", "o")
+        c("--seed", as.character(seed), "m", "d", "o")
       }
 
       # cache the random seed vector and ensure that it is different after running load args
       rng_state <- .Random.seed
       expect_no_error(opts <- load_args(program, description, argument_groups = list()))
+      expect_equal(opts$seed, seed)
       expect_equal(all(rng_state == .Random.seed), FALSE)
     })
   })
