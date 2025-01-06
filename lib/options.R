@@ -3,6 +3,12 @@ source("lib/validators.R")
 suppressPackageStartupMessages(library(argparse, quietly = TRUE, verbose = FALSE, warn.conflicts = FALSE))
 suppressPackageStartupMessages(library(parallel, quietly = TRUE, verbose = FALSE, warn.conflicts = FALSE))
 
+# generates a seed for the default value of --seed
+# seeds must be valid R 32-bit integers, so the range is between (-max int, max int)
+default_seed <- function() {
+  return(as.integer(runif(1, min = -1 * .Machine$integer.max, max = .Machine$integer.max)))
+}
+
 # these are the argument groups, each list corresponds to an argument grouping
 # name and description are used to generate the argument group
 # args represents the group of actual flags, the function arguments passed to parser$add_argument
@@ -34,8 +40,7 @@ argument_groups <- list(
       write_flattened_tree=list("-W", "--write_flattened_tree", action="store_true", help="Write a compressed backup of the entire competed tree"),
       write_both_outputs=list("-D", "--write_both_outputs", action="store_true", help="Write an output for pre and post super filter results, overridden by --disable_super_filter"),
       nperm=list("--nperm", type="integer", metavar="<numeric>", default="40", help="Number of taxaHFE RF permutations"),
-      ncores=list("-n", "--ncores", type="integer", metavar="<numeric>", default="2", help="Number of CPU cores to use"),
-      seed=list("--seed", type="numeric", metavar="<numeric>", help="Set a random numeric seed. If None, defaults to system time")
+      ncores=list("-n", "--ncores", type="integer", metavar="<numeric>", default="2", help="Number of CPU cores to use")
     )
   ),
   taxa_hfe_ml_args=list(
@@ -81,7 +86,8 @@ validators <- list(
   train_split=validate_numeric(min=0, max=1, min_warning=list(0.5, "a train test split below 50-50 is very unusual")),
   folds=validate_numeric(min=2, max_warning=list(11, "a value above 10 may result in very small splits")),
   tune_time=validate_numeric(min=0.1, max_warning=list(20, "spending excessive time tuning hyperparameters my not result in substaintal increases in accuracy")),
-  permute=validate_numeric(min=1, max_warning=list(11, "you are about to permute the ML assessment pipeline more than 10 times, which is likely unnecessary"))
+  permute=validate_numeric(min=1, max_warning=list(11, "you are about to permute the ML assessment pipeline more than 10 times, which is likely unnecessary")),
+  seed=validate_numeric(min = -1 * .Machine$integer.max, max = .Machine$integer.max)
 )
 
 # Function to initialize parser for a program
@@ -100,6 +106,7 @@ initialize_parser <- function(version, program_name, description, argument_group
 
   parser$add_argument("-v", "--version", action="version", version=version)
   parser$add_argument("--data_dir", type="character", metavar="<string>", default=".", help="Directory for MEATDATA, DATA, and OUTPUT, ignored if using absolute paths. Defaults to the current directory")
+  parser$add_argument("--seed", type="numeric", metavar="<numeric>", default=default_seed(), help="Set a random numeric seed. If not set, defaults to system time")
 
   # add the arguments from the passed in argument_groups
   for (arg_group in argument_groups) {
@@ -145,6 +152,12 @@ load_args <- function(program_name, description, argument_groups) {
   # Parse the command-line arguments and return them
   opts <- parser$parse_args(commandArgs(TRUE))
 
+  # run the validators against the parsed flags
+  validate_options(opts)
+
+  # extra handling for seed and files
+  # because the validator has been run, it can be assumed that all options are safe for use
+
   # also normalize all input paths to the data_dir
   # will ignore the data_dir if the path links to valid file based on where the script is being run
   for (f in list("METADATA", "DATA", "OUTPUT")) {
@@ -155,8 +168,8 @@ load_args <- function(program_name, description, argument_groups) {
     }
   }
 
-  # run the validators against the parsed flags
-  validate_options(opts)
+  # set the seed from the flags
+  set.seed(opts$seed)
 
   return(opts)
 }

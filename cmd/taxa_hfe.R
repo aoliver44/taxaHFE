@@ -20,9 +20,6 @@ opts <- load_taxa_hfe_args()
 
 ## Run main ====================================================================
 
-## set random seed
-set_seed_func(opts$seed)
-
 ## set target list for dietML input objects
 diet_ml_inputs <- list()
 

@@ -15,18 +15,6 @@ library(vroom, quietly = T, verbose = F, warn.conflicts = F)
 library(tidyselect, quietly = T, verbose = F, warn.conflicts = F)
 library(recipes, quietly = T, verbose = F, warn.conflicts = F)
 
-## set random seed, defaults to system time
-set_seed_func <- function(seed) {
-  if (!is.null(seed)) {
-    opts$seed <<- as.numeric(opts$seed)
-    set.seed(seed)
-  } else {
-    message('No random seed set. Using system time!')
-    opts$seed <<- as.numeric(Sys.time())
-    set.seed(opts$seed)
-  }
-}
-
 # trim outliers from mean feature abundance calc
 # UPDATE: intially we had at 0.02, for an outlier resistant mean
 # but if you want a = 0, p = 0 (all features), the trim

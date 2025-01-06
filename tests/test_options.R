@@ -167,6 +167,38 @@ test_that("load_args works correctly", {
     expect_equal(opts$DATA, "/tmp/d.txt")
     expect_equal(opts$OUTPUT, "/tmp/o.txt")
   })
+
+  test_that("load_args() always sets the global seed", {
+    expect_true(TRUE)
+
+    test_that("sets the seed when no seed is provided", {
+      # no seed set
+      # will use default_seed()
+      commandArgs <<- function(x) {
+        c("m", "d", "o")
+      }
+      
+      # cache the random seed vector and ensure that it is different after running load args
+      rng_state <- .Random.seed
+      expect_no_error(opts <- load_args(program, description, argument_groups = list()))
+      expect_equal(all(rng_state == .Random.seed), FALSE)
+    })
+
+    test_that("sets the seed from the flag", {
+      # seed set
+      seed <- 42
+      # will be used directly in set.seed()
+      commandArgs <<- function(x) {
+        c("--seed", as.character(seed), "m", "d", "o")
+      }
+
+      # cache the random seed vector and ensure that it is different after running load args
+      rng_state <- .Random.seed
+      expect_no_error(opts <- load_args(program, description, argument_groups = list()))
+      expect_equal(opts$seed, seed)
+      expect_equal(all(rng_state == .Random.seed), FALSE)
+    })
+  })
 })
 
 # for each flag, provide the options the flag can be as well as a value to set the flag to that isn't the default
@@ -190,7 +222,8 @@ test_flag_values <- list(
     write_both_outputs=list(flags=list("-D", "--write_both_outputs"), value=TRUE),
     nperm=list(flags=list("--nperm"), value=100),
     ncores=list(flags=list("-n", "--ncores"), value=1, errors=list(-4,0)),
-    seed=list(flags=list("--seed"), value=314159)
+    # this is technically part of the initialized parser args but is tested as a part of this group
+    seed=list(flags=list("--seed"), value=314159, errors=list("-1000000000000000", "1000000000000000"))
   ),
   taxa_hfe_ml_args=list(
     train_split=list(flags=list("--train_split"), value=0.7, errors=list(-1,2), warnings=list(0.4)),
@@ -312,17 +345,21 @@ test_that("program arg loaders work", {
               }
 
               # overload the quit() function
-              # instead of exiting, it will switch quit_called to TRUE so we can test if it was called
-              quit_called <<- FALSE
+              # instead of exiting, it will call stop() so the overall load_args() function still doesn't proceed but we can also catch the error
+              # this is why we expect_error around expect_message
               quit <<- function(...) {
-                quit_called <<- TRUE
+                stop("quit")
               }
               commandArgs <<- function(x) {
                 flags
               }
 
-              expect_message(load_arg_function(), info = sprintf("parser: %s, flag_name: %s, flag: %s, value: %s - expected flag error did not produce error message", parser_name, flag_name, flag, error_value))
-              expect_equal(quit_called, TRUE, info = sprintf("parser: %s, flag_name: %s, flag: %s, value: %s - did not call quit on error", parser_name, flag_name, flag, error_value))
+              # expect message for the actual flag error, but also expect an error from the new stop() call in the mocked quit function above
+              expect_error(
+                expect_message(load_arg_function(), regexp = "Flag .+? must be", info = sprintf("parser: %s, flag_name: %s, flag: %s, value: %s - expected flag error message", parser_name, flag_name, flag, error_value)),
+                regexp = "quit",
+                info = sprintf("parser: %s, flag_name: %s, flag: %s, value: %s - expected flag error did not call quit() on error", parser_name, flag_name, flag, error_value)
+              )
             }
           })
 
