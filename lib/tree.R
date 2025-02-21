@@ -1230,3 +1230,30 @@ prep_re_data <- function(input, feature_type, abund) {
   } 
 }
   
+pass_to_dietML <- function(train, test, model, program, type) {
+  
+  ## check and make sure diet_ml_input_df exists
+  if (!exists("diet_ml_input_df") | nrow(diet_ml_input_df) < 1) {
+    stop(paste0("Nothing passed to dietML."))
+  } 
+  
+  ## check for outdir and make if not there
+  if (dir.exists(paste0(dirname(opts$OUTPUT), "/ml_analysis")) != TRUE) {
+    dir.create(path = paste0(dirname(opts$OUTPUT), "/ml_analysis"))
+  }
+  
+  
+  ## check for label
+  if ("feature_of_interest" %in% colnames(train_data) == FALSE & "feature_of_interest" %in% colnames(test_data) == FALSE) {
+    stop(paste0("label not found in training AND testing data"))
+  } 
+  
+  ## check if classification was mis-specified
+  if (type == "factor") {
+    type <<- "classification"
+    if(length(levels(as.factor(metadata$feature_of_interest))) > 9)
+      stop("You are trying to predict 10 or more classes. That is a bit much. Did you mean to do regression?")
+  } else {
+    type <<- "regression"
+  }
+}
