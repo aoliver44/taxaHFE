@@ -14,6 +14,9 @@ library(ranger, quietly = T, verbose = F, warn.conflicts = F)
 library(vroom, quietly = T, verbose = F, warn.conflicts = F)
 library(tidyselect, quietly = T, verbose = F, warn.conflicts = F)
 library(recipes, quietly = T, verbose = F, warn.conflicts = F)
+library(mikropml, quietly = T, verbose = F, warn.conflicts = F)
+library(ggplot2, quietly = T, verbose = F, warn.conflicts = F)
+suppressPackageStartupMessages(library(tidymodels, quietly = T, verbose = F, warn.conflicts = F))
 
 # trim outliers from mean feature abundance calc
 # UPDATE: intially we had at 0.02, for an outlier resistant mean
@@ -1135,15 +1138,15 @@ extract_attributes <- function(items_list) {
 }
 
 ## run dietML based on diet_ml_input_df
-run_diet_ml <- function(input_df, n_repeat) {
+run_diet_ml <- function(input_df, n_repeat, model, type, seed) {
   
-  for (seed in sample(1:100000000, replace = F, size = n_repeat)) {
-    if (n_repeat > 1) {
-      ## same idea as below, need to change the random seed and it needs
-      ## to be a persistant change through sourcing the dietML script.
-      ## again, we can create a list of seeds that can be passed through
-      opts$seed <<- seed
-    }
+  ## create a number of random seeds, which are used across all programs 
+  ## run, ie taxahfe, taxahfe-ml - they need to be run across the same seeds!
+  random_seeds <- sample(1:100000000, replace = F, size = n_repeat)
+  ## make sure the first seed used is always the one specified. 
+  random_seeds[1] <- seed
+  
+  for (seed in random_seeds) {
     for (dML_input in unique(input_df[["general_name"]])) {
       
       ## I dont know how else to create these objects and source script within
@@ -1152,21 +1155,19 @@ run_diet_ml <- function(input_df, n_repeat) {
       ## we could create a list of these objects and tweak dietML to take in
       ## the list.
       
-      train_data <<- diet_ml_inputs[[input_df %>% 
+      train_data <- diet_ml_inputs[[input_df %>% 
                                      dplyr::filter(., general_name == dML_input & train_test_attr == "train") %>% 
                                      dplyr::pull(name)]]
       
-      test_data <<- diet_ml_inputs[[input_df %>% 
+      test_data <- diet_ml_inputs[[input_df %>% 
                                     dplyr::filter(., general_name == dML_input & train_test_attr == "test") %>% 
                                     dplyr::pull(name)]]
       
       ## keep track of what method is being passed to dietML
       ## this gets printed in the results file
-      opts$program <<- dML_input
-      #TODO: make this a function that takes instead of a source. Make "program" and 
-      #"seed" and whatnot into function arguments and not something that gets written
-      #to opt!!! BANISH UNNECESSARY GLOBAL VARS!!!
-      source("lib/diet_ml.R")
+      program <- dML_input
+      pass_to_dietML(train, test, program, model, type, seed)
+      
     }
   }
 }
@@ -1230,7 +1231,7 @@ prep_re_data <- function(input, feature_type, abund) {
   } 
 }
   
-pass_to_dietML <- function(train, test, model, program, type) {
+pass_to_dietML <- function(train, test, model, program, type, seed, random_effects, folds, cor_level, ncores, tune_length, tune_stop, tune_time, metric, label, output) {
   
   ## check and make sure diet_ml_input_df exists
   if (!exists("diet_ml_input_df") | nrow(diet_ml_input_df) < 1) {
@@ -1250,10 +1251,202 @@ pass_to_dietML <- function(train, test, model, program, type) {
   
   ## check if classification was mis-specified
   if (type == "factor") {
-    type <<- "classification"
+    type <- "classification"
     if(length(levels(as.factor(metadata$feature_of_interest))) > 9)
       stop("You are trying to predict 10 or more classes. That is a bit much. Did you mean to do regression?")
   } else {
-    type <<- "regression"
+    type <- "regression"
   }
+  
+  if (model == "rf") {
+    run_dietML_ranger(seed, random_effects, folds, cor_level, ncores, tune_length, tune_stop, tune_time, metric, label, model, program, output, type)
+  }
+  
+  if (model == "enet") {
+    run_dietML_enet(seed, random_effects, folds, cor_level, ncores, tune_length, tune_stop, tune_time, metric, label, model, program, output, type)
+  }
+}
+
+run_dietML_ranger <- function(train, test, seed, random_effects, folds, cor_level, ncores, tune_length, tune_stop, tune_time, metric, label, model, program, output) {
+  
+  ## remove individual and train if random effects
+  if (random_effects) {
+    train <- train %>% dplyr::select(., -dplyr::any_of(c("individual", "time")))
+    test <- train %>% dplyr::select(., -dplyr::any_of(c("individual", "time")))
+  }
+  
+  split_from_data_frame <- make_splits(
+    x = train,
+    assessment = test
+  )
+  
+  ## set resampling scheme
+  folds <- rsample::vfold_cv(train, v = as.numeric(folds), strata = feature_of_interest, repeats = 3)
+  
+  ## recipe ======================================================================
+  
+  ## specify recipe (this is like the pre-process work)
+  diet_ml_recipe <- 
+    recipes::recipe(feature_of_interest ~ ., data = train) %>% 
+    recipes::update_role(tidyr::any_of("subject_id"), new_role = "ID") %>% 
+    recipes::step_dummy(recipes::all_nominal_predictors()) %>%
+    recipes::step_corr(recipes::all_numeric_predictors(), threshold = as.numeric(cor_level), use = "everything") %>%
+    recipes::step_zv(recipes::all_predictors())
+  
+  ## ML engine ===================================================================
+  
+  ## specify ML model and engine 
+  initial_mod <- parsnip::rand_forest(mode = type, 
+                                      mtry = tune(),
+                                      trees = 1500,
+                                      min_n = tune()) %>%
+    parsnip::set_engine("ranger", 
+                        num.threads = 1,
+                        importance = "none")
+  
+  initial_mod %>% parsnip::translate()
+  
+  ## workflow ====================================================================
+  
+  ## define workflow
+  diet_ml_wflow <- 
+    workflows::workflow() %>% 
+    workflows::add_model(initial_mod) %>% 
+    workflows::add_recipe(diet_ml_recipe)  
+  
+  ## set up parallel jobs ========================================================
+  ## remove any doParallel job setups that may have
+  ## unneccessarily hung around
+  unregister_dopar()
+  
+  ## register parallel cluster
+  cl <- parallel::makePSOCKcluster(as.numeric(ncores))
+  doParallel::registerDoParallel(cl)
+  
+  ## hyperparameters =============================================================
+  
+  ## define the hyper parameter set
+  diet_ml_param_set <- parsnip::extract_parameter_set_dials(diet_ml_wflow)
+  
+  ## for random forests, set mtry to max features after correlation
+  ## co-correlate features at specified threshold (get upper limit of mtry)
+  training_cor <- mikropml:::group_correlated_features(train %>% dplyr::select(where(is.numeric)) %>% dplyr::select(., -dplyr::any_of(c("feature_of_interest", "subject_id"))), 
+                                                       corr_thresh = as.numeric(cor_level), group_neg_corr = T)
+  
+  ## make dataframe of what is correlated at specified threshold.
+  training_cor <- as.data.frame(training_cor) %>% 
+    tidyr::separate(., col = training_cor, into = c("keep", "co_correlated"), sep = "\\|", extra = "merge")
+  
+  ## set mtry to max features after correlation
+  diet_ml_param_set <- 
+    diet_ml_param_set %>% 
+    # Pick an upper bound for mtry: 
+    recipes::update(mtry = mtry(c(2, round((NROW(training_cor) * 0.9), digits = 0))))
+  
+  ## set up hyper parameter search
+  if (type == "classification") {
+    
+    search_res <-
+      diet_ml_wflow %>% 
+      tune::tune_bayes(
+        resamples = folds,
+        # To use non-default parameter ranges
+        param_info = diet_ml_param_set,
+        # Generate five at semi-random to start
+        initial = 5,
+        iter = tune_length,
+        # How to measure performance?
+        metrics = yardstick::metric_set(bal_accuracy, roc_auc, accuracy, kap, f_meas),
+        control = tune::control_bayes(no_improve = as.numeric(tune_stop),
+                                      uncertain = 5,
+                                      verbose = FALSE,
+                                      parallel_over = "resamples",
+                                      time_limit = as.numeric(tune_time),
+                                      seed = as.numeric(seed))
+      )
+    
+  } else if (type == "regression") {
+    
+    search_res <-
+      diet_ml_wflow %>% 
+      tune::tune_bayes(
+        resamples = folds,
+        # To use non-default parameter ranges
+        param_info = diet_ml_param_set,
+        # Generate five at semi-random to start
+        initial = 5,
+        iter = tune_length,
+        # How to measure performance?
+        metrics = yardstick::metric_set(mae, rmse, rsq, ccc),
+        control = tune::control_bayes(no_improve = as.numeric(tune_stop),
+                                      uncertain = 5,
+                                      verbose = FALSE,
+                                      parallel_over = "resamples",
+                                      time_limit = as.numeric(tune_time),
+                                      seed = as.numeric(seed))
+      )
+  }
+  
+  tune::show_best(search_res)
+  
+  ## stop parallel jobs
+  parallel::stopCluster(cl)
+  ## remove any doParallel job setups that may have
+  ## unneccessarily hung around
+  unregister_dopar()
+  
+  ## fit best model ==============================================================
+  
+  ## get the best parameters from tuning
+  best_mod <- 
+    search_res %>% 
+    tune::select_best(metric = metric)
+  
+  ## create the last model based on best parameters
+  last_best_mod <- 
+    parsnip::rand_forest(mtry = best_mod$mtry, min_n = best_mod$min_n) %>% 
+    parsnip::set_engine("ranger", num.threads = as.numeric(ncores), importance = "none") %>% 
+    parsnip::set_mode(type)
+  
+  ## update workflow with best model
+  best_tidy_workflow <- 
+    diet_ml_wflow %>% 
+    workflows::update_model(last_best_mod)
+  
+  ## fit to test data
+  if (type == "classification") {
+    final_res <- tune::last_fit(best_tidy_workflow, split_from_data_frame, 
+                                metrics = yardstick::metric_set(bal_accuracy, 
+                                                                roc_auc, accuracy, 
+                                                                kap, f_meas))
+  } else if (type == "regression") {
+    final_res <- tune::last_fit(best_tidy_workflow, split_from_data_frame, 
+                                metrics = yardstick::metric_set(mae, rmse, rsq, 
+                                                                ccc))
+  }
+  
+  
+  ## merge null results with trained results and write table
+  null_results <- results_df %>% 
+    dplyr::select(., -seed) %>% 
+    summarise_all(., mean) %>% 
+    t() %>% 
+    as.data.frame() %>% 
+    tibble::rownames_to_column(var = ".metric") %>% 
+    dplyr::rename(., "null_model_avg" = 2)
+  full_results <- merge(workflowsets::collect_metrics(final_res), null_results, by = ".metric", all = T)
+  full_results$seed <- seed
+  
+  ## keep track of what program is being run for compete all levels
+  full_results$program <- program
+  
+  
+  ## write final results to file or append if file exists
+  readr::write_csv(x = full_results, file =paste0(dirname(output), "/ml_analysis/ml_results.csv"), 
+                   append = T, col_names = !file.exists(paste0(dirname(output), "/ml_analysis/ml_results.csv")))
+}
+
+unregister_dopar <- function() {
+  env <- foreach:::.foreachGlobals
+  rm(list=ls(name=env), pos=env)
 }
