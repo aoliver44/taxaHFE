@@ -83,4 +83,20 @@ diet_ml_input_df <- extract_attributes(items_list = diet_ml_inputs)
 write_list_to_csv(target_list = diet_ml_inputs, directory = dirname(opts$OUTPUT))
 
 ## pass to dietML if selected
-run_diet_ml(input_df = diet_ml_input_df, n_repeat = opts$permute)
+run_diet_ml(input_df = diet_ml_input_df, 
+            n_repeat = opts$permute, 
+            model = opts$model,
+            type = opts$feature_type,
+            seed = opts$seed,
+            model = opts$model,
+            random_effects = opts$random_effects,
+            folds = opts$folds,
+            cor_level = opts$cor_level,
+            ncores = opts$ncores,
+            tune_length = opts$tune_length,
+            tune_stop = opts$tune_stop,
+            tune_time = opts$tune_time,
+            metric = opts$metric,
+            label = opts$label,
+            output = opts$OUTPUT,
+            shap = opts$shap)
