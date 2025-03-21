@@ -40,7 +40,8 @@ hData <- read_in_hierarchical_data(input = opts$DATA,
 
 
 # Run TaxaHFE
-method_taxa_hfe(hdata = hData,
+diet_ml_inputs <- method_taxa_hfe(
+  hdata = hData,
   metadata = metadata,
   prevalence = opts$prevalence,
   abundance = opts$abundance,
@@ -58,5 +59,5 @@ method_taxa_hfe(hdata = hData,
   output = opts$OUTPUT,
   seed = opts$seed,
   random_effects = opts$random_effects
-  )
+)
 
