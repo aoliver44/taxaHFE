@@ -17,6 +17,8 @@ library(recipes, quietly = T, verbose = F, warn.conflicts = F)
 library(mikropml, quietly = T, verbose = F, warn.conflicts = F)
 library(ggplot2, quietly = T, verbose = F, warn.conflicts = F)
 suppressPackageStartupMessages(library(tidymodels, quietly = T, verbose = F, warn.conflicts = F))
+library(fastshap, quietly = T, verbose = F, warn.conflicts = F)
+library(shapviz, quietly = T, verbose = F, warn.conflicts = F)
 
 # trim outliers from mean feature abundance calc
 # UPDATE: intially we had at 0.02, for an outlier resistant mean
@@ -679,7 +681,9 @@ calculate_correlation <- function(df, corrThreshold) {
 }
 
 ## rf competition function =====================================================
-# TODO: document these inputs
+## This is the meat of the ML part of taxaHFE. Input is a dataframe from 
+## compete_node() called transposed. This is output from the correlation battle
+## of the parent and children who are less correlated than cor_level.
 rf_competition <- function(df, metadata, parent_descendent_competition, feature_of_interest = "feature_of_interest", subject_identifier = "subject_id", feature_type, ncores, nperm, random_effects) {
   ## get a list of the covariates in order to remove them from the RF winners
   ## later, so the only RF winners are taxa
@@ -909,7 +913,7 @@ generate_outputs <- function(tree, metadata, col_names, output_location, disable
     cat("\n Features (super filter): ", nrow(flattened_sf_winners), "\n")
   }
 
-  ## write old files  ============================================================
+  ## write old files
   if (write_old_files == TRUE) {
     cat("\n", "###########################\n", "Writing old files...\n", "###########################\n\n")
 
@@ -990,7 +994,7 @@ generate_summary_files <- function(input, metadata, target_list, object,
     ## merge with metadata
     level <- merge(metadata, output, by = "subject_id")
     
-    diet_ml_inputs <<- store_diet_ml_inputs(target_list = diet_ml_inputs,
+    diet_ml_inputs <- store_diet_ml_inputs(target_list = diet_ml_inputs,
                                           object = level,
                                           super_filter = NA,
                                           method = "summarized_level",
@@ -1001,6 +1005,8 @@ generate_summary_files <- function(input, metadata, target_list, object,
     
     count <- count + 1
   }
+  
+  return(diet_ml_inputs)
 }
 
 ## loops over dietML_inputs list and checks if there is a train, test
@@ -1031,7 +1037,7 @@ split_train_data <- function(target_list, attribute_name, seed) {
   
   for (missing_train_index in na_indices) {
     temp_train <- diet_ml_inputs[[missing_train_index]] %>% as.data.frame() %>% dplyr::filter(., subject_id %in% train_metadata$subject_id)
-    diet_ml_inputs <<- store_diet_ml_inputs(target_list = diet_ml_inputs,
+    diet_ml_inputs <- store_diet_ml_inputs(target_list = diet_ml_inputs,
                                           object = temp_train,
                                           super_filter = attributes(diet_ml_inputs[[missing_train_index]])$superfilter,
                                           method = attributes(diet_ml_inputs[[missing_train_index]])$program_method,
@@ -1041,7 +1047,7 @@ split_train_data <- function(target_list, attribute_name, seed) {
     )
     
     temp_test <- diet_ml_inputs[[missing_train_index]] %>% as.data.frame() %>% dplyr::filter(., subject_id %in% test_metadata$subject_id)
-    diet_ml_inputs <<- store_diet_ml_inputs(target_list = diet_ml_inputs,
+    diet_ml_inputs <- store_diet_ml_inputs(target_list = diet_ml_inputs,
                                           object = temp_test,
                                           super_filter = attributes(diet_ml_inputs[[missing_train_index]])$superfilter,
                                           method = attributes(diet_ml_inputs[[missing_train_index]])$program_method,
@@ -1050,6 +1056,8 @@ split_train_data <- function(target_list, attribute_name, seed) {
                                           seed = seed
     )
   }
+  
+  return(diet_ml_inputs)
   
 }
 
@@ -1138,22 +1146,19 @@ extract_attributes <- function(items_list) {
 }
 
 ## run dietML based on diet_ml_input_df
-run_diet_ml <- function(input_df, n_repeat, model, type, seed) {
+run_diet_ml <- function(input_df, n_repeat, feature_type, seed, train, test, model, program, random_effects, folds, cor_level, ncores, tune_length, tune_stop, tune_time, metric, label, output, shap) {
   
   ## create a number of random seeds, which are used across all programs 
   ## run, ie taxahfe, taxahfe-ml - they need to be run across the same seeds!
+  ## to make sure these are created determistically based on set seed, make
+  ## sure its set before (might not matter?)
+  set.seed(seed)
   random_seeds <- sample(1:100000000, replace = F, size = n_repeat)
   ## make sure the first seed used is always the one specified. 
   random_seeds[1] <- seed
   
   for (seed in random_seeds) {
     for (dML_input in unique(input_df[["general_name"]])) {
-      
-      ## I dont know how else to create these objects and source script within
-      ## this function, without assigning to global env
-      ## lib/diet_ml.R is looking for train_data and test_data in global env. I suppose
-      ## we could create a list of these objects and tweak dietML to take in
-      ## the list.
       
       train_data <- diet_ml_inputs[[input_df %>% 
                                      dplyr::filter(., general_name == dML_input & train_test_attr == "train") %>% 
@@ -1166,7 +1171,23 @@ run_diet_ml <- function(input_df, n_repeat, model, type, seed) {
       ## keep track of what method is being passed to dietML
       ## this gets printed in the results file
       program <- dML_input
-      pass_to_dietML(train, test, program, model, type, seed)
+      pass_to_dietML(train = train_data, 
+                     test = test_data, 
+                     program = program, 
+                     model = model, 
+                     seed = seed, 
+                     random_effects, 
+                     folds = folds, 
+                     cor_level = cor_level, 
+                     ncores = ncores, 
+                     tune_length = tune_length, 
+                     tune_stop = tune_stop, 
+                     tune_time = tune_time, 
+                     metric = metric, 
+                     label = label, 
+                     output = output, 
+                     feature_type = feature_type, 
+                     shap = shap)
       
     }
   }
@@ -1231,7 +1252,7 @@ prep_re_data <- function(input, feature_type, abund) {
   } 
 }
   
-pass_to_dietML <- function(train, test, model, program, type, seed, random_effects, folds, cor_level, ncores, tune_length, tune_stop, tune_time, metric, label, output) {
+pass_to_dietML <- function(train, test, model, program, seed, random_effects, folds, cor_level, ncores, tune_length, tune_stop, tune_time, metric, label, output, feature_type, shap) {
   
   ## check and make sure diet_ml_input_df exists
   if (!exists("diet_ml_input_df") | nrow(diet_ml_input_df) < 1) {
@@ -1245,12 +1266,12 @@ pass_to_dietML <- function(train, test, model, program, type, seed, random_effec
   
   
   ## check for label
-  if ("feature_of_interest" %in% colnames(train_data) == FALSE & "feature_of_interest" %in% colnames(test_data) == FALSE) {
+  if ("feature_of_interest" %in% colnames(train) == FALSE & "feature_of_interest" %in% colnames(test) == FALSE) {
     stop(paste0("label not found in training AND testing data"))
   } 
   
   ## check if classification was mis-specified
-  if (type == "factor") {
+  if (feature_type == "factor") {
     type <- "classification"
     if(length(levels(as.factor(metadata$feature_of_interest))) > 9)
       stop("You are trying to predict 10 or more classes. That is a bit much. Did you mean to do regression?")
@@ -1258,16 +1279,74 @@ pass_to_dietML <- function(train, test, model, program, type, seed, random_effec
     type <- "regression"
   }
   
+  ## run null model first, results_df is needed for the actually runs
+  results_df <- run_null_model(train = train, test = test, seed = seed, type = type, cor_level = cor_level, random_effects = random_effects, output = output)
+  
+  ## if specified, run random forest
   if (model == "rf") {
-    run_dietML_ranger(seed, random_effects, folds, cor_level, ncores, tune_length, tune_stop, tune_time, metric, label, model, program, output, type)
+    shap_inputs <- run_dietML_ranger(
+      train = train,
+      test = test,
+      seed = seed,
+      random_effects = random_effects,
+      folds = folds,
+      cor_level = cor_level,
+      ncores = ncores,
+      tune_length = tune_length,
+      tune_stop = tune_stop,
+      tune_time = tune_time,
+      metric = metric,
+      label = label,
+      model = model,
+      program = program,
+      output = output,
+      type = type,
+      null_results = results_df
+    )
   }
   
+  ## if specified, run elastic net
   if (model == "enet") {
-    run_dietML_enet(seed, random_effects, folds, cor_level, ncores, tune_length, tune_stop, tune_time, metric, label, model, program, output, type)
+    shap_inputs <- run_dietML_enet(
+      train = train,
+      test = test,
+      seed = seed,
+      random_effects = random_effects,
+      folds = folds,
+      cor_level = cor_level,
+      ncores = ncores,
+      tune_length = tune_length,
+      tune_stop = tune_stop,
+      tune_time = tune_time,
+      metric = metric,
+      label = label,
+      model = model,
+      program = program,
+      output = output,
+      type = type,
+      null_results = results_df
+    )
+  }
+  
+  if (shap) {
+    shap_analysis(label = label, 
+                  output = output, 
+                  model = model, 
+                  filename = paste0(program, "_", seed), 
+                  shap_inputs = shap_inputs,
+                  train = train,
+                  test = test,
+                  type = type)
   }
 }
 
-run_dietML_ranger <- function(train, test, seed, random_effects, folds, cor_level, ncores, tune_length, tune_stop, tune_time, metric, label, model, program, output) {
+run_dietML_ranger <- function(train, test, seed, random_effects, folds, cor_level, ncores, tune_length, tune_stop, tune_time, metric, label, model, program, output, type, null_results) {
+  
+  ## check and make sure results_df has been created from run_null_model,
+  ## needed for this function downstream
+  if (!exists("null_results")) {
+    stop("Null model was not run. Cannot complete model evaluation.")
+  }
   
   ## remove individual and train if random effects
   if (random_effects) {
@@ -1283,7 +1362,7 @@ run_dietML_ranger <- function(train, test, seed, random_effects, folds, cor_leve
   ## set resampling scheme
   folds <- rsample::vfold_cv(train, v = as.numeric(folds), strata = feature_of_interest, repeats = 3)
   
-  ## recipe ======================================================================
+  ## recipe
   
   ## specify recipe (this is like the pre-process work)
   diet_ml_recipe <- 
@@ -1293,7 +1372,7 @@ run_dietML_ranger <- function(train, test, seed, random_effects, folds, cor_leve
     recipes::step_corr(recipes::all_numeric_predictors(), threshold = as.numeric(cor_level), use = "everything") %>%
     recipes::step_zv(recipes::all_predictors())
   
-  ## ML engine ===================================================================
+  ## ML engine
   
   ## specify ML model and engine 
   initial_mod <- parsnip::rand_forest(mode = type, 
@@ -1306,7 +1385,7 @@ run_dietML_ranger <- function(train, test, seed, random_effects, folds, cor_leve
   
   initial_mod %>% parsnip::translate()
   
-  ## workflow ====================================================================
+  ## workflow
   
   ## define workflow
   diet_ml_wflow <- 
@@ -1314,7 +1393,7 @@ run_dietML_ranger <- function(train, test, seed, random_effects, folds, cor_leve
     workflows::add_model(initial_mod) %>% 
     workflows::add_recipe(diet_ml_recipe)  
   
-  ## set up parallel jobs ========================================================
+  ## set up parallel jobs
   ## remove any doParallel job setups that may have
   ## unneccessarily hung around
   unregister_dopar()
@@ -1323,7 +1402,7 @@ run_dietML_ranger <- function(train, test, seed, random_effects, folds, cor_leve
   cl <- parallel::makePSOCKcluster(as.numeric(ncores))
   doParallel::registerDoParallel(cl)
   
-  ## hyperparameters =============================================================
+  ## hyperparameters
   
   ## define the hyper parameter set
   diet_ml_param_set <- parsnip::extract_parameter_set_dials(diet_ml_wflow)
@@ -1395,7 +1474,7 @@ run_dietML_ranger <- function(train, test, seed, random_effects, folds, cor_leve
   ## unneccessarily hung around
   unregister_dopar()
   
-  ## fit best model ==============================================================
+  ## fit best model
   
   ## get the best parameters from tuning
   best_mod <- 
@@ -1425,9 +1504,8 @@ run_dietML_ranger <- function(train, test, seed, random_effects, folds, cor_leve
                                                                 ccc))
   }
   
-  
   ## merge null results with trained results and write table
-  null_results <- results_df %>% 
+  null_results <- null_results %>% 
     dplyr::select(., -seed) %>% 
     summarise_all(., mean) %>% 
     t() %>% 
@@ -1442,9 +1520,316 @@ run_dietML_ranger <- function(train, test, seed, random_effects, folds, cor_leve
   
   
   ## write final results to file or append if file exists
-  readr::write_csv(x = full_results, file =paste0(dirname(output), "/ml_analysis/ml_results.csv"), 
+  readr::write_csv(x = full_results, file = paste0(dirname(output), "/ml_analysis/ml_results.csv"), 
                    append = T, col_names = !file.exists(paste0(dirname(output), "/ml_analysis/ml_results.csv")))
+  
+  ## load up list for shap analysis
+  shap_inputs <- list("split_from_data_frame" = split_from_data_frame, "diet_ml_recipe" = diet_ml_recipe, "best_tidy_workflow" = best_tidy_workflow)
+  return(shap_inputs)
+  
 }
+
+run_null_model <- function(train, test, seed, type, cor_level, random_effects, output) {
+  
+  ## create results df
+  if (type == "classification") {
+    results_df <- data.frame(seed = numeric(), bal_accuracy = numeric(), f_meas = numeric(), accuracy = numeric(), stringsAsFactors = F)
+  } else if (type == "regression") {
+    results_df <- data.frame(seed = numeric(), mae = numeric(), rmse = numeric(), ccc = numeric(), stringsAsFactors = F)
+  }
+  
+  ## interate over null model
+  if (type == "classification") {
+    df_loop_results <- data.frame(truth = character(), estimate = character(), stringsAsFactors = F)
+  } else if (type == "regression") {
+    df_loop_results <- data.frame(truth = numeric(), estimate = numeric(), stringsAsFactors = F)
+  }
+  
+  ## remove individual and train if random effects
+  if (random_effects) {
+    train <- train %>% dplyr::select(., -dplyr::any_of(c("individual", "time")))
+    test <- train %>% dplyr::select(., -dplyr::any_of(c("individual", "time")))
+  }
+  
+  ## recipe
+  
+  ## specify recipe (this is like the pre-process work)
+  diet_ml_recipe <- 
+    recipes::recipe(feature_of_interest ~ ., data = train) %>% 
+    recipes::update_role(tidyr::any_of("subject_id"), new_role = "ID") %>%
+    recipes::step_dummy(recipes::all_nominal_predictors()) %>%
+    recipes::step_corr(all_numeric_predictors(), threshold = cor_level) %>%
+    recipes::step_zv(all_predictors())
+  
+  
+  ## ML engine
+  
+  ## specify ML model and engine 
+  initial_mod <- null_model() %>% 
+    set_engine("parsnip") %>% 
+    set_mode(type) %>% 
+    translate()
+  
+  ## workflow
+  
+  ## define workflow
+  diet_ml_wflow <- 
+    workflows::workflow() %>% 
+    workflows::add_model(initial_mod) %>% 
+    workflows::add_recipe(diet_ml_recipe)  
+  
+  
+  ## fit model
+  
+  ## fit to test data
+  final_res <- parsnip::fit(diet_ml_wflow, test)
+  
+  df_loop_results <- add_row(df_loop_results, truth = test$feature_of_interest)
+  df_loop_results$estimate <- final_res$fit$fit$fit$value
+  
+  if (type== "classification") {
+    df_loop_results$estimate <- factor(x = df_loop_results$estimate, levels = levels(as.factor(df_loop_results$truth)))
+    results_df <- results_df %>% 
+      tibble::add_row(., bal_accuracy = 
+                        yardstick::bal_accuracy_vec(truth = as.factor(df_loop_results$truth), 
+                                                    estimate = as.factor(df_loop_results$estimate), 
+                                                    data = df_loop_results), 
+                      accuracy = 
+                        yardstick::accuracy_vec(truth = as.factor(df_loop_results$truth), 
+                                                estimate = as.factor(df_loop_results$estimate), 
+                                                data = df_loop_results), 
+                      f_meas = 
+                        yardstick::f_meas_vec(truth = as.factor(df_loop_results$truth), 
+                                              estimate = as.factor(df_loop_results$estimate), 
+                                              data = df_loop_results),
+                      seed = seed)
+  } else if (type == "regression") {
+    results_df <- results_df %>% 
+      tibble::add_row(., mae = 
+                        yardstick::mae_vec(truth = df_loop_results$truth, 
+                                           estimate = df_loop_results$estimate, 
+                                           data = df_loop_results), 
+                      rmse = 
+                        yardstick::rmse_vec(truth = df_loop_results$truth, 
+                                            estimate = df_loop_results$estimate, 
+                                            data = df_loop_results),
+                      ccc = yardstick::ccc_vec(truth = df_loop_results$truth, 
+                                               estimate = df_loop_results$estimate, 
+                                               data = df_loop_results),
+                      seed = seed)
+    
+  }
+  
+  ## write table of results to file
+  readr::write_csv(x = results_df, file =paste0(dirname(output), "/ml_analysis/dummy_model_results.csv"), 
+                   append = T, col_names = !file.exists(paste0(dirname(output), "/ml_analysis/dummy_model_results.csv")))
+  
+  ## return results_df because that is what the other models need (ranger, enet)
+  return(results_df)
+  
+}
+
+shap_analysis <- function(label, output, model, filename, shap_inputs, train, test, type) {
+  
+  ## read in shap inputs
+  split_from_data_frame <- shap_inputs$split_from_data_frame
+  best_tidy_workflow <- shap_inputs$best_tidy_workflow
+  diet_ml_recipe <- shap_inputs$diet_ml_recipe
+  
+  shap.error.occured <- FALSE
+  
+  tryCatch( { if (length(levels(as.factor(split_from_data_frame$data$feature_of_interest))) == 2) {
+    
+    ## Prediction wrapper
+    pfun <- function(object, newdata) {
+      predict(object, data = newdata)$predictions[, levels(as.factor(split_from_data_frame$data$feature_of_interest))[1]]
+    }
+    
+    ## full data:
+    
+    ## pull model out of workflow
+    best_workflow <- best_tidy_workflow %>%
+      parsnip::fit(split_from_data_frame$data)
+    best_workflow_mod <- workflows::extract_fit_parsnip(best_workflow)
+    
+    ## pull out data
+    shap_data_full <- recipes::prep(diet_ml_recipe, split_from_data_frame$data) %>% 
+      recipes::juice() %>% 
+      dplyr::select(-feature_of_interest, -subject_id) 
+    
+    ## explain with fastshap
+    shap_explainations_full <- fastshap::explain(best_workflow_mod$fit, X = shap_data_full, pred_wrapper = pfun, nsim = 100, adjust = TRUE)
+    
+    ## make shap viz object
+    sv_full <- shapviz::shapviz(shap_explainations_full, X = shap_data_full)
+    
+    ## make shap plot
+    importance_plot_full_1 <- shapviz::sv_importance(sv_full, kind = "bee", show_numbers = TRUE, bee_width = 0.2, max_display = 10) + 
+      ggtitle(label = paste0("SHAP: ", label, " (full data)")) + 
+      labs(x = paste0("predictive of ", levels(as.factor(split_from_data_frame$data$feature_of_interest))[2], " < SHAP > ", "predictive of ", levels(as.factor(split_from_data_frame$data$feature_of_interest))[1])) + 
+      theme_bw(base_size = 14)
+    ggplot2::ggsave(plot = importance_plot_full_1, filename = paste0(dirname(output), "/ml_analysis/shap_", filename, "_full.pdf"), width = pmax((0.1 * max(nchar(colnames(sv_full$X)))), 6), height = 4.5, units = "in")
+    
+   
+    ## training data:
+     
+    ## Prediction wrapper: first level (ie if levels are high, low, this is high)
+    pfun <- function(object, newdata) {
+      predict(object, data = newdata)$predictions[, levels(as.factor(split_from_data_frame$data$feature_of_interest))[1]]
+    }
+    
+    ## pull model out of workflow
+    best_workflow <- best_tidy_workflow %>%
+      parsnip::fit(train)
+    best_workflow_mod <- workflows::extract_fit_parsnip(best_workflow)
+    
+    ## pull out data
+    shap_data_train <- recipes::prep(diet_ml_recipe, train) %>% 
+      recipes::juice() %>% 
+      dplyr::select(-feature_of_interest, -subject_id) 
+    
+    ## explain with fastshap
+    shap_explainations_train <- fastshap::explain(best_workflow_mod$fit, X = shap_data_train, pred_wrapper = pfun, nsim = 100, adjust = TRUE)
+    
+    ## make shap viz object
+    sv_train <- shapviz::shapviz(shap_explainations_train, X = shap_data_train)
+    
+    ## make shap plot
+    importance_plot_train_1 <- shapviz::sv_importance(sv_train, kind = "bee", show_numbers = TRUE, bee_width = 0.2, max_display = 10) + 
+      ggtitle(label = paste0("SHAP: ", label, " (train data)")) + 
+      labs(x = paste0("predictive of ", levels(as.factor(split_from_data_frame$data$feature_of_interest))[2], " < SHAP > ", "predictive of ", levels(as.factor(split_from_data_frame$data$feature_of_interest))[1])) + 
+      theme_bw(base_size = 14)
+    ggplot2::ggsave(plot = importance_plot_train_1, filename = paste0(dirname(output), "/ml_analysis/shap_", filename, "_train.pdf"), width = pmax((0.1 * max(nchar(colnames(sv_train$X)))), 6), height = 4.5, units = "in")
+    
+    ## test data:
+    
+    ## Prediction wrapper: second level (ie if levels are high, low, this is low)
+    pfun <- function(object, newdata) {
+      predict(object, data = newdata)$predictions[, levels(as.factor(split_from_data_frame$data$feature_of_interest))[1]]
+    }
+    
+    ## pull model out of workflow
+    best_workflow <- best_tidy_workflow %>%
+      parsnip::fit(test)
+    best_workflow_mod <- workflows::extract_fit_parsnip(best_workflow)
+    
+    ## pull out data
+    shap_data_test<- recipes::prep(diet_ml_recipe, test) %>% 
+      recipes::juice() %>% 
+      dplyr::select(-feature_of_interest, -subject_id) 
+    
+    ## explain with fastshap
+    shap_explainations_test <- fastshap::explain(best_workflow_mod$fit, X = shap_data_test, pred_wrapper = pfun, nsim = 100, adjust = TRUE)
+    
+    ## make shap viz object
+    sv_test <- shapviz::shapviz(shap_explainations_test, X = shap_data_test)
+    
+    ## make shap plot
+    importance_plot_test_1 <- shapviz::sv_importance(sv_test, kind = "bee", show_numbers = TRUE, bee_width = 0.2, max_display = 10) + 
+      ggtitle(label = paste0("SHAP: ", label, " (test data)")) + 
+      labs(x = paste0("predictive of ", levels(as.factor(split_from_data_frame$data$feature_of_interest))[2], " < SHAP > ", "predictive of ", levels(as.factor(split_from_data_frame$data$feature_of_interest))[1])) + 
+      theme_bw(base_size = 14)
+    ggplot2::ggsave(plot = importance_plot_test_1, filename = paste0(dirname(output), "/ml_analysis/shap_", filename, "_test.pdf"), width = pmax((0.1 * max(nchar(colnames(sv_test$X)))), 6), height = 4.5, units = "in")
+    
+  } 
+    
+    if ((type == "regression") && (model == "rf")) {
+      
+      ## full data (regression):
+      
+      ## Prediction wrapper
+      pfun <- function(object, newdata) {
+        predict(object, data = newdata)$predictions
+      }
+      
+      ## pull model out of workflow
+      best_workflow <- best_tidy_workflow %>%
+        parsnip::fit(split_from_data_frame$data)
+      best_workflow_mod <- workflows::extract_fit_parsnip(best_workflow)
+      
+      ## pull out data
+      shap_data_full <- recipes::prep(diet_ml_recipe, split_from_data_frame$data) %>% 
+        recipes::juice() %>% 
+        dplyr::select(-feature_of_interest, -subject_id) 
+      
+      ## explain with fastshap
+      shap_explainations_full <- fastshap::explain(best_workflow_mod$fit, X = shap_data_full, pred_wrapper = pfun, nsim = 100, adjust = TRUE)
+      
+      ## make shap viz object
+      sv_full <- shapviz::shapviz(shap_explainations_full, X = shap_data_full)
+      
+      ## make shap plot
+      importance_plot_full <- shapviz::sv_importance(sv_full, kind = "bee", show_numbers = TRUE, bee_width = 0.2, max_display = 10) + 
+        ggtitle(label = paste0("SHAP: ", label, " (full data)")) + theme_bw(base_size = 14)
+      ggplot2::ggsave(plot = importance_plot_full, filename = paste0(dirname(output), "/ml_analysis/shap_", filename, "_full.pdf"), width = pmax((0.1 * max(nchar(colnames(sv_full$X)))), 6), height = 4.5, units = "in")
+      
+      ## training data (regression):
+      
+      ## Prediction wrapper
+      pfun <- function(object, newdata) {
+        predict(object, data = newdata)$predictions
+      }
+      
+      ## pull model out of workflow
+      best_workflow <- best_tidy_workflow %>%
+        parsnip::fit(train)
+      best_workflow_mod <- workflows::extract_fit_parsnip(best_workflow)
+      
+      ## pull out data
+      shap_data_train <- recipes::prep(diet_ml_recipe, train) %>% 
+        recipes::juice() %>% 
+        dplyr::select(-feature_of_interest, -subject_id) 
+      
+      ## explain with fastshap
+      shap_explainations_train <- fastshap::explain(best_workflow_mod$fit, X = shap_data_train, pred_wrapper = pfun, nsim = 100, adjust = TRUE)
+      
+      ## make shap viz object
+      sv_train <- shapviz::shapviz(shap_explainations_train, X = shap_data_train)
+      
+      ## make shap plot
+      importance_plot_train <- shapviz::sv_importance(sv_train, kind = "bee", show_numbers = TRUE, bee_width = 0.2, max_display = 10) + 
+        ggtitle(label = paste0("SHAP: ", label, " (train)")) + theme_bw(base_size = 14)
+      ggplot2::ggsave(plot = importance_plot_train, filename = paste0(dirname(output), "/ml_analysis/shap_", filename, "_train.pdf"), width = pmax((0.1 * max(nchar(colnames(sv_train$X)))), 6), height = 4.5, units = "in")
+      
+      ## test data (regression):
+      
+      ## Prediction wrapper
+      pfun <- function(object, newdata) {
+        predict(object, data = newdata)$predictions
+      }
+      
+      ## pull model out of workflow
+      best_workflow <- best_tidy_workflow %>%
+        parsnip::fit(test)
+      best_workflow_mod <- workflows::extract_fit_parsnip(best_workflow)
+      
+      ## pull out data
+      shap_data_test <- recipes::prep(diet_ml_recipe, test) %>% 
+        recipes::juice() %>% 
+        dplyr::select(-feature_of_interest, -subject_id) 
+      
+      ## explain with fastshap
+      shap_explainations_test <- fastshap::explain(best_workflow_mod$fit, X = shap_data_test, pred_wrapper = pfun, nsim = 100, adjust = TRUE)
+      
+      ## make shap viz object
+      sv_test <- shapviz::shapviz(shap_explainations_test, X = shap_data_test)
+      
+      ## make shap plot
+      importance_plot_test <- shapviz::sv_importance(sv_test, kind = "bee", show_numbers = TRUE, bee_width = 0.2, max_display = 10) + 
+        ggtitle(label = paste0("SHAP: ", label, " (test)")) + theme_bw(base_size = 14)
+      ggplot2::ggsave(plot = importance_plot_test, filename = paste0(dirname(output), "/ml_analysis/shap_", filename, "_test.pdf"), width = pmax((0.1 * max(nchar(colnames(sv_test$X)))), 6), height = 4.5, units = "in")
+      
+    }
+    
+  }, error = function(e) {shap.error.occured <<- TRUE} )
+  
+  if (shap.error.occured == TRUE) {
+    message("SHAP analysis could not be completed")
+  }
+  
+}
+
+
 
 unregister_dopar <- function() {
   env <- foreach:::.foreachGlobals
