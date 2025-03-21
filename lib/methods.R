@@ -59,7 +59,7 @@ method_taxa_hfe <- function(hdata, metadata, prevalence, abundance,
   )
   
   ## store taxaHFE outputs in list
-  diet_ml_inputs <<- store_diet_ml_inputs(target_list = diet_ml_inputs,
+  diet_ml_inputs <- store_diet_ml_inputs(target_list = diet_ml_inputs,
     object = flattened_df,
     super_filter = ifelse(disable_super_filter, "no_sf", "sf"),
     method = "taxa_hfe",
@@ -68,6 +68,7 @@ method_taxa_hfe <- function(hdata, metadata, prevalence, abundance,
     seed = seed
     )
   
+  return(diet_ml_inputs)
 }
 
 method_taxa_hfe_ml <- function(hdata, metadata, prevalence, abundance,
@@ -155,20 +156,22 @@ method_taxa_hfe_ml <- function(hdata, metadata, prevalence, abundance,
   test_data_for_diet_ml <- test_data[names(train_data_for_diet_ml)]
 
   ## store data in list of data for dietML
-  diet_ml_inputs <<- store_diet_ml_inputs(target_list = diet_ml_inputs,
+  diet_ml_inputs <- store_diet_ml_inputs(target_list = diet_ml_inputs,
     object = train_data_for_diet_ml,
     super_filter = ifelse(disable_super_filter, "no_sf", "sf"),
     method = "taxa_hfe_ml",
     train_test_attr = "train",
     level_n = NA,
     seed = seed)
-  diet_ml_inputs <<- store_diet_ml_inputs(target_list = diet_ml_inputs,
+  diet_ml_inputs <- store_diet_ml_inputs(target_list = diet_ml_inputs,
     object = test_data_for_diet_ml,
     super_filter = ifelse(disable_super_filter, "no_sf", "sf"),
     method = "taxa_hfe_ml",
     train_test_attr = "test",
     level_n = NA,
     seed = seed)
+  
+  return(diet_ml_inputs)
 
 }
   
@@ -210,11 +213,13 @@ method_levels <- function(hdata, metadata, prevalence, abundance,
   colnames(flattened_df)[11:NCOL(flattened_df)] <- col_names
   
   ## attach the summary files to dietML_input list
-  generate_summary_files(input = flattened_df, 
+  diet_ml_inputs <- generate_summary_files(input = flattened_df, 
                          metadata = metadata, 
                          target_list = diet_ml_inputs, 
                          disable_super_filter = ifelse(disable_super_filter, "no_sf", "sf"),
                          seed = seed
                         )
+  
+  return(diet_ml_inputs)
 }
 

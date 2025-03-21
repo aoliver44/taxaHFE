@@ -44,28 +44,30 @@ train_metadata <- rsample::training(tr_te_split)
 test_metadata  <- rsample::testing(tr_te_split)
 
 # Run taxaHFE-ML
-method_levels(hdata = hData,
-              metadata = metadata,
-              prevalence = opts$prevalence,
-              abundance = opts$prevalence,
-              lowest_level = opts$lowest_level,
-              max_level = opts$max_level,
-              cor_level = 0.1, # low cor_level for speed - makes almost everything a correlation battle (becase the battles dont matter, only the tree)
-              ncores = opts$ncores,
-              feature_type = opts$feature_type,
-              nperm = opts$nperm,
-              disable_super_filter = opts$disable_super_filter,
-              write_both_outputs = opts$write_both_outputs,
-              write_flattened_tree = opts$write_flattened_tree,
-              target_list = diet_ml_inputs,
-              col_names = colnames(hData)[2:NCOL(hData)],
-              output = opts$OUTPUT,
-              seed = opts$seed,
-              random_effects = random_effects
+diet_ml_inputs <- method_levels(
+  hdata = hData,
+  metadata = metadata,
+  prevalence = opts$prevalence,
+  abundance = opts$prevalence,
+  lowest_level = opts$lowest_level,
+  max_level = opts$max_level,
+  cor_level = 0.1,
+  # low cor_level for speed - makes almost everything a correlation battle (becase the battles dont matter, only the tree)
+  ncores = opts$ncores,
+  feature_type = opts$feature_type,
+  nperm = opts$nperm,
+  disable_super_filter = opts$disable_super_filter,
+  write_both_outputs = opts$write_both_outputs,
+  write_flattened_tree = opts$write_flattened_tree,
+  target_list = diet_ml_inputs,
+  col_names = colnames(hData)[2:NCOL(hData)],
+  output = opts$OUTPUT,
+  seed = opts$seed,
+  random_effects = opts$random_effects
 )
 
 ## make sure test train in each item of list
-split_train_data(target_list = diet_ml_inputs, attribute_name = "train_test_attr", seed = opts$seed)
+diet_ml_inputs <- split_train_data(target_list = diet_ml_inputs, attribute_name = "train_test_attr", seed = opts$seed)
 
 ## create df for dietML to parse
 diet_ml_input_df <- extract_attributes(items_list = diet_ml_inputs)
