@@ -45,35 +45,36 @@ train_metadata <- rsample::training(tr_te_split)
 test_metadata  <- rsample::testing(tr_te_split)
 
 # Run taxaHFE-ML
-method_taxa_hfe_ml(hdata = hData,
-                  metadata = metadata,
-                  prevalence = opts$prevalence, 
-                  abundance = opts$abundance,
-                  lowest_level = opts$lowest_level,
-                  max_level = opts$max_level,
-                  cor_level = opts$cor_level,
-                  ncores = opts$ncores,
-                  feature_type = opts$feature_type,
-                  nperm = opts$nperm,
-                  disable_super_filter = opts$disable_super_filter,
-                  write_both_outputs = opts$write_both_outputs,
-                  write_flattened_tree = opts$write_flattened_tree,
-                  train_split = opts$train_split,
-                  model = opts$model,
-                  folds = opts$folds,
-                  metric = opts$metric,
-                  tune_length = opts$tune_length,
-                  tune_time = opts$tune_time,
-                  tune_stop = opts$tune_stop,
-                  shap = opts$shap,
-                  target_list = diet_ml_inputs,
-                  output = opts$OUTPUT,
-                  seed = opts$seed,
-                  random_effects = opts$random_effects
+diet_ml_inputs <- method_taxa_hfe_ml(
+  hdata = hData,
+  metadata = metadata,
+  prevalence = opts$prevalence,
+  abundance = opts$abundance,
+  lowest_level = opts$lowest_level,
+  max_level = opts$max_level,
+  cor_level = opts$cor_level,
+  ncores = opts$ncores,
+  feature_type = opts$feature_type,
+  nperm = opts$nperm,
+  disable_super_filter = opts$disable_super_filter,
+  write_both_outputs = opts$write_both_outputs,
+  write_flattened_tree = opts$write_flattened_tree,
+  train_split = opts$train_split,
+  model = opts$model,
+  folds = opts$folds,
+  metric = opts$metric,
+  tune_length = opts$tune_length,
+  tune_time = opts$tune_time,
+  tune_stop = opts$tune_stop,
+  shap = opts$shap,
+  target_list = diet_ml_inputs,
+  output = opts$OUTPUT,
+  seed = opts$seed,
+  random_effects = opts$random_effects
 )
 
 ## make sure test train in each item of list
-split_train_data(target_list = diet_ml_inputs, attribute_name = "train_test_attr", seed = opts$seed)
+diet_ml_inputs <- split_train_data(target_list = diet_ml_inputs, attribute_name = "train_test_attr", seed = opts$seed)
 
 ## create df for dietML to parse
 diet_ml_input_df <- extract_attributes(items_list = diet_ml_inputs)
@@ -83,4 +84,19 @@ diet_ml_input_df <- extract_attributes(items_list = diet_ml_inputs)
 write_list_to_csv(target_list = diet_ml_inputs, directory = dirname(opts$OUTPUT))
 
 ## pass to dietML if selected
-run_diet_ml(input_df = diet_ml_input_df, n_repeat = opts$permute)
+run_diet_ml(input_df = diet_ml_input_df, 
+            n_repeat = opts$permute, 
+            model = opts$model,
+            feature_type = opts$feature_type,
+            seed = opts$seed,
+            random_effects = opts$random_effects,
+            folds = opts$folds,
+            cor_level = opts$cor_level,
+            ncores = opts$ncores,
+            tune_length = opts$tune_length,
+            tune_stop = opts$tune_stop,
+            tune_time = opts$tune_time,
+            metric = opts$metric,
+            label = opts$label,
+            output = opts$OUTPUT,
+            shap = opts$shap)
