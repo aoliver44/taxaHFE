@@ -9,6 +9,7 @@
 
 ## load libraries & functions ==================================================
 source("lib/tree.R")
+source("lib/shap_plots.R")
 source("lib/options.R")
 source("lib/methods.R")
 
