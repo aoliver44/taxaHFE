@@ -20,6 +20,7 @@ suppressPackageStartupMessages(library(tidymodels, quietly = T, verbose = F, war
 library(fastshap, quietly = T, verbose = F, warn.conflicts = F)
 library(shapviz, quietly = T, verbose = F, warn.conflicts = F)
 library(doParallel, quietly = T, verbose = F, warn.conflicts = F)
+library(foreach, quietly = T, verbose = F, warn.conflicts = F)
 
 # trim outliers from mean feature abundance calc
 # UPDATE: intially we had at 0.02, for an outlier resistant mean
@@ -1672,8 +1673,6 @@ shap_analysis <- function(label, output, model, filename, shap_inputs, train, te
   } else {
     # --- SHAP analysis block ---
     result <- tryCatch({
-      
-      source("lib/shap_plots.R")  # loads shap_plot()
       
       shap_data_subsets <- list(list(split_from_data_frame$data, "full"), list(train, "train"), list(test, "test"))
       
