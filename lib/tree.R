@@ -1812,6 +1812,37 @@ shap_plot <- function(
   return(plot)
 }
 
+## This is a helper script to shorten the long names of shap plots. It doesnt
+## get used in this codebase, but its too got not to exist somewhere. 
+## TODO: If we organize code, this should live with the shap_analysis() code
+shap_shorten_colnames <- function(shap_sv_obj, splits) {
+  # Function to extract the last matching split and everything after it
+  shorten_name <- function(name, splits) {
+    matches <- sapply(splits, function(split) {
+      regexpr(split, name, fixed = TRUE)
+    })
+    
+    # Filter valid matches (not -1), and get the last one
+    valid_matches <- which(matches != -1)
+    if (length(valid_matches) == 0) {
+      return(name)  # no split found, return original
+    }
+    
+    last_match_pos <- max(matches[valid_matches])
+    substring(name, last_match_pos)
+  }
+  
+  # Apply shortening to all column names
+  new_colnames <- sapply(colnames(shap_sv_obj$X), shorten_name, splits = splits, USE.NAMES = FALSE)
+  
+  # Create new object with shortened column names
+  obj_new <- shap_sv_obj
+  colnames(obj_new$X) <- new_colnames
+  colnames(obj_new$S) <- new_colnames
+  
+  return(obj_new)
+}
+
 unregister_dopar <- function() {
   env <- foreach:::.foreachGlobals
   rm(list=ls(name=env), pos=env)
