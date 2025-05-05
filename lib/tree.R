@@ -15,11 +15,11 @@ library(vroom, quietly = T, verbose = F, warn.conflicts = F)
 library(tidyselect, quietly = T, verbose = F, warn.conflicts = F)
 library(recipes, quietly = T, verbose = F, warn.conflicts = F)
 library(mikropml, quietly = T, verbose = F, warn.conflicts = F)
-library(ggplot2, quietly = T, verbose = F, warn.conflicts = F)
+suppressPackageStartupMessages(library(ggplot2, quietly = T, verbose = F, warn.conflicts = F))
 suppressPackageStartupMessages(library(tidymodels, quietly = T, verbose = F, warn.conflicts = F))
 library(fastshap, quietly = T, verbose = F, warn.conflicts = F)
 library(shapviz, quietly = T, verbose = F, warn.conflicts = F)
-library(doParallel, quietly = T, verbose = F, warn.conflicts = F)
+suppressPackageStartupMessages(library(doParallel, quietly = T, verbose = F, warn.conflicts = F))
 library(foreach, quietly = T, verbose = F, warn.conflicts = F)
 
 # trim outliers from mean feature abundance calc
