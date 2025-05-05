@@ -1652,17 +1652,17 @@ shap_analysis <- function(label, output, model, filename, shap_inputs, train, te
     pfun <- function(object, newdata) {
       preds <- predict(object, data = newdata)$predictions
       class_level <- levels(as.factor(split_from_data_frame$data$feature_of_interest))[1]
-      print("Binary classification prediction:")
-      print(head(preds))
-      print(paste("Using class level:", class_level))
+      #print("Binary classification prediction:") ## print commands in pfun() there for debugging
+      #print(head(preds))
+      #print(paste("Using class level:", class_level))
       return(preds[, class_level])
     }
   } else if (type == "regression" && model == "rf") {
     # Regression
     pfun <- function(object, newdata) {
       preds <- predict(object, data = newdata)$predictions
-      print("Regression prediction:")
-      print(head(preds))
+      #print("Regression prediction:")
+      #print(head(preds))
       return(preds)
     }
   }
