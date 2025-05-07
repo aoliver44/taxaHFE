@@ -15,10 +15,12 @@ library(vroom, quietly = T, verbose = F, warn.conflicts = F)
 library(tidyselect, quietly = T, verbose = F, warn.conflicts = F)
 library(recipes, quietly = T, verbose = F, warn.conflicts = F)
 library(mikropml, quietly = T, verbose = F, warn.conflicts = F)
-library(ggplot2, quietly = T, verbose = F, warn.conflicts = F)
+suppressPackageStartupMessages(library(ggplot2, quietly = T, verbose = F, warn.conflicts = F))
 suppressPackageStartupMessages(library(tidymodels, quietly = T, verbose = F, warn.conflicts = F))
 library(fastshap, quietly = T, verbose = F, warn.conflicts = F)
 library(shapviz, quietly = T, verbose = F, warn.conflicts = F)
+suppressPackageStartupMessages(library(doParallel, quietly = T, verbose = F, warn.conflicts = F))
+library(foreach, quietly = T, verbose = F, warn.conflicts = F)
 
 # trim outliers from mean feature abundance calc
 # UPDATE: intially we had at 0.02, for an outlier resistant mean
@@ -1336,7 +1338,8 @@ pass_to_dietML <- function(train, test, model, program, seed, random_effects, fo
                   shap_inputs = shap_inputs,
                   train = train,
                   test = test,
-                  type = type)
+                  type = type,
+                  ncores = ncores)
   }
 }
 
@@ -1629,207 +1632,216 @@ run_null_model <- function(train, test, seed, type, cor_level, random_effects, o
   
 }
 
-shap_analysis <- function(label, output, model, filename, shap_inputs, train, test, type) {
+shap_analysis <- function(label, output, model, filename, shap_inputs, train, test, type, ncores) {
   
-  ## read in shap inputs
+  # --- Load SHAP inputs ---
   split_from_data_frame <- shap_inputs$split_from_data_frame
   best_tidy_workflow <- shap_inputs$best_tidy_workflow
   diet_ml_recipe <- shap_inputs$diet_ml_recipe
   
+  # --- Setup ---
+  shap_plot_env <- new.env()
   shap.error.occured <- FALSE
+  error_message <- NULL
+  output_dir <- file.path(dirname(output), "ml_analysis")
   
-  tryCatch( { if (length(levels(as.factor(split_from_data_frame$data$feature_of_interest))) == 2) {
-    
-    ## Prediction wrapper
+  # --- Define prediction wrapper (pfun) ---
+  pfun <- NULL
+  if (length(levels(as.factor(split_from_data_frame$data$feature_of_interest))) == 2) {
+    # Binary classification
     pfun <- function(object, newdata) {
-      predict(object, data = newdata)$predictions[, levels(as.factor(split_from_data_frame$data$feature_of_interest))[1]]
+      preds <- predict(object, data = newdata)$predictions
+      class_level <- levels(as.factor(split_from_data_frame$data$feature_of_interest))[1]
+      #print("Binary classification prediction:") ## print commands in pfun() there for debugging
+      #print(head(preds))
+      #print(paste("Using class level:", class_level))
+      return(preds[, class_level])
     }
-    
-    ## full data:
-    
-    ## pull model out of workflow
-    best_workflow <- best_tidy_workflow %>%
-      parsnip::fit(split_from_data_frame$data)
-    best_workflow_mod <- workflows::extract_fit_parsnip(best_workflow)
-    
-    ## pull out data
-    shap_data_full <- recipes::prep(diet_ml_recipe, split_from_data_frame$data) %>% 
-      recipes::juice() %>% 
-      dplyr::select(-feature_of_interest, -subject_id) 
-    
-    ## explain with fastshap
-    shap_explainations_full <- fastshap::explain(best_workflow_mod$fit, X = shap_data_full, pred_wrapper = pfun, nsim = 100, adjust = TRUE)
-    
-    ## make shap viz object
-    sv_full <- shapviz::shapviz(shap_explainations_full, X = shap_data_full)
-    
-    ## make shap plot
-    importance_plot_full_1 <- shapviz::sv_importance(sv_full, kind = "bee", show_numbers = TRUE, bee_width = 0.2, max_display = 10) + 
-      ggtitle(label = paste0("SHAP: ", label, " (full data)")) + 
-      labs(x = paste0("predictive of ", levels(as.factor(split_from_data_frame$data$feature_of_interest))[2], " < SHAP > ", "predictive of ", levels(as.factor(split_from_data_frame$data$feature_of_interest))[1])) + 
-      theme_bw(base_size = 14)
-    ggplot2::ggsave(plot = importance_plot_full_1, filename = paste0(dirname(output), "/ml_analysis/shap_", filename, "_full.pdf"), width = pmax((0.1 * max(nchar(colnames(sv_full$X)))), 6), height = 4.5, units = "in")
-    
-   
-    ## training data:
-     
-    ## Prediction wrapper: first level (ie if levels are high, low, this is high)
+  } else if (type == "regression" && model == "rf") {
+    # Regression
     pfun <- function(object, newdata) {
-      predict(object, data = newdata)$predictions[, levels(as.factor(split_from_data_frame$data$feature_of_interest))[1]]
+      preds <- predict(object, data = newdata)$predictions
+      #print("Regression prediction:")
+      #print(head(preds))
+      return(preds)
     }
-    
-    ## pull model out of workflow
-    best_workflow <- best_tidy_workflow %>%
-      parsnip::fit(train)
-    best_workflow_mod <- workflows::extract_fit_parsnip(best_workflow)
-    
-    ## pull out data
-    shap_data_train <- recipes::prep(diet_ml_recipe, train) %>% 
-      recipes::juice() %>% 
-      dplyr::select(-feature_of_interest, -subject_id) 
-    
-    ## explain with fastshap
-    shap_explainations_train <- fastshap::explain(best_workflow_mod$fit, X = shap_data_train, pred_wrapper = pfun, nsim = 100, adjust = TRUE)
-    
-    ## make shap viz object
-    sv_train <- shapviz::shapviz(shap_explainations_train, X = shap_data_train)
-    
-    ## make shap plot
-    importance_plot_train_1 <- shapviz::sv_importance(sv_train, kind = "bee", show_numbers = TRUE, bee_width = 0.2, max_display = 10) + 
-      ggtitle(label = paste0("SHAP: ", label, " (train data)")) + 
-      labs(x = paste0("predictive of ", levels(as.factor(split_from_data_frame$data$feature_of_interest))[2], " < SHAP > ", "predictive of ", levels(as.factor(split_from_data_frame$data$feature_of_interest))[1])) + 
-      theme_bw(base_size = 14)
-    ggplot2::ggsave(plot = importance_plot_train_1, filename = paste0(dirname(output), "/ml_analysis/shap_", filename, "_train.pdf"), width = pmax((0.1 * max(nchar(colnames(sv_train$X)))), 6), height = 4.5, units = "in")
-    
-    ## test data:
-    
-    ## Prediction wrapper: second level (ie if levels are high, low, this is low)
-    pfun <- function(object, newdata) {
-      predict(object, data = newdata)$predictions[, levels(as.factor(split_from_data_frame$data$feature_of_interest))[1]]
-    }
-    
-    ## pull model out of workflow
-    best_workflow <- best_tidy_workflow %>%
-      parsnip::fit(test)
-    best_workflow_mod <- workflows::extract_fit_parsnip(best_workflow)
-    
-    ## pull out data
-    shap_data_test<- recipes::prep(diet_ml_recipe, test) %>% 
-      recipes::juice() %>% 
-      dplyr::select(-feature_of_interest, -subject_id) 
-    
-    ## explain with fastshap
-    shap_explainations_test <- fastshap::explain(best_workflow_mod$fit, X = shap_data_test, pred_wrapper = pfun, nsim = 100, adjust = TRUE)
-    
-    ## make shap viz object
-    sv_test <- shapviz::shapviz(shap_explainations_test, X = shap_data_test)
-    
-    ## make shap plot
-    importance_plot_test_1 <- shapviz::sv_importance(sv_test, kind = "bee", show_numbers = TRUE, bee_width = 0.2, max_display = 10) + 
-      ggtitle(label = paste0("SHAP: ", label, " (test data)")) + 
-      labs(x = paste0("predictive of ", levels(as.factor(split_from_data_frame$data$feature_of_interest))[2], " < SHAP > ", "predictive of ", levels(as.factor(split_from_data_frame$data$feature_of_interest))[1])) + 
-      theme_bw(base_size = 14)
-    ggplot2::ggsave(plot = importance_plot_test_1, filename = paste0(dirname(output), "/ml_analysis/shap_", filename, "_test.pdf"), width = pmax((0.1 * max(nchar(colnames(sv_test$X)))), 6), height = 4.5, units = "in")
-    
-  } 
-    
-    if ((type == "regression") && (model == "rf")) {
-      
-      ## full data (regression):
-      
-      ## Prediction wrapper
-      pfun <- function(object, newdata) {
-        predict(object, data = newdata)$predictions
-      }
-      
-      ## pull model out of workflow
-      best_workflow <- best_tidy_workflow %>%
-        parsnip::fit(split_from_data_frame$data)
-      best_workflow_mod <- workflows::extract_fit_parsnip(best_workflow)
-      
-      ## pull out data
-      shap_data_full <- recipes::prep(diet_ml_recipe, split_from_data_frame$data) %>% 
-        recipes::juice() %>% 
-        dplyr::select(-feature_of_interest, -subject_id) 
-      
-      ## explain with fastshap
-      shap_explainations_full <- fastshap::explain(best_workflow_mod$fit, X = shap_data_full, pred_wrapper = pfun, nsim = 100, adjust = TRUE)
-      
-      ## make shap viz object
-      sv_full <- shapviz::shapviz(shap_explainations_full, X = shap_data_full)
-      
-      ## make shap plot
-      importance_plot_full <- shapviz::sv_importance(sv_full, kind = "bee", show_numbers = TRUE, bee_width = 0.2, max_display = 10) + 
-        ggtitle(label = paste0("SHAP: ", label, " (full data)")) + theme_bw(base_size = 14)
-      ggplot2::ggsave(plot = importance_plot_full, filename = paste0(dirname(output), "/ml_analysis/shap_", filename, "_full.pdf"), width = pmax((0.1 * max(nchar(colnames(sv_full$X)))), 6), height = 4.5, units = "in")
-      
-      ## training data (regression):
-      
-      ## Prediction wrapper
-      pfun <- function(object, newdata) {
-        predict(object, data = newdata)$predictions
-      }
-      
-      ## pull model out of workflow
-      best_workflow <- best_tidy_workflow %>%
-        parsnip::fit(train)
-      best_workflow_mod <- workflows::extract_fit_parsnip(best_workflow)
-      
-      ## pull out data
-      shap_data_train <- recipes::prep(diet_ml_recipe, train) %>% 
-        recipes::juice() %>% 
-        dplyr::select(-feature_of_interest, -subject_id) 
-      
-      ## explain with fastshap
-      shap_explainations_train <- fastshap::explain(best_workflow_mod$fit, X = shap_data_train, pred_wrapper = pfun, nsim = 100, adjust = TRUE)
-      
-      ## make shap viz object
-      sv_train <- shapviz::shapviz(shap_explainations_train, X = shap_data_train)
-      
-      ## make shap plot
-      importance_plot_train <- shapviz::sv_importance(sv_train, kind = "bee", show_numbers = TRUE, bee_width = 0.2, max_display = 10) + 
-        ggtitle(label = paste0("SHAP: ", label, " (train)")) + theme_bw(base_size = 14)
-      ggplot2::ggsave(plot = importance_plot_train, filename = paste0(dirname(output), "/ml_analysis/shap_", filename, "_train.pdf"), width = pmax((0.1 * max(nchar(colnames(sv_train$X)))), 6), height = 4.5, units = "in")
-      
-      ## test data (regression):
-      
-      ## Prediction wrapper
-      pfun <- function(object, newdata) {
-        predict(object, data = newdata)$predictions
-      }
-      
-      ## pull model out of workflow
-      best_workflow <- best_tidy_workflow %>%
-        parsnip::fit(test)
-      best_workflow_mod <- workflows::extract_fit_parsnip(best_workflow)
-      
-      ## pull out data
-      shap_data_test <- recipes::prep(diet_ml_recipe, test) %>% 
-        recipes::juice() %>% 
-        dplyr::select(-feature_of_interest, -subject_id) 
-      
-      ## explain with fastshap
-      shap_explainations_test <- fastshap::explain(best_workflow_mod$fit, X = shap_data_test, pred_wrapper = pfun, nsim = 100, adjust = TRUE)
-      
-      ## make shap viz object
-      sv_test <- shapviz::shapviz(shap_explainations_test, X = shap_data_test)
-      
-      ## make shap plot
-      importance_plot_test <- shapviz::sv_importance(sv_test, kind = "bee", show_numbers = TRUE, bee_width = 0.2, max_display = 10) + 
-        ggtitle(label = paste0("SHAP: ", label, " (test)")) + theme_bw(base_size = 14)
-      ggplot2::ggsave(plot = importance_plot_test, filename = paste0(dirname(output), "/ml_analysis/shap_", filename, "_test.pdf"), width = pmax((0.1 * max(nchar(colnames(sv_test$X)))), 6), height = 4.5, units = "in")
-      
-    }
-    
-  }, error = function(e) {shap.error.occured <<- TRUE} )
-  
-  if (shap.error.occured == TRUE) {
-    message("SHAP analysis could not be completed")
   }
   
+  if (is.null(pfun)) {
+    message("Error: Could not define prediction function (pfun). Check model and type inputs.")
+    shap.error.occured <- TRUE
+  } else {
+    # --- SHAP analysis block ---
+    result <- tryCatch({
+      
+      shap_data_subsets <- list(list(split_from_data_frame$data, "full"), list(train, "train"), list(test, "test"))
+      
+      if (ncores > 1) {
+        parallel_shap <- TRUE
+        doParallel::registerDoParallel(cores = ncores)
+      } else {
+        parallel_shap <- FALSE
+      }
+      
+      for (i in seq_along(shap_data_subsets)) {
+        # Fit the model
+        best_workflow <- parsnip::fit(best_tidy_workflow, shap_data_subsets[[i]][[1]])
+        best_workflow_mod <- workflows::extract_fit_parsnip(best_workflow)
+        
+        # Prepare data
+        shap_data <- recipes::prep(diet_ml_recipe, shap_data_subsets[[i]][[1]]) %>%
+          recipes::juice() %>%
+          dplyr::select(-feature_of_interest, -subject_id)
+        
+        # Compute SHAP values
+        shap_explanations <- fastshap::explain(
+          object = best_workflow_mod$fit,
+          X = shap_data,
+          pred_wrapper = pfun,
+          nsim = 500,
+          adjust = TRUE,
+          parallel = parallel_shap
+        )
+        
+        # SHAP object for plotting
+        sv <- shapviz::shapviz(shap_explanations, X = shap_data)
+        
+        # Generate and save plot
+        plot <- shap_plot(
+          sv = sv,
+          label = label,
+          data_subset_label = shap_data_subsets[[i]][[2]],
+          split_from_data_frame = split_from_data_frame,
+          filename = filename,
+          output_dir = output_dir,
+          data_subset_index = i
+        )
+        
+        ## these next lines save objects so that shapviz and be re-plotted
+        assign(paste0("shap_data_", shap_data_subsets[[i]][[2]]), shap_data, envir = shap_plot_env)
+        assign(paste0("shap_explanations_", shap_data_subsets[[i]][[2]]), shap_explanations, envir = shap_plot_env)
+        assign(paste0("sv_", shap_data_subsets[[i]][[2]]), sv, envir = shap_plot_env)
+        assign(paste0("plot_", shap_data_subsets[[i]][[2]]), plot, envir = shap_plot_env)
+        
+      }
+      
+      ## more things to save, outside the for-loop
+      assign("split_from_data_frame", split_from_data_frame, envir = shap_plot_env)
+      assign("label", label, envir = shap_plot_env)
+      
+    }, error = function(e) {
+      shap.error.occured <<- TRUE
+      error_message <<- e$message
+      NULL
+    })
+  }
+  
+  # --- Save and return results ---
+  if (shap.error.occured) {
+    message("❌ SHAP analysis could not be completed.")
+    if (!is.null(error_message)) {
+      message("Error: ", error_message)
+    }
+  } else {
+    message("✅ SHAP analysis completed successfully.")
+    save(list = ls(envir = shap_plot_env), 
+      envir = shap_plot_env,
+      file = file.path(paste0(output_dir, "/shap_inputs_", filename, ".RData")),
+      compress = "gzip"
+    )
+  }
+  
+  return(invisible(list(
+    success = !shap.error.occured,
+    shap_plot_env = shap_plot_env,
+    error_message = error_message
+  )))
 }
 
+shap_plot <- function(
+    sv,
+    label,
+    data_subset_label,
+    split_from_data_frame,
+    filename,
+    output_dir,
+    data_subset_index
+) {
+  # Ensure output directory exists
+  if (!dir.exists(output_dir)) {
+    dir.create(output_dir, recursive = TRUE)
+  }
+  
+  # Determine class labels (assumes binary classification)
+  class_levels <- levels(as.factor(split_from_data_frame$data$feature_of_interest))
+  if (length(class_levels) < 2) {
+    stop("Insufficient factor levels for feature_of_interest.")
+  }
+  
+  # Create plot
+  ## MODIFY THESE PARAMETERS IF YOU WANT THE PLOT TO LOOK DIFFERENTLY!!
+  plot <- shapviz::sv_importance(
+    sv,
+    kind = "bee",
+    show_numbers = TRUE,
+    bee_width = 0.2,
+    max_display = 10
+  ) +
+    ggtitle(label = paste0("SHAP: ", label, " (", data_subset_label, ")")) +
+    labs(x = paste0(
+      "predictive of ",
+      class_levels[2],
+      " < SHAP > predictive of ",
+      class_levels[1]
+    )) +
+    theme_bw(base_size = 14)
+  
+  # Construct filename and save plot
+  filename_out <- file.path(output_dir, paste0("shap_", filename, "_", data_subset_label, ".pdf"))
+  
+  ggplot2::ggsave(
+    plot = plot,
+    filename = filename_out,
+    width = pmax(0.1 * max(nchar(colnames(sv$X))), 6),
+    height = 4.5,
+    units = "in"
+  )
+  
+  message("SHAP plot saved to: ", filename_out)
+  
+  return(plot)
+}
 
+## This is a helper script to shorten the long names of shap plots. It doesnt
+## get used in this codebase, but its too got not to exist somewhere. 
+## TODO: If we organize code, this should live with the shap_analysis() code
+shap_shorten_colnames <- function(shap_sv_obj, splits) {
+  # Function to extract the last matching split and everything after it
+  shorten_name <- function(name, splits) {
+    matches <- sapply(splits, function(split) {
+      regexpr(split, name, fixed = TRUE)
+    })
+    
+    # Filter valid matches (not -1), and get the last one
+    valid_matches <- which(matches != -1)
+    if (length(valid_matches) == 0) {
+      return(name)  # no split found, return original
+    }
+    
+    last_match_pos <- max(matches[valid_matches])
+    substring(name, last_match_pos)
+  }
+  
+  # Apply shortening to all column names
+  new_colnames <- sapply(colnames(shap_sv_obj$X), shorten_name, splits = splits, USE.NAMES = FALSE)
+  
+  # Create new object with shortened column names
+  obj_new <- shap_sv_obj
+  colnames(obj_new$X) <- new_colnames
+  colnames(obj_new$S) <- new_colnames
+  
+  return(obj_new)
+}
 
 unregister_dopar <- function() {
   env <- foreach:::.foreachGlobals
