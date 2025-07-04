@@ -423,6 +423,7 @@ compete_node <- function(node, col_names, lowest_level, max_level, corr_threshol
   if (node$level < lowest_level) {
     return()
   }
+  # skip anything higher than max_level (exclusive)
   if (node$level > max_level) {
     return()
   }
@@ -435,8 +436,12 @@ compete_node <- function(node, col_names, lowest_level, max_level, corr_threshol
 
   # handle no children, this node is the winner
   # also considers a node a winner if it is at the max_level
-  if (length(node$children) == 0 || node$level == max_level) {
+  if (length(node$children) == 0) {
     node$outcomes <- append(node$outcomes, "win: no children")
+    node$winner <- TRUE
+    return()
+  } else if (node$level == max_level) {
+    node$outcomes <- append(node$outcomes, "win: max_level reached")
     node$winner <- TRUE
     return()
   }
