@@ -556,10 +556,10 @@ compete_node <- function(node, col_names, lowest_level, max_level, corr_threshol
 ## compete all winners (final RF) ==============================================
 # compete all winners, updating the tree in the process
 # TODO: combine the overlaps in this code with the code in the function above
-compete_all_winners <- function(tree, metadata, col_names, feature_type, nperm, ncores, random_effects) {
+compete_all_winners <- function(tree, metadata, col_names, feature_type, nperm, ncores, random_effects, max_level) {
   # all vs all competition with winners
   # skipped rows have winner = FALSE so won't appear in this list
-  competitors <- get_descendant_winners(tree, tree$height)
+  competitors <- get_descendant_winners(tree, max_level)
   if (length(competitors) == 0) {
     return()
   }
@@ -668,7 +668,8 @@ compete_tree <- function(tree, modify_tree = TRUE, col_names, lowest_level = 2, 
       feature_type = feature_type,
       nperm = nperm * 10,
       ncores = ncores,
-      random_effects
+      random_effects,
+      max_level
     )
   } else {
     cat(" Skipping super filter\n")
