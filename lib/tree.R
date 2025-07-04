@@ -451,7 +451,7 @@ compete_node <- function(node, col_names, lowest_level, max_level, corr_threshol
   df <- rbind(data.frame(), node$abundance)
   row_names <- c(node$id)
 
-  descendant_winners <- get_descendant_winners(node)
+  descendant_winners <- get_descendant_winners(node, max_level)
   # if no descendant winners, the parent is the winner
   # TODO: is this possible? should it be indicated somehow to the end user?
   if (length(descendant_winners) == 0) {
