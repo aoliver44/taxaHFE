@@ -276,15 +276,14 @@ write_oudah_input <- function(input, output) {
   
 }
 
-## get descenant winners =======================================================
+## get descendant winners =======================================================
 # get_descendant_winners goes through the descendants of node, returning a list of all found winners
-# maxDepth defines how deep the winner function will go to find a winner
+# if the node level is equal to max_level it can't have any descendant winners by definition, so this function returns an empty list
 get_descendant_winners <- function(node, max_level) {
   winners <- list()
 
-  # if maxDepth is zero, this is the bottom
-  # return an empty list as no further generations will be considered
-  if (max_level == 0) {
+  # if the node level is equal to max_level it can't have any descendant winners by definition
+  if (node$level == max_level) {
     return(winners)
   }
 
@@ -296,7 +295,7 @@ get_descendant_winners <- function(node, max_level) {
     }
 
     # otherwise, check the child's children for winners
-    winners <- append(winners, get_descendant_winners(child, max_level - 1))
+    winners <- append(winners, get_descendant_winners(child, max_level))
   }
 
   return(winners)
@@ -424,6 +423,10 @@ compete_node <- function(node, col_names, lowest_level, max_level, corr_threshol
   if (node$level < lowest_level) {
     return()
   }
+  # skip anything higher than max_level (exclusive)
+  if (node$level > max_level) {
+    return()
+  }
 
   ## do not consider children that do not pass abundance and prevalence filters
   if (!node$passed_prevalence_filter || !node$passed_mean_abundance_filter) {
@@ -432,8 +435,13 @@ compete_node <- function(node, col_names, lowest_level, max_level, corr_threshol
   }
 
   # handle no children, this node is the winner
+  # also considers a node a winner if it is at the max_level
   if (length(node$children) == 0) {
     node$outcomes <- append(node$outcomes, "win: no children")
+    node$winner <- TRUE
+    return()
+  } else if (node$level == max_level) {
+    node$outcomes <- append(node$outcomes, "win: max_level reached")
     node$winner <- TRUE
     return()
   }
@@ -548,10 +556,10 @@ compete_node <- function(node, col_names, lowest_level, max_level, corr_threshol
 ## compete all winners (final RF) ==============================================
 # compete all winners, updating the tree in the process
 # TODO: combine the overlaps in this code with the code in the function above
-compete_all_winners <- function(tree, metadata, col_names, feature_type, nperm, ncores, random_effects) {
+compete_all_winners <- function(tree, metadata, col_names, feature_type, nperm, ncores, random_effects, max_level) {
   # all vs all competition with winners
   # skipped rows have winner = FALSE so won't appear in this list
-  competitors <- get_descendant_winners(tree, tree$height)
+  competitors <- get_descendant_winners(tree, max_level)
   if (length(competitors) == 0) {
     return()
   }
@@ -660,7 +668,8 @@ compete_tree <- function(tree, modify_tree = TRUE, col_names, lowest_level = 2, 
       feature_type = feature_type,
       nperm = nperm * 10,
       ncores = ncores,
-      random_effects
+      random_effects,
+      max_level
     )
   } else {
     cat(" Skipping super filter\n")
