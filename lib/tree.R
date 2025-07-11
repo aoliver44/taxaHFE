@@ -1654,6 +1654,14 @@ shap_analysis <- function(label, output, model, filename, shap_inputs, train, te
   shap.error.occured <- FALSE
   error_message <- NULL
   output_dir <- file.path(dirname(output), "ml_analysis")
+
+  ## save some initial inputs to env, in case the below 
+  ## shap analysis does not finish. Occasionaly it does not finish on
+  ## the "test" dataset. Which is fine, i cant think of why that is used.
+  ## But if it fails, we still want as much data returned as possible, so 
+  ## that is why we return everything prior to returning the test shap data
+  assign("split_from_data_frame", split_from_data_frame, envir = shap_plot_env)
+  assign("label", label, envir = shap_plot_env)
   
   # --- Define prediction wrapper (pfun) ---
   pfun <- NULL
@@ -1734,10 +1742,7 @@ shap_analysis <- function(label, output, model, filename, shap_inputs, train, te
         assign(paste0("plot_", shap_data_subsets[[i]][[2]]), plot, envir = shap_plot_env)
         
       }
-      
-      ## more things to save, outside the for-loop
-      assign("split_from_data_frame", split_from_data_frame, envir = shap_plot_env)
-      assign("label", label, envir = shap_plot_env)
+
       
     }, error = function(e) {
       shap.error.occured <<- TRUE
