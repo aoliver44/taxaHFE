@@ -1749,7 +1749,14 @@ shap_analysis <- function(label, output, model, filename, shap_inputs, train, te
   # --- Save and return results ---
   if (shap.error.occured) {
     message("❌ SHAP analysis could not be completed.")
-    if (!is.null(error_message)) {
+    if (!is.null(error_message)) { 
+      ## attempt to still return what was written to shap_plot_env
+      save(list = ls(envir = shap_plot_env), 
+      envir = shap_plot_env,
+      file = file.path(paste0(output_dir, "/shap_inputs_", filename, ".RData")),
+      compress = "gzip"
+    )
+      ## return error message
       message("Error: ", error_message)
     }
   } else {
