@@ -35,13 +35,13 @@ test_that("initialize_parser works as expected", {
       .package = 'argparse'
     )
 
-    expect_error(parser$parse_args(flags), "METADATA DATA OUTPUT")
+    expect_error(parser$parse_args(flags), "METADATA DATA")
     expect_error(parser$parse_args(flags), program)
     expect_error(parser$parse_args(flags), description)
   })
 
-  test_that("parser requires 3 positional arguments for the files", {
-    not_enough_positional_args <- list(c(), c("m"), c("m", "d"))
+  test_that("parser requires 2 positional arguments for the files", {
+    not_enough_positional_args <- list(c(), c("m"), c("d"))
     # mock this method from the argparse package so it doesn't call quit but still raises the error it would have with stop()
     local_mocked_bindings(
       print_message_and_exit = function(message, x) stop(message),
@@ -54,21 +54,20 @@ test_that("initialize_parser works as expected", {
   })
 
   test_that("positional arguments for files are parsed correctly", {
-    flags <- c("m", "d", "o")
+    flags <- c("m", "d")
     opts <- parser$parse_args(flags)
     expect_equal(opts$METADATA, flags[1])
     expect_equal(opts$DATA, flags[2])
-    expect_equal(opts$OUTPUT, flags[3])
   })
 
   test_that("data_dir flag behaves correctly", {
     # default
-    flags <- str_split_1("m d o", " ")
+    flags <- str_split_1("m d", " ")
     opts <- parser$parse_args(flags)
     expect_equal(opts$data_dir, ".")
 
     # set another value
-    flags <- str_split_1("--data_dir /data m d o", " ")
+    flags <- str_split_1("--data_dir /data m d", " ")
     opts <- parser$parse_args(flags)
     expect_equal(opts$data_dir, "/data")
   })
@@ -97,7 +96,7 @@ test_that("initialize_parser works as expected", {
       expect_error(parser$parse_args(flags), arg_group$args$foo$help)
     })
 
-    flags <- c("m", "d", "o", "-f", "baz")
+    flags <- c("m", "d", "-f", "baz")
     opts <- parser$parse_args(flags)
     expect_equal(opts$foo, "baz")
   })
@@ -142,21 +141,21 @@ test_that("load_args works correctly", {
 
   test_that("it sets the paths using --data_dir", {
     commandArgs <<- function(x) {
-      c("--data_dir", "/path", "m.txt", "d.txt", "o.txt")
+      c("--data_dir", "/path", "m.txt", "d.txt", "-o", "custom_outputs")
     }
 
     expect_no_error(opts <- load_args(program, description, argument_groups = list()))
     expect_equal(opts$METADATA, "/path/m.txt")
     expect_equal(opts$DATA, "/path/d.txt")
-    expect_equal(opts$OUTPUT, "/path/o.txt")
+    expect_equal(opts$output_dir, "/path/custom_outputs")
   })
 
   test_that("ignores --data_dir when paths are already linked to real files", {
     # need to create tmp files so they will be detected and no resolved against
-    tmp_files <- list("/tmp/m.txt", "/tmp/d.txt", "/tmp/o.txt")
-    for (f in tmp_files) {
-      file.create(f)
-    }
+    tmp_files <- list("/tmp/m.txt", "/tmp/d.txt", "-o", "/tmp/custom_outputs")
+    file.create("/tmp/m.txt")
+    file.create("/tmp/d.txt")
+    dir.create("/tmp/custom_outputs")
 
     commandArgs <<- function(x) {
       c("--data_dir", "/path", tmp_files)
@@ -165,7 +164,7 @@ test_that("load_args works correctly", {
     expect_no_error(opts <- load_args(program, description, argument_groups = list()))
     expect_equal(opts$METADATA, "/tmp/m.txt")
     expect_equal(opts$DATA, "/tmp/d.txt")
-    expect_equal(opts$OUTPUT, "/tmp/o.txt")
+    expect_equal(opts$output_dir, "/tmp/custom_outputs")
   })
 
   test_that("load_args() always sets the global seed", {
@@ -175,7 +174,7 @@ test_that("load_args works correctly", {
       # no seed set
       # will use default_seed()
       commandArgs <<- function(x) {
-        c("m", "d", "o")
+        c("m", "d")
       }
       
       # cache the random seed vector and ensure that it is different after running load args
@@ -189,7 +188,7 @@ test_that("load_args works correctly", {
       seed <- 42
       # will be used directly in set.seed()
       commandArgs <<- function(x) {
-        c("--seed", as.character(seed), "m", "d", "o")
+        c("--seed", as.character(seed), "m", "d")
       }
 
       # cache the random seed vector and ensure that it is different after running load args
@@ -245,7 +244,7 @@ test_that("program arg loaders work", {
   program <- "TEST123"
   description <- "testing parser"
   commandArgs <<- function(x) {
-    c("m", "d", "o")
+    c("m", "d")
   }
 
   # mapping of parser to the flags it handles, including a value to test setting the flag with
@@ -284,7 +283,7 @@ test_that("program arg loaders work", {
   test_that("parsers set flags as expected", {
     expect_true(TRUE)
 
-    base_flags <- c("m.txt", "d.txt", "o.txt")
+    base_flags <- c("m.txt", "d.txt")
 
     for (parser_name in names(parser_flag_values_map)) {
       parser_flag_values <- parser_flag_values_map[[parser_name]]

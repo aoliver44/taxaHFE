@@ -95,17 +95,17 @@ validators <- list(
 initialize_parser <- function(version, program_name, description, argument_groups) {
   parser <- argparse::ArgumentParser(
     description=description,
-    usage=paste(program_name, "[options] METADATA DATA OUTPUT"),
+    usage=paste(program_name, "[options] METADATA DATA"),
     formatter_class="type('CustomFormatter', (argparse.ArgumentDefaultsHelpFormatter, argparse.MetavarTypeHelpFormatter, argparse.RawTextHelpFormatter), {})"
   )
 
   # Common arguments for all programs
   parser$add_argument("METADATA", metavar="METADATA", type="character", help="path to metadata input (txt | tsv | csv)")
   parser$add_argument("DATA", metavar="DATA", type="character", help="path to input file from hierarchical data (i.e. hData data) (txt | tsv | csv)")
-  parser$add_argument("OUTPUT", metavar="OUTPUT", type="character", help="output file name (csv)")
 
+  parser$add_argument("-o", "--output_dir", type="character", metavar="<string>", default="outputs", help="Directory for the output files to be written. Defaults to a directory called 'outputs'")
   parser$add_argument("-v", "--version", action="version", version=version)
-  parser$add_argument("--data_dir", type="character", metavar="<string>", default=".", help="Directory for MEATDATA, DATA, and OUTPUT, ignored if using absolute paths. Defaults to the current directory")
+  parser$add_argument("--data_dir", type="character", metavar="<string>", default=".", help="Directory for MEATDATA, DATA, and output_dir, ignored if using absolute paths. Defaults to the current directory")
   parser$add_argument("--seed", type="numeric", metavar="<numeric>", default=default_seed(), help="Set a random numeric seed. If not set, defaults to system time")
 
   # add the arguments from the passed in argument_groups
@@ -160,7 +160,7 @@ load_args <- function(program_name, description, argument_groups) {
 
   # also normalize all input paths to the data_dir
   # will ignore the data_dir if the path links to valid file based on where the script is being run
-  for (f in list("METADATA", "DATA", "OUTPUT")) {
+  for (f in list("METADATA", "DATA", "output_dir")) {
     # lazyish check for abs path
     # change the file path to "data_dir / path" if the path doesn't start with "/"
     if (substr(opts[[f]], 0, 1) != "/") {
