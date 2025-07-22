@@ -1,38 +1,20 @@
 ![test workflow](https://github.com/aoliver44/taxaHFE/actions/workflows/test.yml/badge.svg)
-# **TaxaHFE** <a><img src='pictures/logo.png' align="right" height="150" /></a>
-  A program to perform hierarchical feature engineering on data with taxonomic organization (i.e., microbiome data, dietary data)
-## **Version 2.2 is now available!** 
-
-Version 2.2 of this algorithm makes solid advances, introducing ```TaxaHFE-ML```. If you want to understand your specific data set, rather than to build generalizable models, ```TaxaHFE``` is for you. IF you want to build generalizable or predictive models, ```TaxaHFE-ML``` may be a better tool. 
-
-Change log:
-- ```TaxaHFE-ML``` now splits data into train and test and runs the data through an ML pipeline, minimizing data leakage.
-- ```TaxaHFE-ML``` can help you determine the unbiased accuracy of your models (e.g. their generalizability on held-out data).
-
-Version 2 of this algorthim makes numerous advances over Version 1. While it is reasonably stable, please report any issues! We suggest you use Version 2! 
-
-Change log:
-- Now using ```data.tree``` to analyze hierarchical data using a tree-traversal strategy.
-- Children are allowed to compete against all ancestors as long as they keep winning hierarchical competitions.
-- TaxaHFE v2 selects far less features than TaxaHFE v1, for the same or better model performance.
-- Covariates can be considered in the RF models
-- TaxaHFE v2 can replicate TaxaHFE v1 by setting the flat ```--max_level 1```
-
------------------------------------
+# **TaxaHFE & TaxaHFE-ML** <a><img src='pictures/logo.png' align="right" height="150" /></a>
+  ```taxaHFE``` is program to perform hierarchical feature engineering on data with taxonomic organization (i.e., microbiome data, dietary data). ```taxaHFE-ML``` is a variation of ```taxaHFE``` which performs hierarchical feature engineering on a training and test set of data, and then assess the performance of the features using a random forest on the hierarchically feature engineered outputs. If the goal is to reduce your set of hierarchically organized features, use ```taxaHFE```. On the other hand, if the goal is to determine which features are most important in predicting an outcome of interest, we suggest using ```taxaHFE-ML```.
 
 ## **Table of Contents**
-- [Description](https://github.com/aoliver44/taxaHFE#description)
-- [Download taxaHFE](https://github.com/aoliver44/taxaHFE#download-taxahfe)
-- [Quickstart](https://github.com/aoliver44/taxaHFE#quickstart)
+- [Background on the algorithm](https://github.com/aoliver44/taxaHFE#description)
+- [Installing taxaHFE](https://github.com/aoliver44/taxaHFE#download-taxahfe)
+- [Example 1: Microbiome comparisons](https://github.com/aoliver44/taxaHFE#quickstart)
 - [Flag information](https://github.com/aoliver44/taxaHFE#information-about-the-flags)
+- [Troubleshooting]()
 - [About](https://github.com/aoliver44/taxaHFE#about)
 - [Contribute](https://github.com/aoliver44/taxaHFE#contribute)
 - [Citation](https://github.com/aoliver44/taxaHFE#citation)
 
 
------------------------------
 
- ## **Description:** 
+ ## **Background on the algorithm** 
  A program to perform hierarchical feature engineering on data with taxonomic organization (i.e., microbiome data, dietary data). TaxaHFE takes in a dataset of abundances for every hierarchical level, and then uses correlation and machine learning to determine the optimum taxonomic level which contains the most information relative to a metadata covariate of interest. This is not a new idea; however, few implementations exist in the wild. For some reading on these ideas, please follow the links below!
 
 [TaxaHFE: A machine learning approach to collapse microbiome datasets using taxonomic structure.](https://doi.org/10.1093/bioadv/vbad165)
@@ -45,54 +27,129 @@ Mai Oudah & Andreas Henschel. 2018. *BMC Bioinformatics*.
 Petar Ristoski & Heiko Paulheim. 2014. *International Conference on Discovery Science*.
 
 
------------------------------
-
-
-
-## **Outline of taxaHFE**
-
+## **Graphical outline of taxaHFE**
 
 ![Outline of taxaHFE algorithm](pictures/Figure1_v2.png "Outline of taxaHFE algorithm")
 
 </br>
 
-------------------------------
-## **Download taxaHFE**
+## **Installing taxaHFE**
 
+<details>
+<summary> <b>Option 1:</b> The easiest way to get started is pulling the docker image. 
+</summary>
 
-Option 1: The easiest way to get started is pulling the docker image. Please [install docker](https://www.docker.com/) you go this route. 
+Please [install docker](https://www.docker.com/) if you choose this route. Pulling these containers for the first time may take a few minutes to run, so please be patient. 
 
+*Additionally, if this is your first time using Docker, you may need to configure the program to allow it to use the appropriate compute resources (i.e., ram, CPUs, etc.).*
 ```
+## pull taxaHFE
 docker pull aoliver44/taxa_hfe:latest
-```
 
-Option 2: Alternatively, you can pull this image using Singularity:
+## pull taxaHFE-ML
+docker pull aoliver44/taxa_hfe_ml:latest
+```
+</details>
+</br>
+<details>
+<summary> <b>Option 2:</b> Alternatively, you can pull this image using Singularity or Apptainer: 
+</summary>
+This is a useful approach if you are on a managed HPC environment, and may not have Docker privilages or availibility
 
 ```
+## pull taxaHFE
 singularity pull taxaHFE.sif docker://aoliver44/taxa_hfe:latest
-```
 
-Option 3: Finally, it's possible to build the image yourself:
+## pull taxaHFE-ML
+singularity pull taxaHFE_ML.sif docker://aoliver44/taxa_hfe_ml:latest
+```
+</details>
+</br>
+<details>
+<summary> <b>Option 3:</b>Finally, it's possible to build the image yourself! </summary> 
 
-1. Download the dockerfile and renv.lock file from github
-2. Navigate to the directory with these files
-3. Run the command:
+(requires docker still!):
+
+1. Clone the repository
+2. Inside the cloned repository, run the build script
+
 
 ```
-docker build -t taxa_hfe:latest .
+## clone the repository
+git clone https://github.com/aoliver44/taxaHFE.git && cd taxaHFE/
+
+## run the build script helper
+bash build.sh 
 ```
+</details>
 </br>
 
-------------------------------
-## **Quickstart**
+<details>
+<summary> <i>A note on using docker on windows</i> </summary> 
 
-Option 1: Run taxaHFE with **YOUR** data:
-1. Navigate to the directory containing your data, and start the docker image!
+taxaHFE can run on Windows through [Powershell](https://aka.ms/PSWindows) and [Docker Desktop for Windows](https://docs.docker.com/desktop/install/windows-install/). In order for the program to run smoothly, several adjustments are recommended beforehand:
+
+ 1) **Prepare wsl (Windows Subsystem for Linux)**
+
+    In Powershell, set the default wsl to Ubuntu. The default will only need to be set once, but wsl will need to be turned on with every taxaHFE run. 
+    
+    *Note*: Error without setting default, "VS Code Server for WSL closed unexpectedly"
+
+```  
+## Powershell       
+## change default wsl to Ubuntu
+wsl --set-default Ubuntu 
+
+## turn on wsl
+wsl                      
 ```
-docker run --rm -v -it `pwd`:/data aoliver44/taxa_hfe:latest [options] <METADATA> <DATA> <OUTPUT>
 
-## or with singularity?
-singularity run -W `pwd` --bind `pwd`:/home/docker taxaHFE.sif [options] <METADATA> <DATA> <OUTPUT>
+2) **Enable Ubuntu in Docker Desktop App**
+
+    *Note*: Error without setting adjustment, Directory files do not read in when docker is initiated
+
+-   Settings \> Resources \> WSL Integration \> Enable Ubuntu
+
+</details>
+
+------------------------------
+## **Example: Exploring differences in the gut microbiome of individuals living in industrialized vs non-industrialized communities**
+
+This example is included in the repository for several reasons. First, it is a set of data we test on ```taxaHFE``` (and ```TaxaHFE-ML```) as we continue develop the program and implement enhancements for the user experience. Secondly, it gives the user an example set of files to compare their inputs to. These files are in the proper format! Lastly, they are just cool samples from work performed by one of the developers did during grad school.
+
+
+**Step 1:** Clone the repository or download the example data files in the [example_inputs/](https://github.com/aoliver44/taxaHFE/tree/main/example_inputs) directory on GitHub
+
+```
+## clone the repository
+git clone https://github.com/aoliver44/taxaHFE.git && cd taxaHFE/
+```
+
+**Step 2:**  Run ```taxaHFE-ML``` using the example files and default parameters. This command will work with the example data. If it doesn't, check out our troubleshooting tips below (do you have Docker running?), or consider opening an issue on GitHub. 
+
+```
+docker run --platform linux/amd64 --rm -it -v `pwd`:/data aoliver44/taxa_hfe_ml:latest example_inputs/metadata.txt example_inputs/microbiome_data.txt example_inputs/out.csv -s Sample -l Category --seed 42 --shap
+```
+Using the defualt of 2 cores on a Macbook Pro M3 machine, the above command took ~4 min 21 seconds to complete. Its RAM usage peaked at ~1.8 GB.
+
+**Step 3:** Example the outputs. Several outputs get generated off the command run in the previous step:
+
+```
+── example_inputs
+│   ├── metadata_time.txt
+│   ├── metadata.txt
+│   ├── microbiome_data.txt
+│   ├── microbiome_time.txt
+│   ├── ml_analysis                                 ## New Folder! ##
+│   │   ├── dummy_model_results.csv
+│   │   ├── ml_results.csv
+│   │   ├── shap_inputs_taxa_hfe_ml_sf_42.RData
+│   │   ├── shap_taxa_hfe_ml_sf_42_full.pdf
+│   │   ├── shap_taxa_hfe_ml_sf_42_test.pdf
+│   │   └── shap_taxa_hfe_ml_sf_42_train.pdf
+│   ├── taxa_hfe_ml_sf_test_NA.csv
+│   └── taxa_hfe_ml_sf_train_NA.csv
+
 ```
 
 Alternatively you can use the absolute path to your data instead of `pwd` for the bind mount
@@ -120,30 +177,7 @@ docker run --rm -it -v ./example_inputs:/data aoliver44/taxa_hfe --subject_ident
 
 ### Running taxaHFE on Windows
 
-taxaHFE can run on Windows through [Powershell](https://aka.ms/PSWindows) and [Docker Desktop for Windows](https://docs.docker.com/desktop/install/windows-install/). In order for the program to run smoothly, several adjustments are recommended beforehand:
 
- 1) **Prepare wsl (Windows Subsystem for Linux)**
-
-    In Powershell, set the default wsl to Ubuntu. The default will only need to be set once, but wsl will need to be turned on with every taxaHFE run. 
-    
-    *Note*: Error without setting default, "VS Code Server for WSL closed unexpectedly"
-
-```  
-## Powershell       
-## change default wsl to Ubuntu
-wsl --set-default Ubuntu 
-
-## turn on wsl
-wsl                      
-```
-
-2) **Enable Ubuntu in Docker Desktop App**
-
-    *Note*: Error without setting adjustment, Directory files do not read in when docker is initiated
-
--   Settings \> Resources \> WSL Integration \> Enable Ubuntu
-
-</br>
 
 ------------------------------
 ## **Information about the flags**
