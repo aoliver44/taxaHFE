@@ -168,6 +168,9 @@ load_args <- function(program_name, description, argument_groups) {
     }
   }
 
+  # ensure the output directory exists
+  dir.create(opts$output_dir)
+
   # set the seed from the flags
   set.seed(opts$seed)
 
