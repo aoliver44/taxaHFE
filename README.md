@@ -3,11 +3,12 @@
   ```taxaHFE``` is program to perform hierarchical feature engineering on data with taxonomic organization (i.e., microbiome data, dietary data). ```taxaHFE-ML``` is a variation of ```taxaHFE``` which performs hierarchical feature engineering on a training and test set of data, and then assess the performance of the features using a random forest on the hierarchically feature engineered outputs. If the goal is to reduce your set of hierarchically organized features, use ```taxaHFE```. On the other hand, if the goal is to determine which features are most important in predicting an outcome of interest, we suggest using ```taxaHFE-ML```.
 
 ## **Table of Contents**
-- [Background on the algorithm](https://github.com/aoliver44/taxaHFE#description)
-- [Installing taxaHFE](https://github.com/aoliver44/taxaHFE#download-taxahfe)
+- [Background on the algorithm](https://github.com/aoliver44/taxaHFE#background-on-the-algorithm)
+- [Installing taxaHFE](https://github.com/aoliver44/taxaHFE#installing-taxahfe)
 - [Example 1: Microbiome comparisons](https://github.com/aoliver44/taxaHFE#quickstart)
 - [Flag information](https://github.com/aoliver44/taxaHFE#information-about-the-flags)
 - [Troubleshooting]()
+- [FAQs]()
 - [About](https://github.com/aoliver44/taxaHFE#about)
 - [Contribute](https://github.com/aoliver44/taxaHFE#contribute)
 - [Citation](https://github.com/aoliver44/taxaHFE#citation)
@@ -15,7 +16,7 @@
 
 
  ## **Background on the algorithm** 
- A program to perform hierarchical feature engineering on data with taxonomic organization (i.e., microbiome data, dietary data). TaxaHFE takes in a dataset of abundances for every hierarchical level, and then uses correlation and machine learning to determine the optimum taxonomic level which contains the most information relative to a metadata covariate of interest. This is not a new idea; however, few implementations exist in the wild. For some reading on these ideas, please follow the links below!
+ A program to perform hierarchical feature engineering on data with taxonomic organization (i.e., microbiome data, dietary data). This is not a new idea; however, few implementations exist in the wild. For some reading on these ideas, please follow the links below!
 
 [TaxaHFE: A machine learning approach to collapse microbiome datasets using taxonomic structure.](https://doi.org/10.1093/bioadv/vbad165)
 Andrew Oliver, Matthew Kay, Danielle G. Lemay. 2023. *Bioinformatics Advances*. 
@@ -26,6 +27,7 @@ Mai Oudah & Andreas Henschel. 2018. *BMC Bioinformatics*.
 [Feature Selection in Hierarchical Feature Spaces.](https://link.springer.com/chapter/10.1007/978-3-319-11812-3_25)
 Petar Ristoski & Heiko Paulheim. 2014. *International Conference on Discovery Science*.
 
+ ```taxaHFE``` (Hierarchical Feature Engineering), first works by considering the pairwise correlation structure between a parent taxon's abundance and its descendants' abundances to prune descendants above a correlation threshold. For parent-child taxa not collapsed at the correlation step, ```taxaHFE``` next permutes a random forest on the parent taxon and remaining descendants to determine how important each is at explaining a response of interest. If, on average, the parent taxon is the most important feature in the model, the descendants are dropped, otherwise only the descendants more important than the parent taxon are kept. Last, an optional final filter step considers all features remaining, and again permutes a random forest. Any features which are either below the average importance of all remaining features or have a negative or zero average importance are dropped.  
 
 ## **Graphical outline of taxaHFE**
 
@@ -130,7 +132,7 @@ git clone https://github.com/aoliver44/taxaHFE.git && cd taxaHFE/
 ```
 docker run --platform linux/amd64 --rm -it -v `pwd`:/data aoliver44/taxa_hfe_ml:latest example_inputs/metadata.txt example_inputs/microbiome_data.txt example_inputs/out.csv -s Sample -l Category --seed 42 --shap
 ```
-Using the defualt of 2 cores on a Macbook Pro M3 machine, the above command took ~4 min 21 seconds to complete. Its RAM usage peaked at ~1.8 GB.
+Using the defualt of 2 cores on a Macbook Pro M3 machine, the above command took ~4 min 21 seconds to complete. Its RAM usage peaked at ~1.8 GB. We put in some effort to supply progress bars so you know something is working. In some situations (certain computer/HPC environments) these progress bars do not show up. Bummer.
 
 **Step 3:** Example the outputs. Several outputs get generated off the command run in the previous step:
 
@@ -140,15 +142,15 @@ Using the defualt of 2 cores on a Macbook Pro M3 machine, the above command took
 │   ├── metadata.txt
 │   ├── microbiome_data.txt
 │   ├── microbiome_time.txt
-│   ├── ml_analysis                                 ## New Folder! ##
+│   ├── ml_analysis                               ## New Folder! ##
 │   │   ├── dummy_model_results.csv
 │   │   ├── ml_results.csv
 │   │   ├── shap_inputs_taxa_hfe_ml_sf_42.RData
 │   │   ├── shap_taxa_hfe_ml_sf_42_full.pdf
 │   │   ├── shap_taxa_hfe_ml_sf_42_test.pdf
 │   │   └── shap_taxa_hfe_ml_sf_42_train.pdf
-│   ├── taxa_hfe_ml_sf_test_NA.csv
-│   └── taxa_hfe_ml_sf_train_NA.csv
+│   ├── taxa_hfe_ml_sf_test_NA.csv                ## New Output! ##
+│   └── taxa_hfe_ml_sf_train_NA.csv               ## New Output! ##
 
 ```
 
@@ -362,7 +364,7 @@ taxaHFE-ML --subject_identifier Sample --label Category --feature_type factor --
 ------------------------------
 ## **About**
 
-We developed software, called TaxaHFE (Hierarchical Feature Engineering), which works by first considering the pairwise correlation structure between a taxon and its descendants to prune descendants above a correlation threshold. Next it permutes a random forest on the taxon and remaining descendants to determine how important each is at explaining an intervention or clinical covariate. If, on average, the taxon is the most important feature in the model, the descendants are dropped, otherwise only the descendants more important than the taxon are kept. Last, an optional final filter step considers all features remaining, and again permutes a random forest. Any features which are either below the average importance of all remaining features or have a negative or zero average importance are dropped.  
+
 
 Special thanks to Stephanie M.G. Wilson for the logo.
 </br>
