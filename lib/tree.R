@@ -1696,7 +1696,7 @@ shap_analysis <- function(label, output, model, filename, shap_inputs, train, te
       
       if (ncores > 1) {
         parallel_shap <- TRUE
-        doParallel::registerDoParallel(cores = ncores)
+        doParallel::registerDoParallel(cores = (ncores/2))
       } else {
         parallel_shap <- FALSE
       }
