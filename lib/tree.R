@@ -78,7 +78,7 @@ read_in_metadata <- function(input, subject_identifier, label, feature_type, ran
   ## check and make sure there are not too many metadata columns
   ## we will allow 10 total columns (8 columns of additional covariates)
   if (ncol(metadata) > 10 & limit_covariates) {
-    stop("Please only provide subject, label, and up to 8 additional covariates in the metadata file.")
+    stop("Error: You have selected too many covariates. We recommend \nthat you conduct preliminary modeling to choose the \n8 most important covariates to carry forward.")
   }
   
   ## notify user what covariates we find, if any
