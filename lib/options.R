@@ -40,7 +40,7 @@ argument_groups <- list(
       write_flattened_tree=list("-W", "--write_flattened_tree", action="store_true", help="Write a compressed backup of the entire competed tree"),
       write_both_outputs=list("-D", "--write_both_outputs", action="store_true", help="Write an output for pre and post super filter results, overridden by --disable_super_filter"),
       nperm=list("--nperm", type="integer", metavar="<numeric>", default="40", help="Number of taxaHFE RF permutations"),
-      ncores=list("-n", "--ncores", type="integer", metavar="<numeric>", default="2", help="Number of CPU cores to use")
+      ncores=list("-n", "--ncores", type="integer", metavar="<numeric>", default="2", help="Number of CPU cores to us. Make sure this value matches container resources.")
     )
   ),
   taxa_hfe_ml_args=list(
@@ -106,7 +106,7 @@ initialize_parser <- function(version, program_name, description, argument_group
   parser$add_argument("-o", "--output_dir", type="character", metavar="<string>", default="outputs", help="Directory for the output files to be written. Defaults to a directory called 'outputs'")
   parser$add_argument("-v", "--version", action="version", version=version)
   parser$add_argument("--data_dir", type="character", metavar="<string>", default=".", help="Directory for MEATDATA, DATA, and output_dir, ignored if using absolute paths. Defaults to the current directory")
-  parser$add_argument("--seed", type="numeric", metavar="<numeric>", default=default_seed(), help="Set a random numeric seed. If not set, defaults to system time")
+  parser$add_argument("--seed", type="numeric", metavar="<numeric>", default="system time", help="Set a random numeric seed. If not set, defaults to system time")
 
   # add the arguments from the passed in argument_groups
   for (arg_group in argument_groups) {
