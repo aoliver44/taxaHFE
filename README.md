@@ -1,6 +1,6 @@
 ![test workflow](https://github.com/aoliver44/taxaHFE/actions/workflows/test.yml/badge.svg)
 # **TaxaHFE & TaxaHFE-ML** <a><img src='pictures/logo.png' align="right" height="150" /></a>
-```taxaHFE``` is a program for performing hierarchical feature engineering on data with a taxonomic organization (e.g., microbiome data, dietary data). ```taxaHFE-ML``` is a variation of ```taxaHFE``` that performs hierarchical feature engineering on training and test datasets, then assesses feature performance using a random forest applied to the hierarchically engineered outputs. If your goal is to reduce a set of hierarchically organized features, use ```taxaHFE```. If your goal is to identify which features are most important for predicting an outcome of interest, we recommend using ```taxaHFE-ML```.
+```taxaHFE``` is a program for performing hierarchical feature engineering on data with a taxonomic organization (e.g., microbiome data, dietary data). ```taxaHFE-ML``` is a variation of ```taxaHFE``` that performs hierarchical feature engineering on training and test datasets, then assesses feature performance using a random forest applied to the hierarchically engineered outputs. If your goal is to reduce a set of hierarchically organized features, use ```taxaHFE```. If your goal is to use hierarchically organized features in machine learning models, we recommend using ```taxaHFE-ML```.
 
 ## **Table of Contents**
 - [Background on the algorithm](https://github.com/aoliver44/taxaHFE/tree/output-dir?tab=readme-ov-file#background-on-the-algorithm)
