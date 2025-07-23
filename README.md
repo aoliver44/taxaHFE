@@ -419,7 +419,7 @@ Q: Why can't I add more than 8 covariates in my metadata?
 
 A: Well, you can if you want to fork the code and get rid of those gaurd-rails (1 line of code). But we suggest you analyze your covariates and really determine if you need them all (or are you just throwing in the kitchen sink?). You do not need to one-hot encode your metadata variables. Ultimately our algorithm is for Hierarchical Feature Engineering, and messing around with lots of covariates amounts, at least, to scope creep, which we didn't want for ourselves.
 
-Q: Can ```taxaHFE``` work with time-series data.
+Q: Can ```taxaHFE``` work with time-series data?
 
 A: I think? The flags that allow for this have a big ```[BETA]``` in their descriptions, so use them at your own risk. We will try and get an example up here showing how it works. For now, there is some information in the flags, and also some example files in ```example_inputs/``` (metadata_time.txt and microbiome_time.txt). The inspiration for dealing with time data comes from a [Scientific Reports paper](https://doi.org/10.1038/s41598-022-14632-w). Here is a command that we have success with for use with the example time files:
 
