@@ -208,8 +208,8 @@ write_summary_files <- function(input, metadata, output) {
     ## merge with metadata
     file_merge <- merge(metadata, file_summary, by = "subject_id")
     
-    filename <- paste0("_level_", count, ".csv")
-    readr::write_delim(x = file_merge, file = paste0(tools::file_path_sans_ext(output), filename), delim = ",")
+    filename <- paste0("summarized_level_", count, ".csv")
+    readr::write_delim(x = file_merge, file = paste0(gsub("/$", "", x = output), "/", filename), delim = ",")
     count <- count + 1
   }
 }
@@ -263,8 +263,8 @@ write_oudah_input <- function(input, output) {
     dplyr::relocate(., index, dplyr::any_of(c(unlist(paste0("L", c(1:max_levels))))))
   
   ## write OTU to file
-  readr::write_delim(x = input_taxa_merge[1:(max_levels)], file = paste0(tools::file_path_sans_ext(output), "_old_hfe_taxa.txt"), col_names = FALSE, delim = "\t")
-  readr::write_delim(x = input_taxa_merge %>% dplyr::select(., 1,(max_levels+1):dplyr::last_col()), file = paste0(tools::file_path_sans_ext(output), "_old_hfe_otu.txt"), col_names = FALSE, delim = "\t")
+  readr::write_delim(x = input_taxa_merge[1:(max_levels)], file = paste0(gsub("/$", "", x = output), "/", "oudah_hfe_taxa.txt"), col_names = FALSE, delim = "\t")
+  readr::write_delim(x = input_taxa_merge %>% dplyr::select(., 1,(max_levels+1):dplyr::last_col()), file = paste0(gsub("/$", "", x = output), "/", "oudah_hfe_otu.txt"), col_names = FALSE, delim = "\t")
   
   ## write the metadata input for oudah HFE (labels.tab)
   metadata_order <- colnames(input_taxa_merge[,9:NCOL(input_taxa_merge)])
@@ -272,7 +272,7 @@ write_oudah_input <- function(input, output) {
     pull(., feature_of_interest)
   ## the first item in that tab seperated list has to be "label
   metadata_list <- as.data.frame(c("label", metadata_list))
-  readr::write_delim(x = as.data.frame(t(metadata_list)), file = paste0(tools::file_path_sans_ext(output), "_old_hfe_label.txt"), col_names = FALSE, delim = "\t")
+  readr::write_delim(x = as.data.frame(t(metadata_list)), file = paste0(gsub("/$", "", x = output), "/", "oudah_hfe_label.txt"), col_names = FALSE, delim = "\t")
   
 }
 
@@ -871,7 +871,7 @@ prepare_flattened_df <- function(node, metadata, disable_super_filter, col_names
 }
 
 # write an output file containing the HFE results
-write_output_file <- function(flattened_df, metadata, output_location, file_suffix) {
+write_output_file <- function(flattened_df, metadata, output_location, file_name) {
   
   ## clean pathString names and use these, they will always be unique
   ## downside, longer names
@@ -887,7 +887,7 @@ write_output_file <- function(flattened_df, metadata, output_location, file_suff
     tibble::rownames_to_column(var = "subject_id")
 
   output <- merge(metadata, output, by = "subject_id")
-  readr::write_delim(file = paste0(tools::file_path_sans_ext(output_location), file_suffix), x = output, delim = ",")
+  readr::write_delim(file = paste0(gsub("/$", "", x = output_location), "/", file_name), x = output, delim = ",")
 }
 
 # generate the outputs
@@ -909,14 +909,14 @@ generate_outputs <- function(tree, metadata, col_names, output_location, disable
   ## if super filter is disabled, write the flattened_winners as standard output
   ## otherwise write the super filter winners as standard output
   if (disable_super_filter == TRUE) {
-    write_output_file(flattened_winners, metadata, output_location, ".csv")
+    write_output_file(flattened_winners, metadata, output_location, "taxahfe_no_sf.csv")
   } else {
-    write_output_file(flattened_sf_winners, metadata, output_location, ".csv")
+    write_output_file(flattened_sf_winners, metadata, output_location,  "taxahfe_sf.csv")
   }
 
   ## also write the non-sf output if both outputs are requested
   if (write_both_outputs == TRUE && disable_super_filter == FALSE) {
-    write_output_file(flattened_winners, metadata, output_location, "_no_sf.csv")
+    write_output_file(flattened_winners, metadata, output_location, "taxahfe_no_sf.csv")
   }
 
   cat(" Features (no super filter): ", nrow(flattened_winners), "\n")
@@ -936,7 +936,7 @@ generate_outputs <- function(tree, metadata, col_names, output_location, disable
   if (write_flattened_df_backup == TRUE) {
     vroom::vroom_write(
       x = flattened_df,
-      file = paste0(tools::file_path_sans_ext(output_location), "_raw_data.tsv.gz"),
+      file = paste0(gsub("/$", "", x = output_location), "/", "output_raw_data.tsv.gz"),
       num_threads = ncores
     )
   }
@@ -1271,8 +1271,8 @@ pass_to_dietML <- function(train, test, model, program, seed, random_effects, fo
   } 
   
   ## check for outdir and make if not there
-  if (dir.exists(paste0(dirname(opts$OUTPUT), "/ml_analysis")) != TRUE) {
-    dir.create(path = paste0(dirname(opts$OUTPUT), "/ml_analysis"))
+  if (dir.exists(paste0(gsub("/$", "", x = output), "/ml_analysis")) != TRUE) {
+    dir.create(path = paste0(gsub("/$", "", x = output), "/ml_analysis"))
   }
   
   
@@ -1533,8 +1533,8 @@ run_dietML_ranger <- function(train, test, seed, random_effects, folds, cor_leve
   
   
   ## write final results to file or append if file exists
-  readr::write_csv(x = full_results, file = paste0(dirname(output), "/ml_analysis/ml_results.csv"), 
-                   append = T, col_names = !file.exists(paste0(dirname(output), "/ml_analysis/ml_results.csv")))
+  readr::write_csv(x = full_results, file = paste0(gsub("/$", "", x = output), "/ml_analysis/ml_results.csv"), 
+                   append = T, col_names = !file.exists(paste0(gsub("/$", "", x = output), "/ml_analysis/ml_results.csv")))
   
   ## load up list for shap analysis
   shap_inputs <- list("split_from_data_frame" = split_from_data_frame, "diet_ml_recipe" = diet_ml_recipe, "best_tidy_workflow" = best_tidy_workflow)
@@ -1634,8 +1634,8 @@ run_null_model <- function(train, test, seed, type, cor_level, random_effects, o
   }
   
   ## write table of results to file
-  readr::write_csv(x = results_df, file =paste0(dirname(output), "/ml_analysis/dummy_model_results.csv"), 
-                   append = T, col_names = !file.exists(paste0(dirname(output), "/ml_analysis/dummy_model_results.csv")))
+  readr::write_csv(x = results_df, file =paste0(gsub("/$", "", x = output), "/ml_analysis/dummy_model_results.csv"), 
+                   append = T, col_names = !file.exists(paste0(gsub("/$", "", x = output), "/ml_analysis/dummy_model_results.csv")))
   
   ## return results_df because that is what the other models need (ranger, enet)
   return(results_df)
@@ -1653,7 +1653,7 @@ shap_analysis <- function(label, output, model, filename, shap_inputs, train, te
   shap_plot_env <- new.env()
   shap.error.occured <- FALSE
   error_message <- NULL
-  output_dir <- file.path(dirname(output), "ml_analysis")
+  output_dir <- paste0(gsub("/$", "", x = output), "/ml_analysis")
 
   ## save some initial inputs to env, in case the below 
   ## shap analysis does not finish. Occasionaly it does not finish on

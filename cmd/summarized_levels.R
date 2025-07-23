@@ -34,7 +34,7 @@ metadata <- read_in_metadata(input = opts$METADATA,
                              k = opts$k_splits)
 
 ## hierarchical data file ======================================================
-hData <- read_in_hierarchical_data(input = opts$DATA,
+hierarchical_data <- read_in_hierarchical_data(input = opts$DATA,
                                    metadata = metadata,
                                    cores = opts$ncores)
 
@@ -45,7 +45,7 @@ test_metadata  <- rsample::testing(tr_te_split)
 
 # Run taxaHFE-ML
 diet_ml_inputs <- method_levels(
-  hdata = hData,
+  hData = hierarchical_data,
   metadata = metadata,
   prevalence = opts$prevalence,
   abundance = opts$prevalence,
@@ -60,8 +60,8 @@ diet_ml_inputs <- method_levels(
   write_both_outputs = opts$write_both_outputs,
   write_flattened_tree = opts$write_flattened_tree,
   target_list = diet_ml_inputs,
-  col_names = colnames(hData)[2:NCOL(hData)],
-  output = opts$OUTPUT,
+  col_names = colnames(hierarchical_data)[2:NCOL(hierarchical_data)],
+  output = opts$output_dir,
   seed = opts$seed,
   random_effects = opts$random_effects
 )
@@ -74,7 +74,22 @@ diet_ml_input_df <- extract_attributes(items_list = diet_ml_inputs)
 
 ## write dietML objects to file (if people want the output files that
 ## went into dietML)
-write_list_to_csv(target_list = diet_ml_inputs, directory = dirname(opts$OUTPUT))
+write_list_to_csv(target_list = diet_ml_inputs, directory = gsub("/$", "", x = opts$output_dir))
 
 ## pass to dietML if selected
-run_diet_ml(input_df = diet_ml_input_df, n_repeat = 1)
+run_diet_ml(input_df = diet_ml_input_df, 
+            n_repeat = opts$permute, 
+            model = opts$model,
+            feature_type = opts$feature_type,
+            seed = opts$seed,
+            random_effects = opts$random_effects,
+            folds = opts$folds,
+            cor_level = opts$cor_level,
+            ncores = opts$ncores,
+            tune_length = opts$tune_length,
+            tune_stop = opts$tune_stop,
+            tune_time = opts$tune_time,
+            metric = opts$metric,
+            label = opts$label,
+            output = opts$output_dir,
+            shap = opts$shap)

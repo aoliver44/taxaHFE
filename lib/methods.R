@@ -8,11 +8,11 @@
 
 ## docker info =================================================================
 
-method_taxa_hfe <- function(hdata, metadata, prevalence, abundance,
+method_taxa_hfe <- function(hData, metadata, prevalence, abundance,
                            lowest_level, max_level, cor_level, ncores,
                            feature_type, nperm, disable_super_filter,
-                           write_both_outputs, write_flattened_tree, col_names,
-                           target_list, output, seed, random_effects) {
+                           write_both_outputs, write_flattened_tree, write_old_files, 
+                           col_names, target_list, output, seed, random_effects) {
   ## Build tree ================================================================
   cat("\n\n", "###########################\n", "Building Tree...\n", "###########################\n\n")
   cat("This may take a few minutes depending on how many features you have.\n")
@@ -23,10 +23,10 @@ method_taxa_hfe <- function(hdata, metadata, prevalence, abundance,
 
   ## Main competition ==========================================================
   competed_tree <- compete_tree(
-    hTree,
+    tree = hTree,
     lowest_level = lowest_level,
     max_level = max_level, # allows for all levels to be competed. Change to 1 for pairwise comparisons
-    col_names = colnames(hData)[2:NCOL(hData)],
+    col_names = col_names,
     corr_threshold = cor_level,
     metadata = metadata,
     ncores = ncores,
@@ -39,14 +39,15 @@ method_taxa_hfe <- function(hdata, metadata, prevalence, abundance,
   ## write outputs =============================================================
   
   generate_outputs(
-    competed_tree,
-    metadata,
-    colnames(hData)[2:NCOL(hData)],
-    opts$OUTPUT, opts$disable_super_filter,
-    opts$write_both_outputs,
-    opts$write_old_files,
-    opts$write_flattened_tree,
-    opts$ncores
+    tree = competed_tree, 
+    metadata = metadata, 
+    col_names = col_names, 
+    output_location = output, 
+    disable_super_filter = disable_super_filter, 
+    write_both_outputs = write_both_outputs, 
+    write_old_files = write_old_files, 
+    write_flattened_df_backup = write_flattened_tree, 
+    ncores = ncores
   )
   
   ## Extract information from tree  ============================================
@@ -55,7 +56,7 @@ method_taxa_hfe <- function(hdata, metadata, prevalence, abundance,
   flattened_df <- prepare_flattened_df(node = competed_tree,
                                        metadata = metadata,
                                        disable_super_filter = disable_super_filter,
-                                       col_names = colnames(hData)[2:NCOL(hData)]
+                                       col_names = col_names
   )
   
   ## store taxaHFE outputs in list
@@ -71,7 +72,7 @@ method_taxa_hfe <- function(hdata, metadata, prevalence, abundance,
   return(diet_ml_inputs)
 }
 
-method_taxa_hfe_ml <- function(hdata, metadata, prevalence, abundance,
+method_taxa_hfe_ml <- function(hData, metadata, prevalence, abundance,
                               lowest_level, max_level, cor_level, ncores,
                               feature_type, nperm, disable_super_filter,
                               write_both_outputs, write_flattened_tree,
@@ -81,7 +82,7 @@ method_taxa_hfe_ml <- function(hdata, metadata, prevalence, abundance,
   count <- 1
 
   for (split_metadata in list(train_metadata, test_metadata)) {
-    ## Some messaging to let the user know we are performing TaxaHFE
+    ## select only the subject IDs from hData that are in the train or test split
     hData_split <- hData %>% dplyr::select(., clade_name, dplyr::any_of(split_metadata$subject_id))
 
     ## Build tree ================================================================
@@ -176,7 +177,7 @@ method_taxa_hfe_ml <- function(hdata, metadata, prevalence, abundance,
 }
   
 
-method_levels <- function(hdata, metadata, prevalence, abundance,
+method_levels <- function(hData, metadata, prevalence, abundance,
                           lowest_level, max_level, cor_level, ncores,
                           feature_type, nperm, disable_super_filter,
                           write_both_outputs, write_flattened_tree, col_names,

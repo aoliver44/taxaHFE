@@ -35,7 +35,7 @@ metadata <- read_in_metadata(input = opts$METADATA,
                              k = opts$k_splits)
 
 ## hierarchical data file ======================================================
-hData <- read_in_hierarchical_data(input = opts$DATA,
+hierarchical_data <- read_in_hierarchical_data(input = opts$DATA,
                                    metadata = metadata,
                                    cores = opts$ncores)
 
@@ -46,7 +46,7 @@ test_metadata  <- rsample::testing(tr_te_split)
 
 # Run taxaHFE-ML
 diet_ml_inputs <- method_taxa_hfe_ml(
-  hdata = hData,
+  hData = hierarchical_data,
   metadata = metadata,
   prevalence = opts$prevalence,
   abundance = opts$abundance,
@@ -81,7 +81,7 @@ diet_ml_input_df <- extract_attributes(items_list = diet_ml_inputs)
 
 ## write dietML objects to file (if people want the output files that
 ## went into dietML)
-write_list_to_csv(target_list = diet_ml_inputs, directory = dirname(opts$OUTPUT))
+write_list_to_csv(target_list = diet_ml_inputs, directory = gsub("/$", "", x = opts$output_dir))
 
 ## pass to dietML if selected
 run_diet_ml(input_df = diet_ml_input_df, 
@@ -98,5 +98,5 @@ run_diet_ml(input_df = diet_ml_input_df,
             tune_time = opts$tune_time,
             metric = opts$metric,
             label = opts$label,
-            output = opts$OUTPUT,
+            output = opts$output_dir,
             shap = opts$shap)

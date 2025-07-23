@@ -34,14 +34,14 @@ metadata <- read_in_metadata(input = opts$METADATA,
                              k = opts$k_splits)
 
 ## hierarchical data file ======================================================
-hData <- read_in_hierarchical_data(input = opts$DATA,
+hierarchical_data <- read_in_hierarchical_data(input = opts$DATA,
                                    metadata = metadata,
                                    cores = opts$ncores)
 
 
 # Run TaxaHFE
 diet_ml_inputs <- method_taxa_hfe(
-  hdata = hData,
+  hData = hierarchical_data,
   metadata = metadata,
   prevalence = opts$prevalence,
   abundance = opts$abundance,
@@ -54,9 +54,10 @@ diet_ml_inputs <- method_taxa_hfe(
   disable_super_filter = opts$disable_super_filter,
   write_both_outputs = opts$write_both_outputs,
   write_flattened_tree = opts$write_flattened_tree,
+  write_old_files = opts$write_old_files,
   target_list = diet_ml_inputs,
-  col_names = colnames(hData)[2:NCOL(hData)],
-  output = opts$OUTPUT,
+  col_names = colnames(hierarchical_data)[2:NCOL(hierarchical_data)],
+  output = opts$output_dir,
   seed = opts$seed,
   random_effects = opts$random_effects
 )
