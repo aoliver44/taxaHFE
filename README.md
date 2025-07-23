@@ -3,15 +3,15 @@
 ```taxaHFE``` is a program for performing hierarchical feature engineering on data with a taxonomic organization (e.g., microbiome data, dietary data). ```taxaHFE-ML``` is a variation of ```taxaHFE``` that performs hierarchical feature engineering on training and test datasets, then assesses feature performance using a random forest applied to the hierarchically engineered outputs. If your goal is to reduce a set of hierarchically organized features, use ```taxaHFE```. If your goal is to identify which features are most important for predicting an outcome of interest, we recommend using ```taxaHFE-ML```.
 
 ## **Table of Contents**
-- [Background on the algorithm](https://github.com/aoliver44/taxaHFE#background-on-the-algorithm)
-- [Installing taxaHFE](https://github.com/aoliver44/taxaHFE#installing-taxahfe)
-- [Example 1: Microbiome comparisons](https://github.com/aoliver44/taxaHFE#quickstart)
-- [Flag information](https://github.com/aoliver44/taxaHFE#information-about-the-flags)
+- [Background on the algorithm](https://github.com/aoliver44/taxaHFE/tree/output-dir?tab=readme-ov-file#background-on-the-algorithm)
+- [Installing taxaHFE](https://github.com/aoliver44/taxaHFE/tree/output-dir?tab=readme-ov-file#installing-taxahfe)
+- [Example 1: Microbiome comparisons](https://github.com/aoliver44/taxaHFE/tree/output-dir?tab=readme-ov-file#example-1-exploring-differences-in-the-gut-microbiome-of-individuals-living-in-industrialized-vs-non-industrialized-communities)
+- [Flag information](https://github.com/aoliver44/taxaHFE/tree/output-dir?tab=readme-ov-file#information-about-the-flags)
 - [Troubleshooting]()
-- [FAQs]()
-- [About](https://github.com/aoliver44/taxaHFE#about)
-- [Contribute](https://github.com/aoliver44/taxaHFE#contribute)
-- [Citation](https://github.com/aoliver44/taxaHFE#citation)
+- [FAQ]()
+- [About](https://github.com/aoliver44/taxaHFE/tree/output-dir?tab=readme-ov-file#about)
+- [Contribute](https://github.com/aoliver44/taxaHFE/tree/output-dir?tab=readme-ov-file#contribute)
+- [Citation](https://github.com/aoliver44/taxaHFE/tree/output-dir?tab=readme-ov-file#citation)
 
 
 
@@ -39,7 +39,7 @@ Finally, an optional filter step considers all remaining features and applies an
 
 ## **Installing taxaHFE**
 
-TaxaHFE is a containerized application and can be run in the following ways:
+```taxaHFE``` is a containerized application and can be run in the following ways:
 
 <details>
 <summary> <b>Option 1:</b> The easiest way to get started is by pulling the Docker image. This is a good option if you are on your own machine and have permission to install software.
@@ -75,11 +75,11 @@ singularity pull taxaHFE_ML.sif docker://aoliver44/taxa_hfe_ml:latest
 <details>
 <summary> <i>A note on using Docker on Windows</i> </summary> 
 
-taxaHFE can run on Windows through [Powershell](https://aka.ms/PSWindows) and [Docker Desktop for Windows](https://docs.docker.com/desktop/install/windows-install/). In order for the program to run smoothly, several adjustments are recommended beforehand:
+```taxaHFE``` can run on Windows through [Powershell](https://aka.ms/PSWindows) and [Docker Desktop for Windows](https://docs.docker.com/desktop/install/windows-install/). In order for the program to run smoothly, several adjustments are recommended beforehand:
 
  1) **Prepare wsl (Windows Subsystem for Linux)**
 
-    In Powershell, set the default wsl to Ubuntu. The default will only need to be set once, but wsl will need to be turned on with every taxaHFE run. 
+    In Powershell, set the default wsl to Ubuntu. The default will only need to be set once, but wsl will need to be turned on with every ```taxaHFE``` run. 
     
     *Note*: Error without setting default, "VS Code Server for WSL closed unexpectedly"
 
@@ -117,7 +117,7 @@ git clone https://github.com/aoliver44/taxaHFE.git && cd taxaHFE/
 
 **Note:** Setting container-level resources is by far the most reliable way (in our experience) to ensure that ```taxaHFE``` uses the appropriate system resources. If you set ```--ncores 2``` without also specifying ```--cpus=2``` in the Docker command (or the equivalent flag in Apptainer), some processes within ```taxaHFE``` and ```taxaHFE-ML``` may exceed the intended resource limits.
 
-Setting ```--ncores 1``` will instruct taxaHFE to limit resource usage as best it can, but this is not foolproof. The main situation where excessive core usage becomes an issue is when the ```--shap``` flag is used. To avoid this, we strongly recommend setting CPU and memory limits directly in the ```docker run``` command. Adjust the values to suit the capabilities of your machine.
+Setting ```--ncores 1``` will instruct ```taxaHFE``` to limit resource usage as best it can, but this is not foolproof. The main situation where excessive core usage becomes an issue is when the ```--shap``` flag is used. To avoid this, we strongly recommend setting CPU and memory limits directly in the ```docker run``` command. Adjust the values to suit the capabilities of your machine.
 
 ```
 docker run --cpus=2 --memory=4g --platform linux/amd64 --rm -it -v `pwd`:/data aoliver44/taxa_hfe_ml:latest example_inputs/metadata.txt example_inputs/microbiome_data.txt -o test_outputs -s Sample -l Category --seed 1234 --shap -n 2
@@ -233,7 +233,7 @@ TaxaHFE arguments:
                         Write an output for pre and post super filter results, overridden by --disable_super_filter (default: False)
   --nperm <numeric>     Number of taxaHFE RF permutations (default: 40)
   -n <numeric>, --ncores <numeric>
-                        Number of CPU cores to us. Make sure this value matches container resources. (default: 2)
+                        Number of parallel processes to run in certain portions of taxaHFE that support parallel processing. To limit overall resource usage of taxaHFE, limit the amount of resources available to the container (e.g. --cpus=4 for Docker)
 ```
 </details>
 </br>
@@ -268,9 +268,9 @@ TaxaHFE arguments:
                         Metadata column name of interest for ML (default: feature_of_interest)
   -t <string>, --feature_type <string>
                         Is the ML label a factor or numeric (default: factor)
-  -R, --random_effects  Consider repeated measures. Note: columns 'individual' and 'time' must be present. (default: False)
+  -R, --random_effects  Consider repeated measures. Note: columns 'individual' and 'time' must be present. [BETA] (default: False)
   -k <numeric>, --k_splits <numeric>
-                        We use kmeans to factorize a numeric response for repeated measures. How many categories should we create? (default: 3)
+                        We use kmeans to factorize a numeric response for repeated measures. How many categories should we create? [BETA] (default: 3)
   -a <numeric>, --abundance <numeric>
                         Minimum mean abundance of feature (default: 0)
   -p <numeric>, --prevalence <numeric>
@@ -291,7 +291,7 @@ TaxaHFE arguments:
                         Write an output for pre and post super filter results, overridden by --disable_super_filter (default: False)
   --nperm <numeric>     Number of taxaHFE RF permutations (default: 40)
   -n <numeric>, --ncores <numeric>
-                        Number of CPU cores to us. Make sure this value matches container resources. (default: 2)
+                        Number of parallel processes to run in certain portions of taxaHFE that support parallel processing. To limit overall resource usage of taxaHFE, limit the amount of resources available to the container (e.g. --cpus=4 for Docker)
 
 TaxaHFE-ML specific arguments:
   Options to pass to TaxaHFE-ML for machine learning and SHAP analysis of TaxaHFE features
@@ -325,7 +325,7 @@ Below are some some additional details about certain flags.
 
 ```--prevalence```: A per-feature prevalence filter that controls how many non-zero occurrences are required for a feature to be retained. By default, features with 99% zeros are dropped from analysis. This filter is somewhat sensitive to sampling depth—samples with greater sequencing depth may detect more rare features.
 
-```--lowest_level```: Specifies the lowest taxonomic level at which taxaHFE should run its feature competitions. In microbiome datasets, features often span taxonomic levels from general to specific (e.g., kingdom → phylum → class → order → family → genus → species). taxaHFE adds one extra level above kingdom called taxa_tree, representing the total abundance per sample.
+```--lowest_level```: Specifies the lowest taxonomic level at which ```taxaHFE``` should run its feature competitions. In microbiome datasets, features often span taxonomic levels from general to specific (e.g., kingdom → phylum → class → order → family → genus → species). ```taxaHFE``` adds one extra level above kingdom called taxa_tree, representing the total abundance per sample.
 
 - Setting ```--lowest_level 1``` allows competitions down to taxa_tree, meaning it could be selected as the sole informative feature (e.g., if total abundance best explains your metadata label).
 
@@ -335,16 +335,99 @@ Below are some some additional details about certain flags.
 
 - Setting this flag higher will stop the competitions earlier (e.g., ```--lowest_level 4``` will stop at the 'class' level)
 
-```--max_level```: Controls how deep (toward the root) the feature competitions can go. The default is ```--max_level 15```, allowing a child feature to compete not just with its parent, but with up to 15 hierarchical ancestors (e.g., grandparent, great-grandparent, etc.), unless the ```--lowest_level``` is reached first. 
+```--max_level```: Controls how far away from the root to consider the first set of children to compete. The default is ```--max_level 15```, allowing a child feature which is up to 15 levels away from the root to compete. 
 
-- Setting this flag to ```--max_level 4``` and ```--lowest_level 4``` results in only features at the 'class' level to be used (effectivly removing hierarchical feature engineering)
+- Setting this flag to ```--max_level 5``` means that, in a microbiome example, ```taxaHFE``` will at most choose taxa at the order level, but never at the genus, family, species, etc.
 
 ```--ncores```: Once again, we highly recommend you set the container resources (e.g., ```docker run --cpus=2```), to match whatever you set with ```--ncores```.
 
-```--seed```: the default behavior is to use ```Sys.time()``` to generate a random seed each time taxaHFE is run. If you set it to a number, it will likely return the same results across repeated runs (assuming you are on the same machine).
+```--seed```: the default behavior is to generate a random seed each time ```taxaHFE``` is run, between the minimum and maximum values of machine precision for the R language (-2e31 - 2e31). If you set it to a number, it will likely return the same results across repeated runs (assuming you are on the same machine).
 
 </details>
 
+## Troubleshooting
+
+**Problem:** I'm getting the error:
+```
+docker: Cannot connect to the Docker daemon at unix:///Users/.docker/run/docker.sock. Is the docker daemon running?
+```
+**Fix:** Make sure the Docker application is running! If you can't run ```docker image list``` in your terminal, the Docker application has not been started!
+
+------------
+
+**Problem:** Docker is running but I immediately get this error:
+
+```
+usage: taxa_hfe_ml [options] METADATA DATA
+taxa_hfe_ml.R: error: unrecognized arguments:
+```
+**Fix:** Double check all the flags for spelling issues! For example, if you specified ```-seed``` instead of ```--seed``` (note number of dashes!), the program will error.
+
+------------
+
+**Problem:** I get a terminal message like this:
+
+```
+Error in `check_time()`:
+! The time limit of 0.2 minutes has been reached.
+Backtrace:
+     x
+  1. +-global run_diet_ml(...)
+  2. | \-global pass_to_dietML(...)
+  3. |   \-global run_dietML_ranger(...)
+  4. |     \-diet_ml_wflow %>% ...
+  5. +-tune::tune_bayes(...)
+  6. \-tune:::tune_bayes.workflow(...)
+  7.   \-tune:::tune_bayes_workflow(...)
+  8.     \-(function() {...
+  9.       \-tune::check_time(start_time, control$time_limit)
+ 10.         \-rlang::abort(paste("The time limit of", limit, "minutes has been reached."))
+x Optimization stopped prematurely; returning current results.
+```
+or
+```
+! No improvement for 10 iterations; returning current results.
+```
+**Fix:** No fix needed! These are just messages from the ```Tidymodels``` package informing you on the hyperparameter tuning steps.
+
+------------
+
+**Problem:** My SHAP analysis fails
+
+**Fix:** Currently the SHAP analysis only supports a binary factor (2 levels), or a continous factor. Make sure this is true for your data.
+
+------------
+
+**Problem:** After building and competing the tree, I get the error: 
+
+```
+Error in `check_outcome()`:
+! For a classification model, the outcome should be a `factor`, not a `numeric`.
+```
+**Fix:** If your outcome factor is encoded as 0 and 1 the downstream ML will break. Please encode it as "high" or "low" for example.
+
+------------
+
+**Problem:** This is taking FOREVER
+
+**Fix:** Welp, it might still be working, in which case, "Okay!! We get it!! You have a ton of samples!!". 
+
+
+## **FAQ**
+
+Q: Why can't I add more than 8 covariates in my metadata?
+
+A: Well, you can if you want to fork the code and get rid of those gaurd-rails (1 line of code). But we suggest you analyze your covariates and really determine if you need them all (or are you just throwing in the kitchen sink?). You do not need to one-hot encode your metadata variables. Ultimately our algorithm is for Hierarchical Feature Engineering, and messing around with lots of covariates amounts, at least, to scope creep, which we didn't want for ourselves.
+
+Q: Can ```taxaHFE``` work with time-series data.
+
+A: I think? The flags that allow for this have a big ```[BETA]``` in their descriptions, so use them at your own risk. We will try and get an example up here showing how it works. For now, there is some information in the flags, and also some example files in ```example_inputs/``` (metadata_time.txt and microbiome_time.txt). The inspiration for dealing with time data comes from a [Scientific Reports paper](https://doi.org/10.1038/s41598-022-14632-w). Here is a command that we have success with for use with the example time files:
+
+```
+docker run --cpus=8 --memory=8g --platform linux/amd64 --rm -it -v `pwd`:/data aoliver44/taxa_hfe_ml:latest example_inputs/metadata_time.txt example_inputs/microbiome_time.txt -o test_outputs -s subject_id -l Intervention --seed 1234 --shap -n 8 -R
+```
+
+Note, currently only the feature engineering considers the longitudinal aspect of the features. The downstream ML analysis treats every sample as independent. A good discussion of longitudinal methods in biomedical data can be found [here](https://doi.org/10.1007/s10462-023-10561-w). With regards to that paper, our approach is a combination of "Summary Features" and "Stacked Vertically".
 
 
 ## **About**
