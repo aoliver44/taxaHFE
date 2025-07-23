@@ -391,7 +391,7 @@ or
 
 ------------
 
-**Problem:** My SHAP analysis fails
+**Problem:** My SHAP analysis failed.
 
 **Fix:** Currently the SHAP analysis only supports a binary factor (2 levels), or a continous factor. Make sure this is true for your data.
 
@@ -407,9 +407,9 @@ Error in `check_outcome()`:
 
 ------------
 
-**Problem:** This is taking FOREVER
+**Problem:** This is taking FOREVER!
 
-**Fix:** Welp, it might still be working, in which case, "Okay!! We get it!! You have a ton of samples!!". 
+**Fix:** Welp, it might still be working, in which case, "Okay!! We get it!! You have a ton of samples!!". More seriously, larger files may take a ton of time to read in, especially for the metadata file. If you have a lot of levels to compete, this could take time too. Consider giving it more resources. If it is still giving you trouble, let us know about it by opening an issue. 
 
 
 ## **FAQ**
