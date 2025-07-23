@@ -106,7 +106,7 @@ initialize_parser <- function(version, program_name, description, argument_group
   parser$add_argument("-o", "--output_dir", type="character", metavar="<string>", default="outputs", help="Directory for the output files to be written. Defaults to a directory called 'outputs'")
   parser$add_argument("-v", "--version", action="version", version=version)
   parser$add_argument("--data_dir", type="character", metavar="<string>", default=".", help="Directory for MEATDATA, DATA, and output_dir, ignored if using absolute paths. Defaults to the current directory")
-  parser$add_argument("--seed", type="numeric", metavar="<numeric>", default="system time", help="Set a random numeric seed. If not set, defaults to system time")
+  parser$add_argument("--seed", type="numeric", metavar="<numeric>", default=default_seed(), help="Set a random numeric seed. If not set, defaults to system time")
 
   # add the arguments from the passed in argument_groups
   for (arg_group in argument_groups) {
