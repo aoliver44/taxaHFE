@@ -160,7 +160,7 @@ For a great overview of SHAP analyses and how to interpret these plots, check ou
 | kap          | binary    | 1        | Preprocessor1_Model1 | NA                  | 1234 | taxa_hfe_ml_sf |
 | roc_auc      | binary    | 1        | Preprocessor1_Model1 | NA                  | 1234 | taxa_hfe_ml_sf |
 
-Here we see the performance of the ```taxaHFE```-engineered microbiome features in predicting whether an individual resides in an industrialized or non-industrialized area. For example, a naïve model would be correct about 68% of the time in predicting industrialized vs. non-industrialized status (this model has no real skill—it simply predicts the majority class, and note there is some class imbalance). In contrast, the trained model is correct 100% of the time!
+Here we see the performance of the ```taxaHFE```-engineered microbiome features in predicting whether an individual resides in an industrialized or non-industrialized area. For example, a naïve model would be correct about 68% of the time (see the 'null_model_avg' for accuracy) in predicting industrialized vs. non-industrialized status (this model has no real skill—it simply predicts the majority class, and note there is some class imbalance). In contrast, the trained model is correct 100% of the time (see 'estimate' for accuracy)!
 </details>
 </br>
 <details>
