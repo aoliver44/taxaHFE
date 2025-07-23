@@ -113,7 +113,8 @@ This example is included in the repository for several reasons. First, it’s a 
 git clone https://github.com/aoliver44/taxaHFE.git && cd taxaHFE/
 ```
 
-**Step 2:**  Run ```taxaHFE-ML``` using the example files and default parameters. This command will work with the example data. If it doesn't, check out our troubleshooting tips below (do you have Docker running?), or consider opening an issue on GitHub. 
+> [!CAUTION]  
+> Run ```taxaHFE-ML``` using the example files and default parameters. This command will work with the example data. If it doesn't, check out our troubleshooting tips below (do you have Docker running?), or consider opening an issue on GitHub. 
 
 **Note:** Setting container-level resources is by far the most reliable way (in our experience) to ensure that ```taxaHFE``` uses the appropriate system resources. If you set ```--ncores 2``` without also specifying ```--cpus=2``` in the Docker command (or the equivalent flag in Apptainer), some processes within ```taxaHFE``` and ```taxaHFE-ML``` may exceed the intended resource limits.
 
