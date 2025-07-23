@@ -113,12 +113,10 @@ This example is included in the repository for several reasons. First, it’s a 
 git clone https://github.com/aoliver44/taxaHFE.git && cd taxaHFE/
 ```
 
-> [!CAUTION]  
-> Run ```taxaHFE-ML``` using the example files and default parameters. This command will work with the example data. If it doesn't, check out our troubleshooting tips below (do you have Docker running?), or consider opening an issue on GitHub. 
+**Step 2:**  Run ```taxaHFE-ML``` using the example files and default parameters. This command will work with the example data. If it doesn't, check out our troubleshooting tips below (do you have Docker running?), or consider opening an issue on GitHub. 
 
-**Note:** Setting container-level resources is by far the most reliable way (in our experience) to ensure that ```taxaHFE``` uses the appropriate system resources. If you set ```--ncores 2``` without also specifying ```--cpus=2``` in the Docker command (or the equivalent flag in Apptainer), some processes within ```taxaHFE``` and ```taxaHFE-ML``` may exceed the intended resource limits.
-
-Setting ```--ncores 1``` will instruct ```taxaHFE``` to limit resource usage as best it can, but this is not foolproof. The main situation where excessive core usage becomes an issue is when the ```--shap``` flag is used. To avoid this, we strongly recommend setting CPU and memory limits directly in the ```docker run``` command. Adjust the values to suit the capabilities of your machine.
+> [!CAUTION] 
+> Setting container-level resources is by far the most reliable way (in our experience) to ensure that ```taxaHFE``` uses the appropriate system resources. If you set ```--ncores 2``` without also specifying ```--cpus=2``` in the Docker command (or the equivalent flag in Apptainer), some processes within ```taxaHFE``` and ```taxaHFE-ML``` may exceed the intended resource limits. </br> </br> Setting ```--ncores 1``` will instruct ```taxaHFE``` to limit resource usage as best it can, but this is not foolproof. The main situation where excessive core usage becomes an issue is when the ```--shap``` flag is used. To avoid this, we strongly recommend setting CPU and memory limits directly in the ```docker run``` command. Adjust the values to suit the capabilities of your machine.
 
 ```
 docker run --cpus=2 --memory=4g --platform linux/amd64 --rm -it -v `pwd`:/data aoliver44/taxa_hfe_ml:latest example_inputs/metadata.txt example_inputs/microbiome_data.txt -o test_outputs -s Sample -l Category --seed 1234 --shap -n 2
