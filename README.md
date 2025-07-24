@@ -393,7 +393,7 @@ or
 
 **Problem:** My SHAP analysis failed.
 
-**Fix:** Currently the SHAP analysis only supports a binary factor (2 levels), or a continous factor. Make sure this is true for your data.
+**Fix:** Currently the SHAP analysis only supports a binary factor (2 levels), or a continous numeric. Make sure this is true for your data.
 
 ------------
 
