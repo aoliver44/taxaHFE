@@ -20,9 +20,6 @@ opts <- load_taxa_hfe_ml_args()
 
 ## Run main ====================================================================
 
-## set target list for dietML input objects
-diet_ml_inputs <- list()
-
 ## check for inputs and read in read in ========================================
 ## metadata file
 metadata <- read_in_metadata(input = opts$METADATA,
@@ -59,7 +56,6 @@ diet_ml_inputs <- method_levels(
   disable_super_filter = opts$disable_super_filter,
   write_both_outputs = opts$write_both_outputs,
   write_flattened_tree = opts$write_flattened_tree,
-  target_list = diet_ml_inputs,
   col_names = colnames(hierarchical_data)[2:NCOL(hierarchical_data)],
   output = opts$output_dir,
   seed = opts$seed,
@@ -67,17 +63,15 @@ diet_ml_inputs <- method_levels(
 )
 
 ## make sure test train in each item of list
-diet_ml_inputs <- split_train_data(target_list = diet_ml_inputs, attribute_name = "train_test_attr", seed = opts$seed)
-
-## create df for dietML to parse
-diet_ml_input_df <- extract_attributes(items_list = diet_ml_inputs)
+diet_ml_inputs <- split_train_data(diet_ml_inputs, attribute_name = "train_test_attr", seed = opts$seed)
 
 ## write dietML objects to file (if people want the output files that
 ## went into dietML)
-write_list_to_csv(target_list = diet_ml_inputs, directory = gsub("/$", "", x = opts$output_dir))
+write_list_to_csv(diet_ml_inputs, directory = gsub("/$", "", x = opts$output_dir))
 
 ## pass to dietML if selected
-run_diet_ml(input_df = diet_ml_input_df, 
+run_diet_ml(diet_ml_inputs,
+            metadata,
             n_repeat = opts$permute, 
             model = opts$model,
             feature_type = opts$feature_type,

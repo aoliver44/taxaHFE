@@ -139,15 +139,17 @@ test_that("load_args works correctly", {
     expect_error(load_args(program, description, argument_groups = list()), version)
   })
 
-  test_that("it sets the paths using --data_dir", {
+  test_that("it sets the paths using --data_dir, trims slash and creates output dir", {
     commandArgs <<- function(x) {
-      c("--data_dir", "/path", "m.txt", "d.txt", "-o", "custom_outputs")
+      c("--data_dir", "/path", "m.txt", "d.txt", "-o", "custom_outputs/")
     }
 
     expect_no_error(opts <- load_args(program, description, argument_groups = list()))
     expect_equal(opts$METADATA, "/path/m.txt")
     expect_equal(opts$DATA, "/path/d.txt")
+    # also tests that the output directory gets the trailing slash trimmed
     expect_equal(opts$output_dir, "/path/custom_outputs")
+    dir.exists("/path/custom_outputs")
   })
 
   test_that("ignores --data_dir when paths are already linked to real files", {
@@ -155,7 +157,6 @@ test_that("load_args works correctly", {
     tmp_files <- list("/tmp/m.txt", "/tmp/d.txt", "-o", "/tmp/custom_outputs")
     file.create("/tmp/m.txt")
     file.create("/tmp/d.txt")
-    dir.create("/tmp/custom_outputs")
 
     commandArgs <<- function(x) {
       c("--data_dir", "/path", tmp_files)

@@ -40,7 +40,7 @@ argument_groups <- list(
       write_flattened_tree=list("-W", "--write_flattened_tree", action="store_true", help="Write a compressed backup of the entire competed tree"),
       write_both_outputs=list("-D", "--write_both_outputs", action="store_true", help="Write an output for pre and post super filter results, overridden by --disable_super_filter"),
       nperm=list("--nperm", type="integer", metavar="<numeric>", default="40", help="Number of taxaHFE RF permutations"),
-      ncores=list("-n", "--ncores", type="integer", metavar="<numeric>", default="2", help="Number of CPU cores to us. Make sure this value matches container resources.")
+      ncores=list("-n", "--ncores", type="integer", metavar="<numeric>", default="2", help="Number of parallel processes to run in certain portions of taxaHFE that support parallel processing. To limit overall resource usage of taxaHFE, limit the amount of resources available to the container (e.g. --cpus=4 for Docker)")
     )
   ),
   taxa_hfe_ml_args=list(
@@ -106,7 +106,7 @@ initialize_parser <- function(version, program_name, description, argument_group
   parser$add_argument("-o", "--output_dir", type="character", metavar="<string>", default="outputs", help="Directory for the output files to be written. Defaults to a directory called 'outputs'")
   parser$add_argument("-v", "--version", action="version", version=version)
   parser$add_argument("--data_dir", type="character", metavar="<string>", default=".", help="Directory for MEATDATA, DATA, and output_dir, ignored if using absolute paths. Defaults to the current directory")
-  parser$add_argument("--seed", type="numeric", metavar="<numeric>", default=default_seed(), help="Set a random numeric seed. If not set, defaults to system time")
+  parser$add_argument("--seed", type="numeric", metavar="<numeric>", default=default_seed(), help="Set the seed, if no value is provided, uses a random number from the range (-1 * 2^31, 2^31 - 1)")
 
   # add the arguments from the passed in argument_groups
   for (arg_group in argument_groups) {
@@ -168,8 +168,9 @@ load_args <- function(program_name, description, argument_groups) {
     }
   }
 
-  # ensure the output directory exists
-  dir.create(opts$output_dir)
+  # ensure the output directory does not have a trailing slash, and create it if it doesn't exist
+  opts$output_dir <- gsub("/$", "", x = opts$output_dir)
+  dir.create(opts$output_dir, showWarnings = FALSE)
 
   # set the seed from the flags
   set.seed(opts$seed)

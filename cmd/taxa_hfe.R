@@ -20,9 +20,6 @@ opts <- load_taxa_hfe_args()
 
 ## Run main ====================================================================
 
-## set target list for dietML input objects
-diet_ml_inputs <- list()
-
 ## check for inputs and read in read in ========================================
 ## metadata file
 metadata <- read_in_metadata(input = opts$METADATA,
@@ -40,7 +37,7 @@ hierarchical_data <- read_in_hierarchical_data(input = opts$DATA,
 
 
 # Run TaxaHFE
-diet_ml_inputs <- method_taxa_hfe(
+method_taxa_hfe(
   hData = hierarchical_data,
   metadata = metadata,
   prevalence = opts$prevalence,
@@ -55,7 +52,6 @@ diet_ml_inputs <- method_taxa_hfe(
   write_both_outputs = opts$write_both_outputs,
   write_flattened_tree = opts$write_flattened_tree,
   write_old_files = opts$write_old_files,
-  target_list = diet_ml_inputs,
   col_names = colnames(hierarchical_data)[2:NCOL(hierarchical_data)],
   output = opts$output_dir,
   seed = opts$seed,
