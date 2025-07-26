@@ -171,9 +171,7 @@ The below figure shows the ```taxaHFE```-selected features that driving the ML m
 
 ![SHAP output from Example 1](pictures/shap_taxa_hfe_ml_sf_1234_full.png "Example 1 SHAP output")
 
-
-> [!NOTE]
-> First, take note in the above figure of the hierarchical feature engineering that occured! For example, all the species in the phylum Firmicutes has now been collapsed to the phylum level. However, different species of Prevotella remain!
+> First, take note in the above figure of the hierarchical feature engineering that occured! For example, all the species in the phylum *Firmicutes* has now been collapsed to the phylum level. However, different species of *Prevotella* remain!
 
 ```taxaHFE-ML``` will plot the top 10 most important features, determined by a SHAP analysis, using a beeswarm plot.  For example, in the above plot, note that higher abundances of *Firmicutes* were more predictive of industrialized gut microbiomes.
 </details>
