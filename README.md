@@ -348,20 +348,20 @@ Below are some some additional details about certain flags.
 
 ## Troubleshooting
 
-**Problem:** I'm getting the error:
+**Problem #1:** I'm getting the error:
 ```
 docker: Cannot connect to the Docker daemon at unix:///Users/.docker/run/docker.sock. Is the docker daemon running?
 ```
 
 <details>
-<summary> <b>Fix:</b> 
+<summary> <b>Fix #1:</b> 
 </summary>
 Make sure the Docker application is running! If you can't run ```docker image list``` in your terminal, the Docker application has not been started!
 </details>
 
-------------
+</br>
 
-**Problem:** Docker is running but I immediately get this error:
+**Problem #2:** Docker is running but I immediately get this error:
 
 ```
 usage: taxa_hfe_ml [options] METADATA DATA
@@ -369,14 +369,14 @@ taxa_hfe_ml.R: error: unrecognized arguments:
 ```
 
 <details>
-<summary> <b>Fix:</b> 
+<summary> <b>Fix #2:</b> 
 </summary>
 Double check all the flags for spelling issues! For example, if you specified ```-seed``` instead of ```--seed``` (note number of dashes!), the program will error.
 </details>
 
-------------
+</br>
 
-**Problem:** I get a terminal message like this:
+**Problem #3:** I get a terminal message like this:
 
 ```
 Error in `check_time()`:
@@ -400,62 +400,62 @@ or
 ! No improvement for 10 iterations; returning current results.
 ```
 <details>
-<summary> <b>Fix:</b> 
+<summary> <b>Fix #3:</b> 
 </summary>
 No fix needed! These are just messages from the ```Tidymodels``` package informing you on the hyperparameter tuning steps.
 </details>
 
-------------
+</br>
 
-**Problem:** My SHAP analysis failed!
+**Problem #4:** My SHAP analysis failed!
 
 <details>
-<summary> <b>Fix:</b> 
+<summary> <b>Fix #4:</b> 
 </summary>
 Currently the SHAP analysis only supports a binary factor (2 levels), or a continous numeric. Make sure this is true for your data.
 </details>
 
-------------
+</br>
 
-**Problem:** After building and competing the tree, I get the error: 
+**Problem #5:** After building and competing the tree, I get the error: 
 
 ```
 Error in `check_outcome()`:
 ! For a classification model, the outcome should be a `factor`, not a `numeric`.
 ```
 <details>
-<summary> <b>Fix:</b> 
+<summary> <b>Fix #5:</b> 
 </summary>
 If your outcome factor is encoded as 0 and 1 the downstream ML will break. Please encode it as "high" or "low" for example.
 </details>
 
-------------
+</br>
 
-**Problem:** This is taking FOREVER!
+**Problem #6:** This is taking FOREVER!
 
 <details>
-<summary> <b>Fix:</b> 
+<summary> <b>Fix #6:</b> 
 </summary>
 Welp, it might still be working, in which case, "Okay!! We get it!! You have a ton of samples!!". More seriously, larger files may take a ton of time to read in, especially for the metadata file. If you have a lot of levels to compete, this could take time too. Consider giving it more resources. If it is still giving you trouble, let us know about it by opening an issue. 
 </details>
 
 ## **FAQ**
 
-<b>Question:</b> Why can't I add more than 8 covariates in my metadata?
+<b>Question #1:</b> Why can't I add more than 8 covariates in my metadata?
 
 <details>
-<summary> <b>Answer:</b> 
+<summary> <b>Answer #1:</b> 
 </summary>
 Well, you can if you want to fork the code and get rid of those gaurd-rails (1 line of code). But we suggest you analyze your covariates and really determine if you need them all (or are you just throwing in the kitchen sink?). You do not need to one-hot encode your metadata variables. Ultimately our algorithm is for Hierarchical Feature Engineering, and messing around with lots of covariates amounts, at least, to scope creep, which we didn't want for ourselves.
 </details>
 
------
-<b>Question:</b> Can ```taxaHFE``` work with time-series data?
+</br>
 
+<b>Question #2:</b> Can ```taxaHFE``` work with time-series data?
 
 
 <details>
-<summary> <b>Answer:</b> 
+<summary> <b>Answer #2:</b> 
 </summary>
 A: I think? The flags that allow for this have a big ```[BETA]``` in their descriptions, so use them at your own risk. We will try and get an example up here showing how it works. For now, there is some information in the flags, and also some example files in ```example_inputs/``` (metadata_time.txt and microbiome_time.txt). The inspiration for dealing with time data comes from a [Scientific Reports paper](https://doi.org/10.1038/s41598-022-14632-w). Here is a command that we have success with for use with the example time files:
 
