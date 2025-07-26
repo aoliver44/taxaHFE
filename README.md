@@ -3,15 +3,15 @@
 ```taxaHFE``` is a program for performing hierarchical feature engineering on data with a taxonomic organization (e.g., microbiome data, dietary data). ```taxaHFE-ML``` is a variation of ```taxaHFE``` that performs hierarchical feature engineering on training and test datasets, then assesses feature performance using a random forest applied to the hierarchically engineered outputs. If your goal is to reduce a set of hierarchically organized features, use ```taxaHFE```. If your goal is to use hierarchically organized features in machine learning models, we recommend using ```taxaHFE-ML```.
 
 ## **Table of Contents**
-- [Background on the algorithm](https://github.com/aoliver44/taxaHFE/tree/output-dir?tab=readme-ov-file#background-on-the-algorithm)
-- [Installing taxaHFE](https://github.com/aoliver44/taxaHFE/tree/output-dir?tab=readme-ov-file#installing-taxahfe)
-- [Example: Gut Microbiome, Industrial vs. Non-Industrial]()
-- [Flag information](https://github.com/aoliver44/taxaHFE/tree/output-dir?tab=readme-ov-file#information-about-the-flags)
-- [Troubleshooting](https://github.com/aoliver44/taxaHFE/tree/output-dir?tab=readme-ov-file#troubleshooting)
-- [FAQ](https://github.com/aoliver44/taxaHFE/tree/output-dir?tab=readme-ov-file#faq)
-- [About](https://github.com/aoliver44/taxaHFE/tree/output-dir?tab=readme-ov-file#about)
-- [Contribute](https://github.com/aoliver44/taxaHFE/tree/output-dir?tab=readme-ov-file#contribute)
-- [Citation](https://github.com/aoliver44/taxaHFE/tree/output-dir?tab=readme-ov-file#citation)
+- [Background on the algorithm](#background-on-the-algorithm)
+- [Installing taxaHFE](#installing-taxahfe)
+- [Example: Gut Microbiome, Industrial vs. Non-Industrial](#example-1-exploring-differences-in-the-gut-microbiome-of-individuals-living-in-industrialized-vs-non-industrialized-communities)
+- [Flag information](#information-about-the-flags)
+- [Troubleshooting](#troubleshooting)
+- [FAQ](#faq)
+- [Acknowledgments](#acknowledgments)
+- [Contribute](#contribute)
+- [Citation](#citation)
 
 
 
@@ -441,20 +441,30 @@ Welp, it might still be working, in which case, "Okay!! We get it!! You have a t
 
 ## **FAQ**
 
-Q: Why can't I add more than 8 covariates in my metadata?
+<b>Question:</b> Why can't I add more than 8 covariates in my metadata?
 
-A: Well, you can if you want to fork the code and get rid of those gaurd-rails (1 line of code). But we suggest you analyze your covariates and really determine if you need them all (or are you just throwing in the kitchen sink?). You do not need to one-hot encode your metadata variables. Ultimately our algorithm is for Hierarchical Feature Engineering, and messing around with lots of covariates amounts, at least, to scope creep, which we didn't want for ourselves.
+<details>
+<summary> <b>Answer:</b> 
+</summary>
+Well, you can if you want to fork the code and get rid of those gaurd-rails (1 line of code). But we suggest you analyze your covariates and really determine if you need them all (or are you just throwing in the kitchen sink?). You do not need to one-hot encode your metadata variables. Ultimately our algorithm is for Hierarchical Feature Engineering, and messing around with lots of covariates amounts, at least, to scope creep, which we didn't want for ourselves.
+</details>
 
-Q: Can ```taxaHFE``` work with time-series data?
+-----
+<b>Question:</b> Can ```taxaHFE``` work with time-series data?
 
+
+
+<details>
+<summary> <b>Answer:</b> 
+</summary>
 A: I think? The flags that allow for this have a big ```[BETA]``` in their descriptions, so use them at your own risk. We will try and get an example up here showing how it works. For now, there is some information in the flags, and also some example files in ```example_inputs/``` (metadata_time.txt and microbiome_time.txt). The inspiration for dealing with time data comes from a [Scientific Reports paper](https://doi.org/10.1038/s41598-022-14632-w). Here is a command that we have success with for use with the example time files:
 
 ```
 docker run --cpus=8 --memory=8g --platform linux/amd64 --rm -it -v `pwd`:/data aoliver44/taxa_hfe_ml:latest example_inputs/metadata_time.txt example_inputs/microbiome_time.txt -o test_outputs -s subject_id -l Intervention --seed 1234 --shap -n 8 -R
 ```
+> Note, currently only the feature engineering considers the longitudinal aspect of the features. The downstream ML analysis treats every sample as independent. A good discussion of longitudinal methods in biomedical data can be found [here](https://doi.org/10.1007/s10462-023-10561-w). With regards to that paper, our approach is a combination of "Summary Features" and "Stacked Vertically".
 
-Note, currently only the feature engineering considers the longitudinal aspect of the features. The downstream ML analysis treats every sample as independent. A good discussion of longitudinal methods in biomedical data can be found [here](https://doi.org/10.1007/s10462-023-10561-w). With regards to that paper, our approach is a combination of "Summary Features" and "Stacked Vertically".
-
+</details>
 
 ## **Acknowledgments**
 
