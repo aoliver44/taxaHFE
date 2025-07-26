@@ -5,7 +5,7 @@
 ## **Table of Contents**
 - [Background on the algorithm](https://github.com/aoliver44/taxaHFE/tree/output-dir?tab=readme-ov-file#background-on-the-algorithm)
 - [Installing taxaHFE](https://github.com/aoliver44/taxaHFE/tree/output-dir?tab=readme-ov-file#installing-taxahfe)
-- [Example 1: Microbiome comparisons](https://github.com/aoliver44/taxaHFE/tree/output-dir?tab=readme-ov-file#example-1-exploring-differences-in-the-gut-microbiome-of-individuals-living-in-industrialized-vs-non-industrialized-communities)
+- [Example: Gut Microbiome, Industrial vs. Non-Industrial]()
 - [Flag information](https://github.com/aoliver44/taxaHFE/tree/output-dir?tab=readme-ov-file#information-about-the-flags)
 - [Troubleshooting](https://github.com/aoliver44/taxaHFE/tree/output-dir?tab=readme-ov-file#troubleshooting)
 - [FAQ](https://github.com/aoliver44/taxaHFE/tree/output-dir?tab=readme-ov-file#faq)
@@ -18,23 +18,22 @@
  ## **Background on the algorithm** 
 A program to perform hierarchical feature engineering on data with a taxonomic organization (e.g., microbiome data, dietary data). This is not a new idea; however, few implementations exist in the wild. For background reading on these concepts, please see the links below:
 
-[TaxaHFE: A machine learning approach to collapse microbiome datasets using taxonomic structure.](https://doi.org/10.1093/bioadv/vbad165)
+- [TaxaHFE: A machine learning approach to collapse microbiome datasets using taxonomic structure.](https://doi.org/10.1093/bioadv/vbad165)
 Andrew Oliver, Matthew Kay, Danielle G. Lemay. 2023. *Bioinformatics Advances*. 
 
-[Taxonomy-aware feature engineering for microbiome classification.](https://bmcbioinformatics.biomedcentral.com/articles/10.1186/s12859-018-2205-3)
+- [Taxonomy-aware feature engineering for microbiome classification.](https://bmcbioinformatics.biomedcentral.com/articles/10.1186/s12859-018-2205-3)
 Mai Oudah & Andreas Henschel. 2018. *BMC Bioinformatics*.
 
-[Feature Selection in Hierarchical Feature Spaces.](https://link.springer.com/chapter/10.1007/978-3-319-11812-3_25)
+- [Feature Selection in Hierarchical Feature Spaces.](https://link.springer.com/chapter/10.1007/978-3-319-11812-3_25)
 Petar Ristoski & Heiko Paulheim. 2014. *International Conference on Discovery Science*.
-
-```taxaHFE ```(Hierarchical Feature Engineering) begins by evaluating the pairwise correlation structure between a parent taxon’s abundance and that of its descendants to prune descendants that exceed a specified correlation threshold. For parent-child taxa not collapsed in the correlation step, ```taxaHFE``` then uses a permutation-based random forest to assess the importance of the parent taxon and its remaining descendants in explaining a response of interest. If the parent taxon is, on average, the most important feature, all descendants are dropped. Otherwise, only the descendants with higher importance than the parent are retained.
-
-Finally, an optional filter step considers all remaining features and applies another permutation-based random forest. Features with average importance below the overall mean, or with negative or zero importance, are dropped.
 
 ### **Graphical outline of taxaHFE**
 
 ![Outline of taxaHFE algorithm](pictures/Figure1_v2.png "Outline of taxaHFE algorithm")
 
+```taxaHFE ```(Hierarchical Feature Engineering) begins by evaluating the pairwise correlation structure between a parent taxon’s abundance and that of its descendants to prune descendants that exceed a specified correlation threshold. For parent-child taxa not collapsed in the correlation step, ```taxaHFE``` then uses a permutation-based random forest to assess the importance of the parent taxon and its remaining descendants in explaining a response of interest. If the parent taxon is, on average, the most important feature, all descendants are dropped. Otherwise, only the descendants with higher importance than the parent are retained.
+
+Finally, an optional filter step considers all remaining features and applies another permutation-based random forest. Features with average importance below the overall mean, or with negative or zero importance, are dropped.
 </br>
 
 ## **Installing taxaHFE**
@@ -60,6 +59,7 @@ docker pull aoliver44/taxa_hfe_ml:latest
 <details>
 <summary> <b>Option 2:</b> Alternatively, you can pull this image using Singularity or Apptainer. This is a good option if you are on a managed HPC environment.
 </summary>
+Note that currently running the below commands using Apptainer will still work, as Apptainer has not superseded Singularity.
 
 ```
 ## pull taxaHFE
@@ -171,7 +171,10 @@ The below figure shows the ```taxaHFE```-selected features that driving the ML m
 
 ![SHAP output from Example 1](pictures/shap_taxa_hfe_ml_sf_1234_full.png "Example 1 SHAP output")
 
-```taxaHFE-ML``` will plot the top 10 most important features, determined by a SHAP analysis, using a beeswarm plot. For example, in the above plot, note that higher abundances of *Firmicutes* were more predictive of industrialized gut microbiomes.
+> [!NOTE]
+> First, take note in the above figure of the hierarchical feature engineering that occured! For example, all the species in the phylum Firmicutes has now been collapsed to the phylum level. However, different species of Prevotella remain!
+
+```taxaHFE-ML``` will plot the top 10 most important features, determined by a SHAP analysis, using a beeswarm plot.  For example, in the above plot, note that higher abundances of *Firmicutes* were more predictive of industrialized gut microbiomes.
 </details>
 
 
@@ -350,7 +353,12 @@ Below are some some additional details about certain flags.
 ```
 docker: Cannot connect to the Docker daemon at unix:///Users/.docker/run/docker.sock. Is the docker daemon running?
 ```
-**Fix:** Make sure the Docker application is running! If you can't run ```docker image list``` in your terminal, the Docker application has not been started!
+
+<details>
+<summary> <b>Fix:</b> 
+</summary>
+Make sure the Docker application is running! If you can't run ```docker image list``` in your terminal, the Docker application has not been started!
+</details>
 
 ------------
 
@@ -360,7 +368,12 @@ docker: Cannot connect to the Docker daemon at unix:///Users/.docker/run/docker.
 usage: taxa_hfe_ml [options] METADATA DATA
 taxa_hfe_ml.R: error: unrecognized arguments:
 ```
-**Fix:** Double check all the flags for spelling issues! For example, if you specified ```-seed``` instead of ```--seed``` (note number of dashes!), the program will error.
+
+<details>
+<summary> <b>Fix:</b> 
+</summary>
+Double check all the flags for spelling issues! For example, if you specified ```-seed``` instead of ```--seed``` (note number of dashes!), the program will error.
+</details>
 
 ------------
 
@@ -387,13 +400,21 @@ or
 ```
 ! No improvement for 10 iterations; returning current results.
 ```
-**Fix:** No fix needed! These are just messages from the ```Tidymodels``` package informing you on the hyperparameter tuning steps.
+<details>
+<summary> <b>Fix:</b> 
+</summary>
+No fix needed! These are just messages from the ```Tidymodels``` package informing you on the hyperparameter tuning steps.
+</details>
 
 ------------
 
-**Problem:** My SHAP analysis failed.
+**Problem:** My SHAP analysis failed!
 
-**Fix:** Currently the SHAP analysis only supports a binary factor (2 levels), or a continous numeric. Make sure this is true for your data.
+<details>
+<summary> <b>Fix:</b> 
+</summary>
+Currently the SHAP analysis only supports a binary factor (2 levels), or a continous numeric. Make sure this is true for your data.
+</details>
 
 ------------
 
@@ -403,14 +424,21 @@ or
 Error in `check_outcome()`:
 ! For a classification model, the outcome should be a `factor`, not a `numeric`.
 ```
-**Fix:** If your outcome factor is encoded as 0 and 1 the downstream ML will break. Please encode it as "high" or "low" for example.
+<details>
+<summary> <b>Fix:</b> 
+</summary>
+If your outcome factor is encoded as 0 and 1 the downstream ML will break. Please encode it as "high" or "low" for example.
+</details>
 
 ------------
 
 **Problem:** This is taking FOREVER!
 
-**Fix:** Welp, it might still be working, in which case, "Okay!! We get it!! You have a ton of samples!!". More seriously, larger files may take a ton of time to read in, especially for the metadata file. If you have a lot of levels to compete, this could take time too. Consider giving it more resources. If it is still giving you trouble, let us know about it by opening an issue. 
-
+<details>
+<summary> <b>Fix:</b> 
+</summary>
+Welp, it might still be working, in which case, "Okay!! We get it!! You have a ton of samples!!". More seriously, larger files may take a ton of time to read in, especially for the metadata file. If you have a lot of levels to compete, this could take time too. Consider giving it more resources. If it is still giving you trouble, let us know about it by opening an issue. 
+</details>
 
 ## **FAQ**
 
@@ -429,7 +457,7 @@ docker run --cpus=8 --memory=8g --platform linux/amd64 --rm -it -v `pwd`:/data a
 Note, currently only the feature engineering considers the longitudinal aspect of the features. The downstream ML analysis treats every sample as independent. A good discussion of longitudinal methods in biomedical data can be found [here](https://doi.org/10.1007/s10462-023-10561-w). With regards to that paper, our approach is a combination of "Summary Features" and "Stacked Vertically".
 
 
-## **About**
+## **Acknowledgments**
 
 Special thanks to Stephanie M.G. Wilson for the logo.
 </br>
