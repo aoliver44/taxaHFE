@@ -440,6 +440,18 @@ If your outcome factor is encoded as 0 and 1 the downstream ML will break. Pleas
 Welp, it might still be working, in which case, "Okay!! We get it!! You have a ton of samples!!". More seriously, larger files may take a ton of time to read in, especially for the metadata file. If you have a lot of levels to compete, this could take time too. Consider giving it more resources. If it is still giving you trouble, let us know about it by opening an issue. 
 </details>
 
+**Problem #7:** I see this message when running SHAP analysis
+
+```
+SHAP analysis encountered an issue and all output files may not have been generated
+```
+
+<details>
+<summary> <b>Fix #7:</b> 
+</summary>
+Occasionally SHAP errors out, expecially when sample sizes are limited. Because we initially write the full SHAP file first (PDF contains `_full`), which is the SHAP analysis run using all of the samples, check first to see if the full SHAP PDF has been generated. If so, this is the relevant data. We attempt to generate SHAP analyses on the test and training data as well, and they might be missing. 
+</details>
+
 ## **FAQ**
 
 <b>Question #1:</b> Why can't I add more than 8 covariates in my metadata?

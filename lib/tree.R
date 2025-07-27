@@ -1093,7 +1093,6 @@ write_list_to_csv <- function(diet_ml_inputs, directory = ".") {
     # Check for the "train_test_attr" attribute and if it is non-NA and non-null
     train_test_attr <- attr(item, "train_test_attr")
     if (is.null(train_test_attr) || is.na(train_test_attr)) {
-      message(paste("Skipping", item_name, ": 'train_test_attr' is NULL or NA."))
       next
     }
     
@@ -1747,7 +1746,7 @@ shap_analysis <- function(label, output, model, filename, shap_inputs, train, te
   
   # --- Save and return results ---
   if (shap.error.occured) {
-    message("❌ SHAP analysis could not be completed.")
+    message(paste("SHAP analysis encountered an issue and all output files may not have been generated:", error_message))
     if (!is.null(error_message)) { 
       ## attempt to still return what was written to shap_plot_env
       save(list = ls(envir = shap_plot_env), 
