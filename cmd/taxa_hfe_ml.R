@@ -43,7 +43,7 @@ test_metadata  <- rsample::testing(tr_te_split)
 
 # Run taxaHFE-ML
 diet_ml_inputs <- method_taxa_hfe_ml(
-  hData = hierarchical_data,
+  h_data = hierarchical_data,
   metadata = metadata,
   prevalence = opts$prevalence,
   abundance = opts$abundance,
