@@ -75,7 +75,7 @@ diet_ml_inputs <- method_taxa_hfe_ml(
 diet_ml_inputs_levels <- list()
 if (opts$summarized_levels) {
   diet_ml_inputs_levels <- method_levels(
-    hData = hierarchical_data,
+    h_data = hierarchical_data,
     metadata = metadata,
     prevalence = opts$prevalence,
     abundance = opts$prevalence,
