@@ -176,8 +176,7 @@ method_levels <- function(
 ) {
 
   ## Build tree ================================================================
-  cat("\n\n", "###########################\n", "Building Tree...\n", "###########################\n\n")
-  cat("This may take a few minutes depending on how many features you have.\n")
+  cat("\n\n", "###########################\n", "Building levels tree...\n", "###########################\n\n")
   h_tree <- build_tree(
     h_data,
     filter_prevalence = prevalence,
