@@ -234,7 +234,8 @@ test_flag_values <- list(
     tune_time=list(flags=list("--tune_time"), value=1, errors=list(-1,0), warnings=list(30)),
     tune_stop=list(flags=list("--tune_stop"), value=9),
     permute=list(flags=list("--permute"), value=2, errors=list(-1,0), warnings=list(50)),
-    shap=list(flags=list("--shap"), value=TRUE)
+    shap=list(flags=list("--shap"), value=TRUE),
+    summarized_levels=list(flags=list("--summarized_levels"), value=TRUE)
   )
 )
 

@@ -55,7 +55,8 @@ argument_groups <- list(
       tune_time=list("--tune_time", type="numeric", metavar="<numeric>", default="2", help="Time for hyperparameter search (in minutes)"),
       tune_stop=list("--tune_stop", type="numeric", metavar="<numeric>", default="10", help="Number of HP iterations without improvement before stopping"),
       permute=list("--permute", type="numeric", metavar="<numeric>", default="1", help="Number of times to permute the ML assessment process, resulting in n different test/train split inputs"),
-      shap=list("--shap", action="store_true", help="Calculate SHAP values")
+      shap=list("--shap", action="store_true", help="Calculate SHAP values"),
+      summarized_levels=list("--summarized_levels", action="store_true", help="Include summarized levels in ML competition")
     )
   )
 )

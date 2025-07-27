@@ -1022,7 +1022,7 @@ generate_summary_files <- function(input, metadata, object,
 ## version of the object (df). If there isnt, creates 2 new objects in the
 ## list that is a test and a train object of that original object. The split
 ## is informed from the tr_te_split code in the run_file.R
-split_train_data <- function(diet_ml_inputs, attribute_name, seed) {
+split_train_data <- function(diet_ml_inputs, attribute_name, seed, train_metadata, test_metadata) {
   # Initialize an empty vector to store indices with NA values
   na_indices <- integer(0)
   

@@ -71,12 +71,40 @@ diet_ml_inputs <- method_taxa_hfe_ml(
   random_effects = opts$random_effects
 )
 
+# also run summarized levels if requested
+diet_ml_inputs_levels <- list()
+if (opts$summarized_levels) {
+  diet_ml_inputs_levels <- method_levels(
+    hData = hierarchical_data,
+    metadata = metadata,
+    prevalence = opts$prevalence,
+    abundance = opts$prevalence,
+    lowest_level = opts$lowest_level,
+    max_level = opts$max_level,
+    cor_level = 0.1,
+    # low cor_level for speed - makes almost everything a correlation battle (becase the battles dont matter, only the tree)
+    ncores = opts$ncores,
+    feature_type = opts$feature_type,
+    nperm = opts$nperm,
+    disable_super_filter = opts$disable_super_filter,
+    write_both_outputs = opts$write_both_outputs,
+    write_flattened_tree = opts$write_flattened_tree,
+    col_names = colnames(hierarchical_data)[2:NCOL(hierarchical_data)],
+    output = opts$output_dir,
+    seed = opts$seed,
+    random_effects = opts$random_effects
+  )
+}
+
+# merge summarized level data with already existing diet_ml_inputs list
+diet_ml_inputs <- c(diet_ml_inputs, diet_ml_inputs_levels)
+
 ## make sure test train in each item of list
-diet_ml_inputs <- split_train_data(diet_ml_inputs, attribute_name = "train_test_attr", seed = opts$seed)
+diet_ml_inputs <- split_train_data(diet_ml_inputs, attribute_name = "train_test_attr", seed = opts$seed, train_metadata = train_metadata, test_metadata = test_metadata)
 
 ## write dietML objects to file (if people want the output files that
 ## went into dietML)
-write_list_to_csv(diet_ml_inputs, directory = gsub("/$", "", x = opts$output_dir))
+write_list_to_csv(diet_ml_inputs, opts$output_dir)
 
 ## pass to dietML if selected
 run_diet_ml(diet_ml_inputs,
