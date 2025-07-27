@@ -210,7 +210,6 @@ method_levels <- function(
   diet_ml_inputs <- generate_summary_files(
     input = flattened_df,
     metadata = metadata,
-    diet_ml_inputs = list(),
     disable_super_filter = ifelse(disable_super_filter, "no_sf", "sf"),
     seed = seed
   )

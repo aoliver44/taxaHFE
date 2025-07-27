@@ -967,8 +967,7 @@ store_diet_ml_inputs <- function(diet_ml_inputs, object, super_filter, method, t
 
 ## same function as write_summary_files() except it just 
 ## adds these objects to diet_ml_inputs list.
-generate_summary_files <- function(input, metadata, object, 
-                                   disable_super_filter, seed) {
+generate_summary_files <- function(input, metadata, disable_super_filter, seed) {
   
   ## write files for all the individual levels
   max_levels <- max(input[["depth"]])
