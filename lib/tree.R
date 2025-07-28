@@ -1,33 +1,26 @@
 ## HFE FUNCTIONS
 
-library(janitor, quietly = T, verbose = F, warn.conflicts = F)
-library(tidyr, quietly = T, verbose = F, warn.conflicts = F)
-library(tibble, quietly = T, verbose = F, warn.conflicts = F)
-library(progress, quietly = T, verbose = F, warn.conflicts = F)
-library(data.tree, quietly = T, verbose = F, warn.conflicts = F)
-library(dplyr, quietly = T, verbose = F, warn.conflicts = F)
+library(janitor, quietly = TRUE, verbose = FALSE, warn.conflicts = FALSE)
+library(tidyr, quietly = TRUE, verbose = FALSE, warn.conflicts = FALSE)
+library(tibble, quietly = TRUE, verbose = FALSE, warn.conflicts = FALSE)
+library(progress, quietly = TRUE, verbose = FALSE, warn.conflicts = FALSE)
+library(data.tree, quietly = TRUE, verbose = FALSE, warn.conflicts = FALSE)
+library(dplyr, quietly = TRUE, verbose = FALSE, warn.conflicts = FALSE)
 options(dplyr.summarise.inform = FALSE)
-library(corrr, quietly = T, verbose = F, warn.conflicts = F)
-library(tibble, quietly = T, verbose = F, warn.conflicts = F)
-library(purrr, quietly = T, verbose = F, warn.conflicts = F)
-library(ranger, quietly = T, verbose = F, warn.conflicts = F)
-library(vroom, quietly = T, verbose = F, warn.conflicts = F)
-library(tidyselect, quietly = T, verbose = F, warn.conflicts = F)
-library(recipes, quietly = T, verbose = F, warn.conflicts = F)
-library(mikropml, quietly = T, verbose = F, warn.conflicts = F)
-suppressPackageStartupMessages(library(ggplot2, quietly = T, verbose = F, warn.conflicts = F))
-suppressPackageStartupMessages(library(tidymodels, quietly = T, verbose = F, warn.conflicts = F))
-library(fastshap, quietly = T, verbose = F, warn.conflicts = F)
-library(shapviz, quietly = T, verbose = F, warn.conflicts = F)
-suppressPackageStartupMessages(library(doParallel, quietly = T, verbose = F, warn.conflicts = F))
-library(foreach, quietly = T, verbose = F, warn.conflicts = F)
-
-# trim outliers from mean feature abundance calc
-# UPDATE: intially we had at 0.02, for an outlier resistant mean
-# but if you want a = 0, p = 0 (all features), the trim
-# was causing some features to get filtered (they look like
-# zero abundance, but really the top 2% of features had non-zero abundances)
-trim <- 0.00 
+library(corrr, quietly = TRUE, verbose = FALSE, warn.conflicts = FALSE)
+library(tibble, quietly = TRUE, verbose = FALSE, warn.conflicts = FALSE)
+library(purrr, quietly = TRUE, verbose = FALSE, warn.conflicts = FALSE)
+library(ranger, quietly = TRUE, verbose = FALSE, warn.conflicts = FALSE)
+library(vroom, quietly = TRUE, verbose = FALSE, warn.conflicts = FALSE)
+library(tidyselect, quietly = TRUE, verbose = FALSE, warn.conflicts = FALSE)
+library(recipes, quietly = TRUE, verbose = FALSE, warn.conflicts = FALSE)
+library(mikropml, quietly = TRUE, verbose = FALSE, warn.conflicts = FALSE)
+suppressPackageStartupMessages(library(ggplot2, quietly = TRUE, verbose = FALSE, warn.conflicts = FALSE))
+suppressPackageStartupMessages(library(tidymodels, quietly = TRUE, verbose = FALSE, warn.conflicts = FALSE))
+library(fastshap, quietly = TRUE, verbose = FALSE, warn.conflicts = FALSE)
+library(shapviz, quietly = TRUE, verbose = FALSE, warn.conflicts = FALSE)
+suppressPackageStartupMessages(library(doParallel, quietly = TRUE, verbose = FALSE, warn.conflicts = FALSE))
+library(foreach, quietly = TRUE, verbose = FALSE, warn.conflicts = FALSE)
 
 ## helper functions ============================================================
 
@@ -208,8 +201,8 @@ write_summary_files <- function(input, metadata, output) {
     ## merge with metadata
     file_merge <- merge(metadata, file_summary, by = "subject_id")
     
-    filename <- paste0("_level_", count, ".csv")
-    readr::write_delim(x = file_merge, file = paste0(tools::file_path_sans_ext(output), filename), delim = ",")
+    filename <- paste0("summarized_level_", count, ".csv")
+    readr::write_delim(x = file_merge, file = paste0(output, "/", filename), delim = ",")
     count <- count + 1
   }
 }
@@ -223,19 +216,17 @@ write_taxa_hfe_v1_input_file <- function(input, output) {
     tibble::remove_rownames()
   version1$clade_name <- gsub(pattern = "taxaTree\\/", replacement = "", x = version1$clade_name)
   version1$clade_name <- gsub(pattern = "\\/", replacement = "\\|", x = version1$clade_name)
-  readr::write_delim(x = version1, file = paste0(tools::file_path_sans_ext(output), "v1_input.csv"), delim = ",")
+  readr::write_delim(x = version1, file = paste0(output, "/", "v1_input.csv"), delim = ",")
 }
 
 ## write files for old_HFE =====================================================
 # write old files for the Oudah program
-write_oudah_input <- function(input, output) {
+write_oudah_input <- function(input, output, metadata) {
   
   ## select "base" (no covariates) metadata file
   metadata <- metadata %>% dplyr::select(., subject_id, feature_of_interest)
   
   max_levels <- max(input[["depth"]])
-  ## start at 2 to ignore taxa_tree depth (meaningless node)
-  levels <- c(1:max_levels)
   
   ## split raw data by pathString backslash into number of expected parts
   taxonomy <- input %>% 
@@ -263,8 +254,8 @@ write_oudah_input <- function(input, output) {
     dplyr::relocate(., index, dplyr::any_of(c(unlist(paste0("L", c(1:max_levels))))))
   
   ## write OTU to file
-  readr::write_delim(x = input_taxa_merge[1:(max_levels)], file = paste0(tools::file_path_sans_ext(output), "_old_hfe_taxa.txt"), col_names = FALSE, delim = "\t")
-  readr::write_delim(x = input_taxa_merge %>% dplyr::select(., 1,(max_levels+1):dplyr::last_col()), file = paste0(tools::file_path_sans_ext(output), "_old_hfe_otu.txt"), col_names = FALSE, delim = "\t")
+  readr::write_delim(x = input_taxa_merge[1:(max_levels)], file = paste0(output, "/", "oudah_hfe_taxa.txt"), col_names = FALSE, delim = "\t")
+  readr::write_delim(x = input_taxa_merge %>% dplyr::select(., 1,(max_levels+1):dplyr::last_col()), file = paste0(output, "/", "oudah_hfe_otu.txt"), col_names = FALSE, delim = "\t")
   
   ## write the metadata input for oudah HFE (labels.tab)
   metadata_order <- colnames(input_taxa_merge[,9:NCOL(input_taxa_merge)])
@@ -272,7 +263,7 @@ write_oudah_input <- function(input, output) {
     pull(., feature_of_interest)
   ## the first item in that tab seperated list has to be "label
   metadata_list <- as.data.frame(c("label", metadata_list))
-  readr::write_delim(x = as.data.frame(t(metadata_list)), file = paste0(tools::file_path_sans_ext(output), "_old_hfe_label.txt"), col_names = FALSE, delim = "\t")
+  readr::write_delim(x = as.data.frame(t(metadata_list)), file = paste0(output, "/", "oudah_hfe_label.txt"), col_names = FALSE, delim = "\t")
   
 }
 
@@ -315,6 +306,12 @@ initial_leaf_values <- function(node, row_num, row_vector, filter_prevalence, fi
   node$passed_prevalence_filter <-
     length(node$abundance[node$abundance != 0]) > (length(node$abundance) * filter_prevalence)
   # indicates if the mean abundance filter was passed
+  # trim outliers from mean feature abundance calc
+  # UPDATE: intially we had at 0.02, for an outlier resistant mean
+  # but if you want a = 0, p = 0 (all features), the trim
+  # was causing some features to get filtered (they look like
+  # zero abundance, but really the top 2% of features had non-zero abundances)
+  trim <- 0.00 
   node$passed_mean_abundance_filter <-
     mean(node$abundance, trim = trim) > filter_mean_abundance
   # defaults to be modified later
@@ -871,7 +868,7 @@ prepare_flattened_df <- function(node, metadata, disable_super_filter, col_names
 }
 
 # write an output file containing the HFE results
-write_output_file <- function(flattened_df, metadata, output_location, file_suffix) {
+write_output_file <- function(flattened_df, metadata, output_location, file_name) {
   
   ## clean pathString names and use these, they will always be unique
   ## downside, longer names
@@ -887,7 +884,7 @@ write_output_file <- function(flattened_df, metadata, output_location, file_suff
     tibble::rownames_to_column(var = "subject_id")
 
   output <- merge(metadata, output, by = "subject_id")
-  readr::write_delim(file = paste0(tools::file_path_sans_ext(output_location), file_suffix), x = output, delim = ",")
+  readr::write_delim(file = paste0(output_location, "/", file_name), x = output, delim = ",")
 }
 
 # generate the outputs
@@ -909,14 +906,14 @@ generate_outputs <- function(tree, metadata, col_names, output_location, disable
   ## if super filter is disabled, write the flattened_winners as standard output
   ## otherwise write the super filter winners as standard output
   if (disable_super_filter == TRUE) {
-    write_output_file(flattened_winners, metadata, output_location, ".csv")
+    write_output_file(flattened_winners, metadata, output_location, "taxahfe_no_sf.csv")
   } else {
-    write_output_file(flattened_sf_winners, metadata, output_location, ".csv")
+    write_output_file(flattened_sf_winners, metadata, output_location,  "taxahfe_sf.csv")
   }
 
   ## also write the non-sf output if both outputs are requested
   if (write_both_outputs == TRUE && disable_super_filter == FALSE) {
-    write_output_file(flattened_winners, metadata, output_location, "_no_sf.csv")
+    write_output_file(flattened_winners, metadata, output_location, "taxahfe_no_sf.csv")
   }
 
   cat(" Features (no super filter): ", nrow(flattened_winners), "\n")
@@ -929,14 +926,14 @@ generate_outputs <- function(tree, metadata, col_names, output_location, disable
     cat("\n", "###########################\n", "Writing old files...\n", "###########################\n\n")
 
     write_summary_files(input = flattened_df, metadata = metadata, output = output_location)
-    write_oudah_input(input = flattened_df, output = output_location)
+    write_oudah_input(input = flattened_df, output = output_location, metadata = metadata)
   }
 
   ## save flattened DF to come back to
   if (write_flattened_df_backup == TRUE) {
     vroom::vroom_write(
       x = flattened_df,
-      file = paste0(tools::file_path_sans_ext(output_location), "_raw_data.tsv.gz"),
+      file = paste0(output_location, "/", "output_raw_data.tsv.gz"),
       num_threads = ncores
     )
   }
@@ -949,29 +946,28 @@ generate_outputs <- function(tree, metadata, col_names, output_location, disable
 ## 3. is it a train or test object
 ## 4. what summarized level is it
 ## 5. what random seed was run
-store_diet_ml_inputs <- function(target_list, object, super_filter, method, train_test_attr, level_n, seed) {
+store_diet_ml_inputs <- function(diet_ml_inputs, object, super_filter, method, train_test_attr, level_n, seed) {
   
   target_name <- paste0(method, "_", super_filter, "_", train_test_attr, "_", level_n)
-  ## add target object to target_list with object_name
-  target_list[target_name] <- list(object)
+  ## add target object to diet_ml_inputs list with object_name
+  diet_ml_inputs[target_name] <- list(object)
   ## add attribute that tells us what program it came from
-  attr(target_list[[target_name]], "program_method") <- method
+  attr(diet_ml_inputs[[target_name]], "program_method") <- method
   ## add attribute that tells us if superfilter was used
-  attr(target_list[[target_name]], "superfilter") <- super_filter
+  attr(diet_ml_inputs[[target_name]], "superfilter") <- super_filter
   ## add attribute about training or testing
-  attr(target_list[[target_name]], "train_test_attr") <- train_test_attr
+  attr(diet_ml_inputs[[target_name]], "train_test_attr") <- train_test_attr
   ## add attribute about what level the data was summarized
-  attr(target_list[[target_name]], "level") <- level_n
+  attr(diet_ml_inputs[[target_name]], "level") <- level_n
   ## add attribute about seed was used
-  attr(target_list[[target_name]], "seed") <- seed
+  attr(diet_ml_inputs[[target_name]], "seed") <- seed
   
-  return(target_list)
+  return(diet_ml_inputs)
 }
 
 ## same function as write_summary_files() except it just 
 ## adds these objects to diet_ml_inputs list.
-generate_summary_files <- function(input, metadata, target_list, object, 
-                                   disable_super_filter, seed) {
+generate_summary_files <- function(input, metadata, disable_super_filter, seed) {
   
   ## write files for all the individual levels
   max_levels <- max(input[["depth"]])
@@ -980,6 +976,7 @@ generate_summary_files <- function(input, metadata, target_list, object,
   
   ## split raw data by pipe symbol into number of expected parts
   count <- 1
+  diet_ml_inputs <- list()
   for (i in seq(levels)) {
     if (i == 1) {
       next
@@ -1003,10 +1000,10 @@ generate_summary_files <- function(input, metadata, target_list, object,
       tibble::rownames_to_column(var = "subject_id")
     
     ## merge with metadata
-    level <- merge(metadata, output, by = "subject_id")
+    level_object <- merge(metadata, output, by = "subject_id")
     
-    diet_ml_inputs <- store_diet_ml_inputs(target_list = diet_ml_inputs,
-                                          object = level,
+    diet_ml_inputs <- store_diet_ml_inputs(diet_ml_inputs,
+                                          object = level_object,
                                           super_filter = NA,
                                           method = "summarized_level",
                                           train_test_attr = NA,
@@ -1024,14 +1021,14 @@ generate_summary_files <- function(input, metadata, target_list, object,
 ## version of the object (df). If there isnt, creates 2 new objects in the
 ## list that is a test and a train object of that original object. The split
 ## is informed from the tr_te_split code in the run_file.R
-split_train_data <- function(target_list, attribute_name, seed) {
+split_train_data <- function(diet_ml_inputs, attribute_name, seed, train_metadata, test_metadata) {
   # Initialize an empty vector to store indices with NA values
   na_indices <- integer(0)
   
   # Loop through the list
-  for (i in seq_along(target_list)) {
+  for (i in seq_along(diet_ml_inputs)) {
     # Get the current item
-    item <- target_list[[i]]
+    item <- diet_ml_inputs[[i]]
     
     # Check if the item has the attribute
     if (!is.null(attr(item, attribute_name))) {
@@ -1048,7 +1045,7 @@ split_train_data <- function(target_list, attribute_name, seed) {
   
   for (missing_train_index in na_indices) {
     temp_train <- diet_ml_inputs[[missing_train_index]] %>% as.data.frame() %>% dplyr::filter(., subject_id %in% train_metadata$subject_id)
-    diet_ml_inputs <- store_diet_ml_inputs(target_list = diet_ml_inputs,
+    diet_ml_inputs <- store_diet_ml_inputs(diet_ml_inputs,
                                           object = temp_train,
                                           super_filter = attributes(diet_ml_inputs[[missing_train_index]])$superfilter,
                                           method = attributes(diet_ml_inputs[[missing_train_index]])$program_method,
@@ -1058,7 +1055,7 @@ split_train_data <- function(target_list, attribute_name, seed) {
     )
     
     temp_test <- diet_ml_inputs[[missing_train_index]] %>% as.data.frame() %>% dplyr::filter(., subject_id %in% test_metadata$subject_id)
-    diet_ml_inputs <- store_diet_ml_inputs(target_list = diet_ml_inputs,
+    diet_ml_inputs <- store_diet_ml_inputs(diet_ml_inputs,
                                           object = temp_test,
                                           super_filter = attributes(diet_ml_inputs[[missing_train_index]])$superfilter,
                                           method = attributes(diet_ml_inputs[[missing_train_index]])$program_method,
@@ -1073,14 +1070,14 @@ split_train_data <- function(target_list, attribute_name, seed) {
 }
 
 ## writes every object in dietML_inputs to file
-write_list_to_csv <- function(target_list, directory = ".") {
+write_list_to_csv <- function(diet_ml_inputs, directory = ".") {
   # Check if the provided directory exists
   if (!dir.exists(directory)) {
     stop("The specified directory does not exist.")
   }
   
   # Get the names of the list items
-  names_lst <- names(target_list)
+  names_lst <- names(diet_ml_inputs)
   
   # Check if the list has names
   if (is.null(names_lst)) {
@@ -1088,15 +1085,14 @@ write_list_to_csv <- function(target_list, directory = ".") {
   }
   
   # Loop through the list and write each object to a CSV file
-  for (i in seq_along(target_list)) {
+  for (i in seq_along(diet_ml_inputs)) {
     # Get the current item and its name
-    item <- target_list[[i]]
+    item <- diet_ml_inputs[[i]]
     item_name <- names_lst[i]
     
     # Check for the "train_test_attr" attribute and if it is non-NA and non-null
     train_test_attr <- attr(item, "train_test_attr")
     if (is.null(train_test_attr) || is.na(train_test_attr)) {
-      message(paste("Skipping", item_name, ": 'train_test_attr' is NULL or NA."))
       next
     }
     
@@ -1119,16 +1115,16 @@ write_list_to_csv <- function(target_list, directory = ".") {
 
 ## create a dataframe of attributes I care about (attr_to_return list) from the
 ## diet_ml_inputs list, which i can use to pass to dietML
-extract_attributes <- function(items_list) {
+extract_attributes <- function(diet_ml_inputs) {
   # Initialize an empty list to store attributes for each item
   attr_list <- list()
   ## create a list of attributes we want to pull into a dataframe
   attr_to_return <- c("program_method", "superfilter", "train_test_attr", "level", "seed")
   
   # Loop through each item in the list
-  for (i in seq_along(items_list)) {
+  for (i in seq_along(diet_ml_inputs)) {
     # Get attributes of the current item
-    item_attr <- attributes(items_list[[i]])
+    item_attr <- attributes(diet_ml_inputs[[i]])
     item_attr <- subset(item_attr, names(item_attr) %in% attr_to_return)
     item_attr <- append(item_attr, values = c("name" =  names(diet_ml_inputs[i])))
     
@@ -1157,8 +1153,9 @@ extract_attributes <- function(items_list) {
 }
 
 ## run dietML based on diet_ml_input_df
-run_diet_ml <- function(input_df, n_repeat, feature_type, seed, train, test, model, program, random_effects, folds, cor_level, ncores, tune_length, tune_stop, tune_time, metric, label, output, shap) {
-  
+run_diet_ml <- function(diet_ml_inputs, metadata, n_repeat, feature_type, seed, train, test, model, program, random_effects, folds, cor_level, ncores, tune_length, tune_stop, tune_time, metric, label, output, shap) {
+  input_df <- extract_attributes(diet_ml_inputs)
+
   ## create a number of random seeds, which are used across all programs 
   ## run, ie taxahfe, taxahfe-ml - they need to be run across the same seeds!
   ## to make sure these are created determistically based on set seed, make
@@ -1183,11 +1180,12 @@ run_diet_ml <- function(input_df, n_repeat, feature_type, seed, train, test, mod
       ## this gets printed in the results file
       program <- dML_input
       pass_to_dietML(train = train_data, 
-                     test = test_data, 
+                     test = test_data,
+                     metadata = metadata,
                      program = program, 
                      model = model, 
                      seed = seed, 
-                     random_effects, 
+                     random_effects = random_effects, 
                      folds = folds, 
                      cor_level = cor_level, 
                      ncores = ncores, 
@@ -1263,16 +1261,11 @@ prep_re_data <- function(input, feature_type, abund) {
   } 
 }
   
-pass_to_dietML <- function(train, test, model, program, seed, random_effects, folds, cor_level, ncores, tune_length, tune_stop, tune_time, metric, label, output, feature_type, shap) {
-  
-  ## check and make sure diet_ml_input_df exists
-  if (!exists("diet_ml_input_df") | nrow(diet_ml_input_df) < 1) {
-    stop(paste0("Nothing passed to dietML."))
-  } 
+pass_to_dietML <- function(train, test, metadata, model, program, seed, random_effects, folds, cor_level, ncores, tune_length, tune_stop, tune_time, metric, label, output, feature_type, shap) {
   
   ## check for outdir and make if not there
-  if (dir.exists(paste0(dirname(opts$OUTPUT), "/ml_analysis")) != TRUE) {
-    dir.create(path = paste0(dirname(opts$OUTPUT), "/ml_analysis"))
+  if (dir.exists(paste0(output, "/ml_analysis")) != TRUE) {
+    dir.create(path = paste0(output, "/ml_analysis"))
   }
   
   
@@ -1533,8 +1526,8 @@ run_dietML_ranger <- function(train, test, seed, random_effects, folds, cor_leve
   
   
   ## write final results to file or append if file exists
-  readr::write_csv(x = full_results, file = paste0(dirname(output), "/ml_analysis/ml_results.csv"), 
-                   append = T, col_names = !file.exists(paste0(dirname(output), "/ml_analysis/ml_results.csv")))
+  readr::write_csv(x = full_results, file = paste0(output, "/ml_analysis/ml_results.csv"), 
+                   append = T, col_names = !file.exists(paste0(output, "/ml_analysis/ml_results.csv")))
   
   ## load up list for shap analysis
   shap_inputs <- list("split_from_data_frame" = split_from_data_frame, "diet_ml_recipe" = diet_ml_recipe, "best_tidy_workflow" = best_tidy_workflow)
@@ -1634,8 +1627,8 @@ run_null_model <- function(train, test, seed, type, cor_level, random_effects, o
   }
   
   ## write table of results to file
-  readr::write_csv(x = results_df, file =paste0(dirname(output), "/ml_analysis/dummy_model_results.csv"), 
-                   append = T, col_names = !file.exists(paste0(dirname(output), "/ml_analysis/dummy_model_results.csv")))
+  readr::write_csv(x = results_df, file =paste0(output, "/ml_analysis/dummy_model_results.csv"), 
+                   append = T, col_names = !file.exists(paste0(output, "/ml_analysis/dummy_model_results.csv")))
   
   ## return results_df because that is what the other models need (ranger, enet)
   return(results_df)
@@ -1653,7 +1646,7 @@ shap_analysis <- function(label, output, model, filename, shap_inputs, train, te
   shap_plot_env <- new.env()
   shap.error.occured <- FALSE
   error_message <- NULL
-  output_dir <- file.path(dirname(output), "ml_analysis")
+  output_dir <- paste0(output, "/ml_analysis")
 
   ## save some initial inputs to env, in case the below 
   ## shap analysis does not finish. Occasionaly it does not finish on
@@ -1753,7 +1746,7 @@ shap_analysis <- function(label, output, model, filename, shap_inputs, train, te
   
   # --- Save and return results ---
   if (shap.error.occured) {
-    message("❌ SHAP analysis could not be completed.")
+    message(paste("SHAP analysis encountered an issue and all output files may not have been generated:", error_message))
     if (!is.null(error_message)) { 
       ## attempt to still return what was written to shap_plot_env
       save(list = ls(envir = shap_plot_env), 

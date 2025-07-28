@@ -28,8 +28,8 @@ argument_groups <- list(
       subject_identifier=list("-s", "--subject_identifier", type="character", metavar="<string>", default="subject_id", help="Metadata column name containing subject IDs"),
       label=list("-l", "--label", type="character", metavar="<string>", default="feature_of_interest", help="Metadata column name of interest for ML"),
       feature_type=list("-t", "--feature_type", type="character", metavar="<string>", default="factor", help="Is the ML label a factor or numeric"),
-      random_effects=list("-R", "--random_effects", action="store_true", help="Consider repeated measures. Note: columns 'individual' and 'time' must be present."),
-      k_splits=list("-k", "--k_splits", type="numeric", metavar="<numeric>", default="3", help="We use kmeans to factorize a numeric response for repeated measures. How many categories should we create?"),
+      random_effects=list("-R", "--random_effects", action="store_true", help="Consider repeated measures. Note: columns 'individual' and 'time' must be present. [BETA]"),
+      k_splits=list("-k", "--k_splits", type="numeric", metavar="<numeric>", default="3", help="We use kmeans to factorize a numeric response for repeated measures. How many categories should we create? [BETA]"),
       abundance=list("-a", "--abundance", type="numeric", metavar="<numeric>", default="0", help="Minimum mean abundance of feature"),
       prevalence=list("-p", "--prevalence", type="numeric", metavar="<numeric>", default="0.01", help="Minimum prevalence of feature"),
       lowest_level=list("-L", "--lowest_level", type="integer", metavar="<numeric>", default="3", help="Most general level allowed to compete"),
@@ -40,7 +40,7 @@ argument_groups <- list(
       write_flattened_tree=list("-W", "--write_flattened_tree", action="store_true", help="Write a compressed backup of the entire competed tree"),
       write_both_outputs=list("-D", "--write_both_outputs", action="store_true", help="Write an output for pre and post super filter results, overridden by --disable_super_filter"),
       nperm=list("--nperm", type="integer", metavar="<numeric>", default="40", help="Number of taxaHFE RF permutations"),
-      ncores=list("-n", "--ncores", type="integer", metavar="<numeric>", default="2", help="Number of CPU cores to use")
+      ncores=list("-n", "--ncores", type="integer", metavar="<numeric>", default="2", help="Number of parallel processes to run in certain portions of taxaHFE that support parallel processing. To limit overall resource usage of taxaHFE, limit the amount of resources available to the container (e.g. --cpus=4 for Docker)")
     )
   ),
   taxa_hfe_ml_args=list(
@@ -55,7 +55,8 @@ argument_groups <- list(
       tune_time=list("--tune_time", type="numeric", metavar="<numeric>", default="2", help="Time for hyperparameter search (in minutes)"),
       tune_stop=list("--tune_stop", type="numeric", metavar="<numeric>", default="10", help="Number of HP iterations without improvement before stopping"),
       permute=list("--permute", type="numeric", metavar="<numeric>", default="1", help="Number of times to permute the ML assessment process, resulting in n different test/train split inputs"),
-      shap=list("--shap", action="store_true", help="Calculate SHAP values")
+      shap=list("--shap", action="store_true", help="Calculate SHAP values"),
+      summarized_levels=list("--summarized_levels", action="store_true", help="Include summarized levels in ML competition")
     )
   )
 )
@@ -95,18 +96,18 @@ validators <- list(
 initialize_parser <- function(version, program_name, description, argument_groups) {
   parser <- argparse::ArgumentParser(
     description=description,
-    usage=paste(program_name, "[options] METADATA DATA OUTPUT"),
+    usage=paste(program_name, "[options] METADATA DATA"),
     formatter_class="type('CustomFormatter', (argparse.ArgumentDefaultsHelpFormatter, argparse.MetavarTypeHelpFormatter, argparse.RawTextHelpFormatter), {})"
   )
 
   # Common arguments for all programs
   parser$add_argument("METADATA", metavar="METADATA", type="character", help="path to metadata input (txt | tsv | csv)")
   parser$add_argument("DATA", metavar="DATA", type="character", help="path to input file from hierarchical data (i.e. hData data) (txt | tsv | csv)")
-  parser$add_argument("OUTPUT", metavar="OUTPUT", type="character", help="output file name (csv)")
 
+  parser$add_argument("-o", "--output_dir", type="character", metavar="<string>", default="outputs", help="Directory for the output files to be written. Defaults to a directory called 'outputs'")
   parser$add_argument("-v", "--version", action="version", version=version)
-  parser$add_argument("--data_dir", type="character", metavar="<string>", default=".", help="Directory for MEATDATA, DATA, and OUTPUT, ignored if using absolute paths. Defaults to the current directory")
-  parser$add_argument("--seed", type="numeric", metavar="<numeric>", default=default_seed(), help="Set a random numeric seed. If not set, defaults to system time")
+  parser$add_argument("--data_dir", type="character", metavar="<string>", default=".", help="Directory for MEATDATA, DATA, and output_dir, ignored if using absolute paths. Defaults to the current directory")
+  parser$add_argument("--seed", type="numeric", metavar="<numeric>", default=default_seed(), help="Set the seed, if no value is provided, uses a random number from the range (-1 * 2^31, 2^31 - 1)")
 
   # add the arguments from the passed in argument_groups
   for (arg_group in argument_groups) {
@@ -160,13 +161,17 @@ load_args <- function(program_name, description, argument_groups) {
 
   # also normalize all input paths to the data_dir
   # will ignore the data_dir if the path links to valid file based on where the script is being run
-  for (f in list("METADATA", "DATA", "OUTPUT")) {
+  for (f in list("METADATA", "DATA", "output_dir")) {
     # lazyish check for abs path
     # change the file path to "data_dir / path" if the path doesn't start with "/"
     if (substr(opts[[f]], 0, 1) != "/") {
       opts[[f]] <- file.path(opts$data_dir, opts[[f]])
     }
   }
+
+  # ensure the output directory does not have a trailing slash, and create it if it doesn't exist
+  opts$output_dir <- gsub("/$", "", x = opts$output_dir)
+  dir.create(opts$output_dir, showWarnings = FALSE)
 
   # set the seed from the flags
   set.seed(opts$seed)

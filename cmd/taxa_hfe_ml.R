@@ -15,14 +15,11 @@ source("lib/methods.R")
 ## add commandline options =====================================================
 
 # to use this code line-by-line in the Rstudio context, commandArgs can be overloaded to specify the desired flags
-# ex. commandArgs <- function(x) { c("example_inputs/metadata.txt", "example_inputs/microbiome_data.txt", "example_inputs/out.csv", "-s", "Sample", "-l", "Category", "-L", "3", "-n", "4", "--seed", "42", "--train_split", "0.8") }
+# ex. commandArgs <- function(x) { c("example_inputs/metadata.txt", "example_inputs/microbiome_data.txt", "-o", "example_outputs", "-s", "Sample", "-l", "Category", "-L", "3", "-n", "4", "--seed", "42", "--train_split", "0.8") }
 # these will be used by the argparser
 opts <- load_taxa_hfe_ml_args()
 
 ## Run main ====================================================================
-
-## set target list for dietML input objects
-diet_ml_inputs <- list()
 
 ## check for inputs and read in read in ========================================
 ## metadata file
@@ -35,7 +32,7 @@ metadata <- read_in_metadata(input = opts$METADATA,
                              k = opts$k_splits)
 
 ## hierarchical data file ======================================================
-hData <- read_in_hierarchical_data(input = opts$DATA,
+hierarchical_data <- read_in_hierarchical_data(input = opts$DATA,
                                    metadata = metadata,
                                    cores = opts$ncores)
 
@@ -46,7 +43,7 @@ test_metadata  <- rsample::testing(tr_te_split)
 
 # Run taxaHFE-ML
 diet_ml_inputs <- method_taxa_hfe_ml(
-  hdata = hData,
+  h_data = hierarchical_data,
   metadata = metadata,
   prevalence = opts$prevalence,
   abundance = opts$abundance,
@@ -67,24 +64,51 @@ diet_ml_inputs <- method_taxa_hfe_ml(
   tune_time = opts$tune_time,
   tune_stop = opts$tune_stop,
   shap = opts$shap,
-  target_list = diet_ml_inputs,
-  output = opts$OUTPUT,
+  train_metadata = train_metadata,
+  test_metadata = test_metadata,
+  output = opts$output_dir,
   seed = opts$seed,
   random_effects = opts$random_effects
 )
 
-## make sure test train in each item of list
-diet_ml_inputs <- split_train_data(target_list = diet_ml_inputs, attribute_name = "train_test_attr", seed = opts$seed)
+# also run summarized levels if requested
+diet_ml_inputs_levels <- list()
+if (opts$summarized_levels) {
+  diet_ml_inputs_levels <- method_levels(
+    h_data = hierarchical_data,
+    metadata = metadata,
+    prevalence = opts$prevalence,
+    abundance = opts$prevalence,
+    lowest_level = opts$lowest_level,
+    max_level = opts$max_level,
+    cor_level = 0.1,
+    # low cor_level for speed - makes almost everything a correlation battle (becase the battles dont matter, only the tree)
+    ncores = opts$ncores,
+    feature_type = opts$feature_type,
+    nperm = opts$nperm,
+    disable_super_filter = opts$disable_super_filter,
+    write_both_outputs = opts$write_both_outputs,
+    write_flattened_tree = opts$write_flattened_tree,
+    col_names = colnames(hierarchical_data)[2:NCOL(hierarchical_data)],
+    output = opts$output_dir,
+    seed = opts$seed,
+    random_effects = opts$random_effects
+  )
+}
 
-## create df for dietML to parse
-diet_ml_input_df <- extract_attributes(items_list = diet_ml_inputs)
+# merge summarized level data with already existing diet_ml_inputs list
+diet_ml_inputs <- c(diet_ml_inputs, diet_ml_inputs_levels)
+
+## make sure test train in each item of list
+diet_ml_inputs <- split_train_data(diet_ml_inputs, attribute_name = "train_test_attr", seed = opts$seed, train_metadata = train_metadata, test_metadata = test_metadata)
 
 ## write dietML objects to file (if people want the output files that
 ## went into dietML)
-write_list_to_csv(target_list = diet_ml_inputs, directory = dirname(opts$OUTPUT))
+write_list_to_csv(diet_ml_inputs, opts$output_dir)
 
 ## pass to dietML if selected
-run_diet_ml(input_df = diet_ml_input_df, 
+run_diet_ml(diet_ml_inputs,
+            metadata,
             n_repeat = opts$permute, 
             model = opts$model,
             feature_type = opts$feature_type,
@@ -98,5 +122,5 @@ run_diet_ml(input_df = diet_ml_input_df,
             tune_time = opts$tune_time,
             metric = opts$metric,
             label = opts$label,
-            output = opts$OUTPUT,
+            output = opts$output_dir,
             shap = opts$shap)
