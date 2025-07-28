@@ -547,7 +547,9 @@ Great question! ```taxaHFE``` can readily take in 2 'styles' of data for the hie
 | GrandparentA\|ParentB\|ChildA    | 4         | 4         | 7         |
 | GrandparentB                     | 0         | 10        | 1         |
 
-Note in the above table, all the child taxa add up to the parent taxa. Additionally, every level is repersented as a seperate feature (ie we see GrandparentA listed, seperated from GrandparentA|ParentA). IF ```taxaHFE``` determines that there is a missing level, it will create that feature by summing the abundance of the children of that node.
+Note in the table above that all child taxa sum to their respective parent taxa. Additionally, each level of the hierarchy is represented as a separate feature—for example, GrandparentA is listed independently from GrandparentA|ParentA.
+
+If ```taxaHFE``` detects that a taxonomic level is missing, it will automatically create that feature by summing the abundances of its child nodes. However, it is not a strict requirement that child taxa must sum to the parent. For instance, if the abundance of GrandparentA were 30 for subject_1, ```taxaHFE``` would not raise an error. It does not enforce that parent taxa equal the sum of their children. That said, when ```taxaHFE``` fills in missing taxonomic levels, it does so by summing the abundances of the child taxa under that node.
 
 ```taxaHFE``` may also take in data structured like this:
 
@@ -560,6 +562,7 @@ Note in the above table, all the child taxa add up to the parent taxa. Additiona
 Note in the above example, the parent taxonomic groups are not seperated as their own feature. Again, based on the previous paragraph, ```taxaHFE``` will create the parent nodes by summing the abundances of the children.
 
 Also note in both examples, the taxonomic groups are found in a column named "clade_name" and the levels are seperated by a "|" (pipe) symbol.
+
 
 </details>
 
