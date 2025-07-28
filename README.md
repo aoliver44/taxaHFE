@@ -559,7 +559,7 @@ Note in the above table, all the child taxa add up to the parent taxa. Additiona
 
 Note in the above example, the parent taxonomic groups are not seperated as their own feature. Again, based on the previous paragraph, ```taxaHFE``` will create the parent nodes by summing the abundances of the children.
 
-Also note in both examples, the taxnomic groups are found in a column named "clade_name" and the levels are seperated by a "|" (pipe) symbol.
+Also note in both examples, the taxonomic groups are found in a column named "clade_name" and the levels are seperated by a "|" (pipe) symbol.
 
 </details>
 
