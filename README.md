@@ -5,7 +5,7 @@
 ## **Table of Contents**
 - [Background on the algorithm](#background-on-the-algorithm)
 - [Installing taxaHFE](#installing-taxahfe)
-- [Example: Gut Microbiome, Industrial vs. Non-Industrial](#example-1-exploring-differences-in-the-gut-microbiome-of-individuals-living-in-industrialized-vs-non-industrialized-communities)
+- [Example: Gut Microbiome, Industrial vs. Non-Industrial](#example-gut-microbiome-industrial-vs-non-industrial)
 - [Flag information](#information-about-the-flags)
 - [Troubleshooting](#troubleshooting)
 - [FAQ](#faq)
