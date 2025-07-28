@@ -38,7 +38,7 @@ hierarchical_data <- read_in_hierarchical_data(input = opts$DATA,
 
 # Run TaxaHFE
 method_taxa_hfe(
-  hData = hierarchical_data,
+  h_data = hierarchical_data,
   metadata = metadata,
   prevalence = opts$prevalence,
   abundance = opts$abundance,
