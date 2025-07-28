@@ -453,7 +453,9 @@ or
 <details>
 <summary> <b>Fix #3:</b> 
 </summary>
-No fix needed! These are just messages from the ```Tidymodels``` package informing you on the hyperparameter tuning steps.
+
+No fix needed! These are just messages from the ```tidymodels``` package informing you on the hyperparameter tuning steps.
+
 </details>
 
 </br>
@@ -530,14 +532,34 @@ docker run --cpus=8 --memory=8g --platform linux/amd64 --rm -it -v `pwd`:/data a
 <details>
 <summary> <b>Answer #3:</b> 
 
-Great question! ```taxaHFE``` can readily take in 2 'styles' of data for the hierarchical data (the metadata file is pretty straightforward, but let us know if more examples are needed). The first style is that of the program MetaPhlan, which looks like this:
-
-```
-
-
-```
-
 </summary>
+
+Great question! ```taxaHFE``` can readily take in 2 'styles' of data for the hierarchical data (the metadata file is pretty straightforward, but let us know if more examples are needed). The first style is that of the program MetaPhlan, which looks, in essence, like this:
+
+| clade_name                        | subject_1 | subject_2 | subject_3 |
+|----------------------------------|-----------|-----------|-----------|
+| GrandparentA                     | 23        | 15        | 15        |
+| GrandparentA\|ParentA            | 19        | 11        | 8         |
+| GrandparentA\|ParentA\|ChildA    | 4         | 1         | 5         |
+| GrandparentA\|ParentA\|ChildB    | 7         | 2         | 3         |
+| GrandparentA\|ParentA\|ChildC    | 8         | 8         | 0         |
+| GrandparentA\|ParentB            | 4         | 4         | 7         |
+| GrandparentA\|ParentB\|ChildA    | 4         | 4         | 7         |
+| GrandparentB                     | 0         | 10        | 1         |
+
+Note in the above table, all the child taxa add up to the parent taxa. Additionally, every level is repersented as a seperate feature (ie we see GrandparentA listed, seperated from GrandparentA|ParentA). IF ```taxaHFE``` determines that there is a missing level, it will create that feature by summing the abundance of the children of that node.
+
+```taxaHFE``` may also take in data structured like this:
+
+| clade_name                        | subject_1 | subject_2 | subject_3 |
+|----------------------------------|-----------|-----------|-----------|
+| GrandparentA\|ParentA\|ChildA    | 4         | 1         | 5         |
+| GrandparentA\|ParentA\|ChildB    | 7         | 2         | 3         |
+| GrandparentA\|ParentA\|ChildC    | 8         | 8         | 0         |
+
+Note in the above example, the parent taxonomic groups are not seperated as their own feature. Again, based on the previous paragraph, ```taxaHFE``` will create the parent nodes by summing the abundances of the children.
+
+Also note in both examples, the taxnomic groups are found in a column named "clade_name" and the levels are seperated by a "|" (pipe) symbol.
 
 </details>
 
