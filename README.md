@@ -101,7 +101,7 @@ wsl
 </details>
 
 ------------------------------
-## **Example 1: Exploring differences in the gut microbiome of individuals living in industrialized vs non-industrialized communities**
+## **Example: Gut Microbiome, Industrial vs. Non-Industrial**
 
 This example is included in the repository for several reasons. First, it’s a dataset we use to test ```taxaHFE``` (and ```taxaHFE-ML```) as we continue to develop the program and implement enhancements to improve the user experience. Second, it provides users with a reference set of files to compare their own inputs against—these files are in the correct format! Lastly, they’re just cool samples from work one of the developers did during grad school.
 
