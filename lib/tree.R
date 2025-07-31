@@ -1637,16 +1637,21 @@ run_null_model <- function(train, test, seed, type, cor_level, random_effects, o
 
 shap_analysis <- function(label, output, model, filename, shap_inputs, train, test, type, ncores) {
   
-  # --- Load SHAP inputs ---
-  split_from_data_frame <- shap_inputs$split_from_data_frame
-  best_tidy_workflow <- shap_inputs$best_tidy_workflow
-  diet_ml_recipe <- shap_inputs$diet_ml_recipe
-  
   # --- Setup ---
   shap_plot_env <- new.env()
   shap.error.occured <- FALSE
   error_message <- NULL
   output_dir <- paste0(output, "/ml_analysis")
+  
+  # --- Load SHAP inputs ---
+  split_from_data_frame <- shap_inputs$split_from_data_frame
+  best_tidy_workflow <- shap_inputs$best_tidy_workflow
+  diet_ml_recipe <- shap_inputs$diet_ml_recipe
+  
+  assign(paste0("split_from_data_frame"), split_from_data_frame, envir = shap_plot_env)
+  assign(paste0("best_tidy_workflow"), best_tidy_workflow, envir = shap_plot_env)
+  assign(paste0("diet_ml_recipe"), diet_ml_recipe, envir = shap_plot_env)
+  
 
   ## save some initial inputs to env, in case the below 
   ## shap analysis does not finish. Occasionaly it does not finish on
@@ -1663,17 +1668,12 @@ shap_analysis <- function(label, output, model, filename, shap_inputs, train, te
     pfun <- function(object, newdata) {
       preds <- predict(object, data = newdata)$predictions
       class_level <- levels(as.factor(split_from_data_frame$data$feature_of_interest))[1]
-      #print("Binary classification prediction:") ## print commands in pfun() there for debugging
-      #print(head(preds))
-      #print(paste("Using class level:", class_level))
       return(preds[, class_level])
     }
   } else if (type == "regression" && model == "rf") {
     # Regression
     pfun <- function(object, newdata) {
       preds <- predict(object, data = newdata)$predictions
-      #print("Regression prediction:")
-      #print(head(preds))
       return(preds)
     }
   }
@@ -1686,14 +1686,7 @@ shap_analysis <- function(label, output, model, filename, shap_inputs, train, te
     result <- tryCatch({
       
       shap_data_subsets <- list(list(split_from_data_frame$data, "full"), list(train, "train"), list(test, "test"))
-      
-      if (ncores > 1) {
-        parallel_shap <- TRUE
-        doParallel::registerDoParallel(cores = ncores)
-      } else {
-        parallel_shap <- FALSE
-      }
-      
+
       for (i in seq_along(shap_data_subsets)) {
         # Fit the model
         best_workflow <- parsnip::fit(best_tidy_workflow, shap_data_subsets[[i]][[1]])
@@ -1703,19 +1696,37 @@ shap_analysis <- function(label, output, model, filename, shap_inputs, train, te
         shap_data <- recipes::prep(diet_ml_recipe, shap_data_subsets[[i]][[1]]) %>%
           recipes::juice() %>%
           dplyr::select(-feature_of_interest, -subject_id)
+        assign(paste0("shap_data_", shap_data_subsets[[i]][[2]]), shap_data, envir = shap_plot_env)
+        
+        ## shap safety checks!
+        n_rows <- nrow(shap_data)
+        n_cols <- ncol(shap_data)
+        # try and calc a conservative nsim, otherwise choose 10.
+        safe_nsim <- max(10, floor(1200000 / (n_rows * n_cols))) # 20 features x 300 samples x 200 sims = 1200000
+        ## for smaller datasets, the above could lead to huge nsim. lets set max at 200.
+        safe_nsim <- ifelse(safe_nsim > 199, 200, safe_nsim)
+        
+        # Error if the data is too large
+        if ((n_cols * n_rows) > 500000) {
+          stop("This input dataset is pretty large for a SHAP analysis. We are skipping this and writing the files for you to re-run your own SHAP analysis")
+        }
+        
+        message(glue::glue("Running SHAP with nsim = {safe_nsim}"))
         
         # Compute SHAP values
         shap_explanations <- fastshap::explain(
           object = best_workflow_mod$fit,
           X = shap_data,
           pred_wrapper = pfun,
-          nsim = 500,
+          nsim = safe_nsim,
           adjust = TRUE,
-          parallel = parallel_shap
+          parallel = FALSE
         )
+        assign(paste0("shap_explanations_", shap_data_subsets[[i]][[2]]), shap_explanations, envir = shap_plot_env)
         
         # SHAP object for plotting
         sv <- shapviz::shapviz(shap_explanations, X = shap_data)
+        assign(paste0("sv_", shap_data_subsets[[i]][[2]]), sv, envir = shap_plot_env)
         
         # Generate and save plot
         plot <- shap_plot(
@@ -1727,13 +1738,7 @@ shap_analysis <- function(label, output, model, filename, shap_inputs, train, te
           output_dir = output_dir,
           data_subset_index = i
         )
-        
-        ## these next lines save objects so that shapviz and be re-plotted
-        assign(paste0("shap_data_", shap_data_subsets[[i]][[2]]), shap_data, envir = shap_plot_env)
-        assign(paste0("shap_explanations_", shap_data_subsets[[i]][[2]]), shap_explanations, envir = shap_plot_env)
-        assign(paste0("sv_", shap_data_subsets[[i]][[2]]), sv, envir = shap_plot_env)
         assign(paste0("plot_", shap_data_subsets[[i]][[2]]), plot, envir = shap_plot_env)
-        
       }
 
       
@@ -1766,11 +1771,16 @@ shap_analysis <- function(label, output, model, filename, shap_inputs, train, te
     )
   }
   
+  # --- Clean up large local objects ---
+  rm(list = ls(envir = shap_plot_env), envir = shap_plot_env)
+  gc(verbose = FALSE)
+  
   return(invisible(list(
     success = !shap.error.occured,
     shap_plot_env = shap_plot_env,
     error_message = error_message
   )))
+  
 }
 
 shap_plot <- function(
