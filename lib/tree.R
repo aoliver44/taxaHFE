@@ -1702,7 +1702,7 @@ shap_analysis <- function(label, output, model, filename, shap_inputs, train, te
         n_rows <- nrow(shap_data)
         n_cols <- ncol(shap_data)
         # try and calc a conservative nsim, otherwise choose 10.
-        safe_nsim <- max(10, floor(2400000 / (n_rows * n_cols))) # 40 features x 300 samples x 200 sims = 2400000
+        safe_nsim <- max(10, floor(1200000 / (n_rows * n_cols))) # 20 features x 300 samples x 200 sims = 1200000
         ## for smaller datasets, the above could lead to huge nsim. lets set max at 200.
         safe_nsim <- ifelse(safe_nsim > 199, 200, safe_nsim)
         
