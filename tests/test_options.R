@@ -229,6 +229,7 @@ test_flag_values <- list(
     train_split=list(flags=list("--train_split"), value=0.7, errors=list(-1,2), warnings=list(0.4)),
     model=list(flags=list("--model"), value="enet"),
     folds=list(flags=list("--folds"), value=5, errors=list(-1,0), warnings=list(12)),
+    cv_repeats=list(flags=list("--cv_repeats"), value=2, errors=list(-1,0), warnings=list(6)),
     metric=list(flags=list("--metric"), value="accuracy"),
     tune_length=list(flags=list("--tune_length"), value=70),
     tune_time=list(flags=list("--tune_time"), value=1, errors=list(-1,0), warnings=list(30)),
