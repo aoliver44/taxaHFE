@@ -34,7 +34,7 @@ options(warn = -1)
 ## rename the subject_identifier to subject_id and
 ## rename the label to feature_of_interest
 ## metadata, should be in tab or comma separated format
-read_in_metadata <- function(input, subject_identifier, label, feature_type, random_effects, limit_covariates = TRUE, k) {
+read_in_metadata <- function(input, subject_identifier, label, feature_type, random_effects, limit_covariates = TRUE, k, cores) {
 
   cat("\n\n", "Checking for METADATA...", "\n")
   if (file.exists(input) == FALSE) {
@@ -51,11 +51,19 @@ read_in_metadata <- function(input, subject_identifier, label, feature_type, ran
   
   # read in metadata, and select only the subject identifier and
   # feature of interest. Drop NA samples.
-  metadata <- suppressMessages(readr::read_delim(file = input, delim = delim)) %>%
-    dplyr::rename(., "subject_id" = subject_identifier) %>%
-    rename(., "feature_of_interest" = label) %>% 
-    janitor::clean_names()
-  
+  metadata <-
+    suppressMessages(
+      vroom::vroom(
+        file = input,
+        delim = delim,
+        skip = 0,
+        .name_repair = "minimal",
+        num_threads = cores
+      ) %>%
+        dplyr::rename(., "subject_id" = subject_identifier) %>%
+        rename(., "feature_of_interest" = label) %>%
+        janitor::clean_names())
+      
   ## make check for NAs and warn user how many rows were dropped
   original_row_count <- nrow(metadata)
   metadata <- metadata %>% tidyr::drop_na()
@@ -1153,7 +1161,7 @@ extract_attributes <- function(diet_ml_inputs) {
 }
 
 ## run dietML based on diet_ml_input_df
-run_diet_ml <- function(diet_ml_inputs, metadata, n_repeat, feature_type, seed, train, test, model, program, random_effects, folds, cor_level, ncores, tune_length, tune_stop, tune_time, metric, label, output, shap) {
+run_diet_ml <- function(diet_ml_inputs, metadata, n_repeat, feature_type, seed, train, test, model, program, random_effects, folds, cv_repeats, cor_level, ncores, tune_length, tune_stop, tune_time, metric, label, output, shap) {
   input_df <- extract_attributes(diet_ml_inputs)
 
   ## create a number of random seeds, which are used across all programs 
@@ -1186,7 +1194,8 @@ run_diet_ml <- function(diet_ml_inputs, metadata, n_repeat, feature_type, seed, 
                      model = model, 
                      seed = seed, 
                      random_effects = random_effects, 
-                     folds = folds, 
+                     folds = folds,
+                     cv_repeats = cv_repeats,
                      cor_level = cor_level, 
                      ncores = ncores, 
                      tune_length = tune_length, 
@@ -1261,7 +1270,7 @@ prep_re_data <- function(input, feature_type, abund) {
   } 
 }
   
-pass_to_dietML <- function(train, test, metadata, model, program, seed, random_effects, folds, cor_level, ncores, tune_length, tune_stop, tune_time, metric, label, output, feature_type, shap) {
+pass_to_dietML <- function(train, test, metadata, model, program, seed, random_effects, folds, cv_repeats, cor_level, ncores, tune_length, tune_stop, tune_time, metric, label, output, feature_type, shap) {
   
   ## check for outdir and make if not there
   if (dir.exists(paste0(output, "/ml_analysis")) != TRUE) {
@@ -1294,29 +1303,7 @@ pass_to_dietML <- function(train, test, metadata, model, program, seed, random_e
       seed = seed,
       random_effects = random_effects,
       folds = folds,
-      cor_level = cor_level,
-      ncores = ncores,
-      tune_length = tune_length,
-      tune_stop = tune_stop,
-      tune_time = tune_time,
-      metric = metric,
-      label = label,
-      model = model,
-      program = program,
-      output = output,
-      type = type,
-      null_results = results_df
-    )
-  }
-  
-  ## if specified, run elastic net
-  if (model == "enet") {
-    shap_inputs <- run_dietML_enet(
-      train = train,
-      test = test,
-      seed = seed,
-      random_effects = random_effects,
-      folds = folds,
+      cv_repeats = cv_repeats,
       cor_level = cor_level,
       ncores = ncores,
       tune_length = tune_length,
@@ -1345,7 +1332,7 @@ pass_to_dietML <- function(train, test, metadata, model, program, seed, random_e
   }
 }
 
-run_dietML_ranger <- function(train, test, seed, random_effects, folds, cor_level, ncores, tune_length, tune_stop, tune_time, metric, label, model, program, output, type, null_results) {
+run_dietML_ranger <- function(train, test, seed, random_effects, folds, cv_repeats, cor_level, ncores, tune_length, tune_stop, tune_time, metric, label, model, program, output, type, null_results) {
   
   ## check and make sure results_df has been created from run_null_model,
   ## needed for this function downstream
@@ -1365,7 +1352,7 @@ run_dietML_ranger <- function(train, test, seed, random_effects, folds, cor_leve
   )
   
   ## set resampling scheme
-  folds <- rsample::vfold_cv(train, v = as.numeric(folds), strata = feature_of_interest, repeats = 3)
+  folds <- rsample::vfold_cv(train, v = as.numeric(folds), strata = feature_of_interest, repeats = cv_repeats)
   
   ## recipe
   
