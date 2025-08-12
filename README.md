@@ -256,56 +256,6 @@ TaxaHFE arguments:
 </summary>
 
 ```
-usage: taxa_hfe [options] METADATA DATA
-
-Hierarchical feature engineering (HFE) for feature reduction
-
-positional arguments:
-  METADATA              path to metadata input (txt | tsv | csv)
-  DATA                  path to input file from hierarchical data (i.e. hData data) (txt | tsv | csv)
-
-options:
-  -h, --help            show this help message and exit
-  -o <string>, --output_dir <string>
-                        Directory for the output files to be written. Defaults to a directory called 'outputs' (default: outputs)
-  -v, --version         show program's version number and exit
-  --data_dir <string>   Directory for MEATDATA, DATA, and output_dir, ignored if using absolute paths. Defaults to the current directory (default: .)
-  --seed <numeric>      Set the seed, if no value is provided, uses a random number from the range (-1 * 2^31, 2^31 - 1) (default: 313045552)
-
-TaxaHFE arguments:
-  Options to pass to TaxaHFE
-
-  -s <string>, --subject_identifier <string>
-                        Metadata column name containing subject IDs (default: subject_id)
-  -l <string>, --label <string>
-                        Metadata column name of interest for ML (default: feature_of_interest)
-  -t <string>, --feature_type <string>
-                        Is the ML label a factor or numeric (default: factor)
-  -R, --random_effects  Consider repeated measures. Note: columns 'individual' and 'time' must be present. [BETA] (default: False)
-  -k <numeric>, --k_splits <numeric>
-                        We use kmeans to factorize a numeric response for repeated measures. How many categories should we create? [BETA] (default: 3)
-  -a <numeric>, --abundance <numeric>
-                        Minimum mean abundance of feature (default: 0)
-  -p <numeric>, --prevalence <numeric>
-                        Minimum prevalence of feature (default: 0.01)
-  -L <numeric>, --lowest_level <numeric>
-                        Most general level allowed to compete (default: 3)
-  -m <numeric>, --max_level <numeric>
-                        How many hierarchical levels should be allowed to compete (default: 15)
-  -c <numeric>, --cor_level <numeric>
-                        Initial pearson correlation filter (default: 0.95)
-  -d, --disable_super_filter
-                        Disable running of the super filter (final forest competition) (default: False)
-  -w, --write_old_files
-                        Write individual level files and old HFE files (default: False)
-  -W, --write_flattened_tree
-                        Write a compressed backup of the entire competed tree (default: False)
-  -D, --write_both_outputs
-                        Write an output for pre and post super filter results, overridden by --disable_super_filter (default: False)
-  --nperm <numeric>     Number of taxaHFE RF permutations (default: 40)
-  -n <numeric>, --ncores <numeric>
-                        Number of parallel processes to run in certain portions of taxaHFE that support parallel processing. To limit overall resource usage of taxaHFE, limit the amount of resources available to the container (e.g. --cpus=4 for Docker) (default: 2)
-Andrews-MacBook-Pro-2:taxaHFE andrewoliver$ docker run --cpus=8 --memory=8g --platform linux/amd64 --rm -it -v `pwd`:/data aoliver44/taxa_hfe_ml:dev -h
 usage: taxa_hfe_ml [options] METADATA DATA
 
 Hierarchical feature engineering (HFE) with ML
@@ -320,7 +270,7 @@ options:
                         Directory for the output files to be written. Defaults to a directory called 'outputs' (default: outputs)
   -v, --version         show program's version number and exit
   --data_dir <string>   Directory for MEATDATA, DATA, and output_dir, ignored if using absolute paths. Defaults to the current directory (default: .)
-  --seed <numeric>      Set the seed, if no value is provided, uses a random number from the range (-1 * 2^31, 2^31 - 1) (default: -450524883)
+  --seed <numeric>      Set the seed, if no value is provided, uses a random number from the range (-1 * 2^31, 2^31 - 1) (default: 2064927112)
 
 TaxaHFE arguments:
   Options to pass to TaxaHFE
@@ -363,6 +313,8 @@ TaxaHFE-ML specific arguments:
                         Percentage of samples to use for training (default: 0.8)
   --model <string>      ML model to use (default: rf)
   --folds <numeric>     Number of CV folds for tuning (default: 10)
+  --cv_repeats <numeric>
+                        Number of CV repeats to perform for repeated CV (default: 3)
   --metric <string>     Metric to optimize (default: bal_accuracy)
   --tune_length <numeric>
                         Number of hyperparameter combinations to sample (default: 80)
