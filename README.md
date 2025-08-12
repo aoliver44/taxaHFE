@@ -179,6 +179,18 @@ The below figure shows the ```taxaHFE```-selected features that driving the ML m
 
 ## **Information about the flags**
 
+### Usage:
+
+```
+## help menu for taxahfe
+docker run --platform linux/amd64 --rm -it aoliver44/taxa_hfe:latest -h
+
+## help menu for taxahfe-ml
+docker run --platform linux/amd64 --rm -it aoliver44/taxa_hfe_ml:latest -h
+```
+
+Don't forget to set docker resources (```--cpus``` and ```--memory```), and to bind your data directory (```-v `pwd`:/data```) when you are ready to run the program!
+
 </details>
 
 <details>
@@ -515,6 +527,7 @@ Well, you can if you want to fork the code and get rid of those gaurd-rails (1 l
 <details>
 <summary> <b>Answer #2:</b> 
 </summary>
+ 
 A: I think? The flags that allow for this have a big ```[BETA]``` in their descriptions, so use them at your own risk. We will try and get an example up here showing how it works. For now, there is some information in the flags, and also some example files in ```example_inputs/``` (metadata_time.txt and microbiome_time.txt). The inspiration for dealing with time data comes from a [Scientific Reports paper](https://doi.org/10.1038/s41598-022-14632-w). Here is a command that we have success with for use with the example time files:
 
 ```
