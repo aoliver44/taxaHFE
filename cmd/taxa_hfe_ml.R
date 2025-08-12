@@ -29,7 +29,8 @@ metadata <- read_in_metadata(input = opts$METADATA,
                              feature_type = opts$feature_type, 
                              random_effects = opts$random_effects, 
                              limit_covariates = TRUE, 
-                             k = opts$k_splits)
+                             k = opts$k_splits,
+                             cores = opts$ncores)
 
 ## hierarchical data file ======================================================
 hierarchical_data <- read_in_hierarchical_data(input = opts$DATA,
@@ -40,7 +41,7 @@ hierarchical_data <- read_in_hierarchical_data(input = opts$DATA,
 tr_te_split <- rsample::initial_split(metadata, prop = as.numeric(opts$train_split), strata = feature_of_interest)
 train_metadata <- rsample::training(tr_te_split)
 test_metadata  <- rsample::testing(tr_te_split)
-
+  
 # Run taxaHFE-ML
 diet_ml_inputs <- method_taxa_hfe_ml(
   h_data = hierarchical_data,
@@ -54,19 +55,8 @@ diet_ml_inputs <- method_taxa_hfe_ml(
   feature_type = opts$feature_type,
   nperm = opts$nperm,
   disable_super_filter = opts$disable_super_filter,
-  write_both_outputs = opts$write_both_outputs,
-  write_flattened_tree = opts$write_flattened_tree,
-  train_split = opts$train_split,
-  model = opts$model,
-  folds = opts$folds,
-  metric = opts$metric,
-  tune_length = opts$tune_length,
-  tune_time = opts$tune_time,
-  tune_stop = opts$tune_stop,
-  shap = opts$shap,
   train_metadata = train_metadata,
   test_metadata = test_metadata,
-  output = opts$output_dir,
   seed = opts$seed,
   random_effects = opts$random_effects
 )
@@ -77,8 +67,8 @@ if (opts$summarized_levels) {
   diet_ml_inputs_levels <- method_levels(
     h_data = hierarchical_data,
     metadata = metadata,
+    abundance = opts$abundance,
     prevalence = opts$prevalence,
-    abundance = opts$prevalence,
     lowest_level = opts$lowest_level,
     max_level = opts$max_level,
     cor_level = 0.1,
@@ -87,10 +77,7 @@ if (opts$summarized_levels) {
     feature_type = opts$feature_type,
     nperm = opts$nperm,
     disable_super_filter = opts$disable_super_filter,
-    write_both_outputs = opts$write_both_outputs,
-    write_flattened_tree = opts$write_flattened_tree,
     col_names = colnames(hierarchical_data)[2:NCOL(hierarchical_data)],
-    output = opts$output_dir,
     seed = opts$seed,
     random_effects = opts$random_effects
   )
@@ -105,7 +92,7 @@ diet_ml_inputs <- split_train_data(diet_ml_inputs, attribute_name = "train_test_
 ## write dietML objects to file (if people want the output files that
 ## went into dietML)
 write_list_to_csv(diet_ml_inputs, opts$output_dir)
-
+  
 ## pass to dietML if selected
 run_diet_ml(diet_ml_inputs,
             metadata,
@@ -115,6 +102,7 @@ run_diet_ml(diet_ml_inputs,
             seed = opts$seed,
             random_effects = opts$random_effects,
             folds = opts$folds,
+            cv_repeats = opts$cv_repeats,
             cor_level = opts$cor_level,
             ncores = opts$ncores,
             tune_length = opts$tune_length,

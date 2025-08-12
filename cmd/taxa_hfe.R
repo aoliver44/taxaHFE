@@ -28,7 +28,8 @@ metadata <- read_in_metadata(input = opts$METADATA,
                              feature_type = opts$feature_type,
                              random_effects = opts$random_effects, 
                              limit_covariates = TRUE, 
-                             k = opts$k_splits)
+                             k = opts$k_splits,
+                             cores = opts$ncores)
 
 ## hierarchical data file ======================================================
 hierarchical_data <- read_in_hierarchical_data(input = opts$DATA,
@@ -54,7 +55,6 @@ method_taxa_hfe(
   write_old_files = opts$write_old_files,
   col_names = colnames(hierarchical_data)[2:NCOL(hierarchical_data)],
   output = opts$output_dir,
-  seed = opts$seed,
   random_effects = opts$random_effects
 )
 
