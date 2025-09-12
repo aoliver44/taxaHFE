@@ -222,6 +222,7 @@ test_flag_values <- list(
     write_both_outputs=list(flags=list("-D", "--write_both_outputs"), value=TRUE),
     nperm=list(flags=list("--nperm"), value=100),
     ncores=list(flags=list("-n", "--ncores"), value=1, errors=list(-4,0)),
+    parallel_workers=list(flags=list("--parallel_workers"), value=3, errors=list(-4,0)),
     # this is technically part of the initialized parser args but is tested as a part of this group
     seed=list(flags=list("--seed"), value=314159, errors=list("-1000000000000000", "1000000000000000"))
   ),
@@ -232,7 +233,7 @@ test_flag_values <- list(
     cv_repeats=list(flags=list("--cv_repeats"), value=2, errors=list(-1,0), warnings=list(6)),
     metric=list(flags=list("--metric"), value="accuracy"),
     tune_length=list(flags=list("--tune_length"), value=70),
-    tune_time=list(flags=list("--tune_time"), value=1, errors=list(-1,0), warnings=list(30)),
+    tune_time=list(flags=list("--tune_time"), value=1, errors=list(-1,-10), warnings=list(30)),
     tune_stop=list(flags=list("--tune_stop"), value=9),
     permute=list(flags=list("--permute"), value=2, errors=list(-1,0), warnings=list(50)),
     shap=list(flags=list("--shap"), value=TRUE),

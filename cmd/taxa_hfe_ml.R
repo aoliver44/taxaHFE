@@ -15,11 +15,16 @@ source("lib/methods.R")
 ## add commandline options =====================================================
 
 # to use this code line-by-line in the Rstudio context, commandArgs can be overloaded to specify the desired flags
-# ex. commandArgs <- function(x) { c("example_inputs/metadata.txt", "example_inputs/microbiome_data.txt", "-o", "example_outputs", "-s", "Sample", "-l", "Category", "-L", "3", "-n", "4", "--seed", "42", "--train_split", "0.8") }
+# ex. commandArgs <- function(x) { c("example_inputs/metadata.txt", "example_inputs/microbiome_data.txt", "-o", "example_outputs", "-s", "Sample", "-l", "Category", "-L", "3", "-n", "4", "--seed", "42", "--train_split", "0.8", "--tune_time", "0") }
 # these will be used by the argparser
 opts <- load_taxa_hfe_ml_args()
 
 ## Run main ====================================================================
+
+## this might need to move to options or tests =================================
+if ((as.numeric(opts$parallel_workers) * as.numeric(opts$ncores)) > parallelly::availableCores()) {
+  stop(sprintf("We detect %i cores but you asked for %i cores \n(%i parallel workers * %i ncores)", parallelly::availableCores(), (as.numeric(opts$parallel_workers) * as.numeric(opts$ncores)), opts$parallel_workers, opts$ncores))
+} 
 
 ## check for inputs and read in read in ========================================
 ## metadata file
@@ -30,12 +35,12 @@ metadata <- read_in_metadata(input = opts$METADATA,
                              random_effects = opts$random_effects, 
                              limit_covariates = TRUE, 
                              k = opts$k_splits,
-                             cores = opts$ncores)
+                             cores = (opts$ncores * opts$parallel_workers))
 
 ## hierarchical data file ======================================================
 hierarchical_data <- read_in_hierarchical_data(input = opts$DATA,
                                    metadata = metadata,
-                                   cores = opts$ncores)
+                                   cores = (opts$ncores * opts$parallel_workers))
 
 ## set initial test-train split for ML methods =================================
 tr_te_split <- rsample::initial_split(metadata, prop = as.numeric(opts$train_split), strata = feature_of_interest)
@@ -51,7 +56,7 @@ diet_ml_inputs <- method_taxa_hfe_ml(
   lowest_level = opts$lowest_level,
   max_level = opts$max_level,
   cor_level = opts$cor_level,
-  ncores = opts$ncores,
+  ncores = (opts$ncores * opts$parallel_workers),
   feature_type = opts$feature_type,
   nperm = opts$nperm,
   disable_super_filter = opts$disable_super_filter,
@@ -105,6 +110,7 @@ run_diet_ml(diet_ml_inputs,
             cv_repeats = opts$cv_repeats,
             cor_level = opts$cor_level,
             ncores = opts$ncores,
+            parallel_workers = opts$parallel_workers,
             tune_length = opts$tune_length,
             tune_stop = opts$tune_stop,
             tune_time = opts$tune_time,
