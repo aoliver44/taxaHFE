@@ -138,6 +138,14 @@ validate_options <- function(opts) {
       quit(status = 1)
     })
   }
+
+  # additional validators that involve more than one flag here
+  tryCatch({
+    validate_total_cores(opts)
+  }, error = function(e) {
+    message(e$message)
+    quit(status = 1)
+  })
 }
 
 # load the args for a program

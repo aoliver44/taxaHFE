@@ -40,3 +40,15 @@ validate_numeric <- function (min=NULL, max=NULL, min_warning=NULL, max_warning=
     }
   })
 }
+
+validate_total_cores <- function(opts) {
+  # if either flag isn't available skip this validation
+  if (is.null(opts$parallel_workers) || is.null(opts$ncores)) return()
+
+  requested <- opts$parallel_workers * opts$ncores
+  available <- as.numeric(parallelly::availableCores())
+
+  if (requested > available) {
+    stop(sprintf("We detect %i cores but you asked for %i cores \n(%i parallel workers * %i ncores)", parallelly::availableCores(), (as.numeric(opts$parallel_workers) * as.numeric(opts$ncores)), opts$parallel_workers, opts$ncores))
+  }
+}

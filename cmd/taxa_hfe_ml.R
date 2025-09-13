@@ -21,11 +21,6 @@ opts <- load_taxa_hfe_ml_args()
 
 ## Run main ====================================================================
 
-## this might need to move to options or tests =================================
-if ((as.numeric(opts$parallel_workers) * as.numeric(opts$ncores)) > parallelly::availableCores()) {
-  stop(sprintf("We detect %i cores but you asked for %i cores \n(%i parallel workers * %i ncores)", parallelly::availableCores(), (as.numeric(opts$parallel_workers) * as.numeric(opts$ncores)), opts$parallel_workers, opts$ncores))
-} 
-
 ## check for inputs and read in read in ========================================
 ## metadata file
 metadata <- read_in_metadata(input = opts$METADATA,

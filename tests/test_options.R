@@ -397,4 +397,25 @@ test_that("program arg loaders work", {
       }
     }
   })
+
+  test_that("additional validators work", {
+    expect_true(TRUE)
+
+    quit <<- function(...) {
+      stop("quit")
+    }
+
+    test_that("validate_total_cores works", {
+      commandArgs <<- function(x) {
+        c("c", "m", "-n", as.character(parallelly::availableCores()), "--parallel_workers", as.character(parallelly::availableCores()))
+      }
+
+      # expect message for the actual error, but also expect an error from the new stop() call in the mocked quit function above
+      expect_error(
+        expect_message(load_taxa_hfe_ml_args(), regexp = "We detect \\d+ cores but you asked for \\d+ cores", info = "expected error when requested cores was higher than available cores"),
+        regexp = "quit",
+        info = "validate_total_cores error did not call quit() on error"
+      )
+    })
+  })
 })
