@@ -1752,9 +1752,9 @@ shap_analysis <- function(label, output, model, filename, shap_inputs, train, te
         safe_nsim <- ifelse(safe_nsim > 199, 200, safe_nsim)
         
         # Error if the data is too large
-        if ((n_cols * n_rows) > 500000) {
-          stop("This input dataset is pretty large for a SHAP analysis. We are skipping this and writing the files for you to re-run your own SHAP analysis")
-        }
+        # if ((n_cols * n_rows) > 500000) {
+        #   stop("This input dataset is pretty large for a SHAP analysis. We are skipping this and writing the files for you to re-run your own SHAP analysis")
+        # }
         
         message(glue::glue("Running SHAP with nsim = {safe_nsim}"))
         
