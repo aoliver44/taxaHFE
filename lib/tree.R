@@ -1344,7 +1344,7 @@ run_dietML_ranger <- function(train, test, seed, random_effects, folds, cv_repea
   }
   
   ## set total cores
-  total_cores = (as.numeric(ncores) * as.numeric(parallel_workers))
+  total_cores <- (as.numeric(ncores) * as.numeric(parallel_workers))
   
   ## remove individual and train if random effects
   if (random_effects) {

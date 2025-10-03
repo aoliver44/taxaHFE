@@ -234,7 +234,7 @@ test_flag_values <- list(
     tune_length=list(flags=list("--tune_length"), value=70),
     tune_time=list(flags=list("--tune_time"), value=1, errors=list(-1,-10), warnings=list(481)),
     tune_stop=list(flags=list("--tune_stop"), value=9),
-    parallel_workers=list(flags=list("--parallel_workers"), value=3, errors=list(-4,0)),
+    parallel_workers=list(flags=list("--parallel_workers"), value=2, errors=list(-4,0)),
     permute=list(flags=list("--permute"), value=2, errors=list(-1,0), warnings=list(50)),
     shap=list(flags=list("--shap"), value=TRUE),
     summarized_levels=list(flags=list("--summarized_levels"), value=TRUE)
