@@ -22,6 +22,7 @@ library(fastshap, quietly = TRUE, verbose = FALSE, warn.conflicts = FALSE)
 library(shapviz, quietly = TRUE, verbose = FALSE, warn.conflicts = FALSE)
 suppressPackageStartupMessages(library(doParallel, quietly = TRUE, verbose = FALSE, warn.conflicts = FALSE))
 library(foreach, quietly = TRUE, verbose = FALSE, warn.conflicts = FALSE)
+library(doParallel, quietly = TRUE, verbose = FALSE, warn.conflicts = FALSE)
 
 ## helper functions ============================================================
 
@@ -1331,7 +1332,7 @@ pass_to_dietML <- function(train, test, metadata, model, program, seed, random_e
                   train = train,
                   test = test,
                   type = type,
-                  ncores = ncores)
+                  parallel_workers = parallel_workers)
   }
 }
 
@@ -1680,7 +1681,7 @@ run_null_model <- function(train, test, seed, type, cor_level, random_effects, o
   
 }
 
-shap_analysis <- function(label, output, model, filename, shap_inputs, train, test, type, ncores) {
+shap_analysis <- function(label, output, model, filename, shap_inputs, train, test, type, parallel_workers) {
   
   # --- Setup ---
   shap_plot_env <- new.env()
@@ -1758,6 +1759,10 @@ shap_analysis <- function(label, output, model, filename, shap_inputs, train, te
         
         message(glue::glue("Running SHAP with nsim = {safe_nsim}"))
         
+        ## start a parallel process
+        cl <- parallel::makeForkCluster(as.numeric(parallel_workers))
+        doParallel::registerDoParallel(cl)
+        
         # Compute SHAP values
         shap_explanations <- fastshap::explain(
           object = best_workflow_mod$fit,
@@ -1765,8 +1770,11 @@ shap_analysis <- function(label, output, model, filename, shap_inputs, train, te
           pred_wrapper = pfun,
           nsim = safe_nsim,
           adjust = TRUE,
-          parallel = FALSE
+          parallel = TRUE
         )
+        
+        parallel::stopCluster(cl)
+        
         assign(paste0("shap_explanations_", shap_data_subsets[[i]][[2]]), shap_explanations, envir = shap_plot_env)
         
         # SHAP object for plotting
