@@ -57,7 +57,8 @@ method_taxa_hfe_ml <- function(
   h_data, metadata, prevalence, abundance,
   lowest_level, max_level, cor_level, ncores,
   feature_type, nperm, disable_super_filter, train_metadata,
-  test_metadata, seed, random_effects
+  test_metadata, seed, random_effects, write_flattened_tree, 
+  output
 ) {
 
   count <- 1
@@ -99,6 +100,21 @@ method_taxa_hfe_ml <- function(
         disable_super_filter = disable_super_filter,
         col_names = colnames(h_data_split)[2:NCOL(h_data_split)]
       )
+      
+      ## this will write the flattened_tree_with_metadata file for the training
+      ## data if the arg is specified. It does not make sense in taxahfe-ml
+      ## to write the old files or both outputs. Note it is nested in
+      ## count==1, which means it only has the chance to run on training data.
+      if (write_flattened_tree) {
+        flattened_df <- flatten_tree_with_metadata(competed_tree)
+        colnames(flattened_df)[11:NCOL(flattened_df)] <- colnames(h_data_split)[2:NCOL(h_data_split)]
+        vroom::vroom_write(
+          x = flattened_df,
+          file = paste0(output,"/training_flattened_tree.tsv.gz"),
+          num_threads = ncores
+        )
+      }
+      
     } else {
       flattened_df_test <- flatten_tree_with_metadata(competed_tree)
       col_names = colnames(h_data_split)[2:NCOL(h_data_split)]
