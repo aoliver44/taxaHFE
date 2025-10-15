@@ -22,6 +22,7 @@ library(fastshap, quietly = TRUE, verbose = FALSE, warn.conflicts = FALSE)
 library(shapviz, quietly = TRUE, verbose = FALSE, warn.conflicts = FALSE)
 suppressPackageStartupMessages(library(doParallel, quietly = TRUE, verbose = FALSE, warn.conflicts = FALSE))
 library(foreach, quietly = TRUE, verbose = FALSE, warn.conflicts = FALSE)
+library(doParallel, quietly = TRUE, verbose = FALSE, warn.conflicts = FALSE)
 
 ## helper functions ============================================================
 
@@ -1114,7 +1115,7 @@ write_list_to_csv <- function(diet_ml_inputs, directory = ".") {
       readr::write_csv(item, filename)
     } else {
       # Print a warning if the item is not a data.frame or matrix
-      warning(paste("Item", item_name, "is not a data.frame or matrix and was not written to a CSV file."))
+      warning(paste("Item", item_name, "is not a data.frame or matrix and was not written to a CSV file."), immediate. = TRUE)
     }
   }
   
@@ -1162,7 +1163,7 @@ extract_attributes <- function(diet_ml_inputs) {
 }
 
 ## run dietML based on diet_ml_input_df
-run_diet_ml <- function(diet_ml_inputs, metadata, n_repeat, feature_type, seed, train, test, model, program, random_effects, folds, cv_repeats, cor_level, ncores, tune_length, tune_stop, tune_time, metric, label, output, shap) {
+run_diet_ml <- function(diet_ml_inputs, metadata, n_repeat, feature_type, seed, train, test, model, program, random_effects, folds, cv_repeats, cor_level, ncores, parallel_workers, tune_length, tune_stop, tune_time, metric, label, output, shap) {
   input_df <- extract_attributes(diet_ml_inputs)
 
   ## create a number of random seeds, which are used across all programs 
@@ -1199,6 +1200,7 @@ run_diet_ml <- function(diet_ml_inputs, metadata, n_repeat, feature_type, seed, 
                      cv_repeats = cv_repeats,
                      cor_level = cor_level, 
                      ncores = ncores, 
+                     parallel_workers = parallel_workers,
                      tune_length = tune_length, 
                      tune_stop = tune_stop, 
                      tune_time = tune_time, 
@@ -1271,7 +1273,7 @@ prep_re_data <- function(input, feature_type, abund) {
   } 
 }
   
-pass_to_dietML <- function(train, test, metadata, model, program, seed, random_effects, folds, cv_repeats, cor_level, ncores, tune_length, tune_stop, tune_time, metric, label, output, feature_type, shap) {
+pass_to_dietML <- function(train, test, metadata, model, program, seed, random_effects, folds, cv_repeats, cor_level, ncores, parallel_workers, tune_length, tune_stop, tune_time, metric, label, output, feature_type, shap) {
   
   ## check for outdir and make if not there
   if (dir.exists(paste0(output, "/ml_analysis")) != TRUE) {
@@ -1307,6 +1309,7 @@ pass_to_dietML <- function(train, test, metadata, model, program, seed, random_e
       cv_repeats = cv_repeats,
       cor_level = cor_level,
       ncores = ncores,
+      parallel_workers = parallel_workers,
       tune_length = tune_length,
       tune_stop = tune_stop,
       tune_time = tune_time,
@@ -1329,17 +1332,20 @@ pass_to_dietML <- function(train, test, metadata, model, program, seed, random_e
                   train = train,
                   test = test,
                   type = type,
-                  ncores = ncores)
+                  parallel_workers = parallel_workers)
   }
 }
 
-run_dietML_ranger <- function(train, test, seed, random_effects, folds, cv_repeats, cor_level, ncores, tune_length, tune_stop, tune_time, metric, label, model, program, output, type, null_results) {
+run_dietML_ranger <- function(train, test, seed, random_effects, folds, cv_repeats, cor_level, parallel_workers, ncores, tune_length, tune_stop, tune_time, metric, label, model, program, output, type, null_results) {
   
   ## check and make sure results_df has been created from run_null_model,
   ## needed for this function downstream
   if (!exists("null_results")) {
     stop("Null model was not run. Cannot complete model evaluation.")
   }
+  
+  ## set total cores
+  total_cores <- (as.numeric(ncores) * as.numeric(parallel_workers))
   
   ## remove individual and train if random effects
   if (random_effects) {
@@ -1358,135 +1364,187 @@ run_dietML_ranger <- function(train, test, seed, random_effects, folds, cv_repea
   ## recipe
   
   ## specify recipe (this is like the pre-process work)
-  diet_ml_recipe <- 
-    recipes::recipe(feature_of_interest ~ ., data = train) %>% 
-    recipes::update_role(tidyr::any_of("subject_id"), new_role = "ID") %>% 
-    recipes::step_dummy(recipes::all_nominal_predictors()) %>%
-    recipes::step_corr(recipes::all_numeric_predictors(), threshold = as.numeric(cor_level), use = "everything") %>%
-    recipes::step_zv(recipes::all_predictors())
+  if (as.numeric(cor_level) < 1) {
+    diet_ml_recipe <- recipes::recipe(feature_of_interest ~ ., data = train) %>% 
+      recipes::update_role(tidyr::any_of("subject_id"), new_role = "ID") %>% 
+      recipes::step_dummy(recipes::all_nominal_predictors()) %>% 
+      recipes::step_corr(all_numeric_predictors(), threshold = as.numeric(cor_level), use = "everything") %>% 
+      recipes::step_zv(all_predictors())
+    
+  } else {
+    diet_ml_recipe <- recipes::recipe(feature_of_interest ~ ., data = train) %>% 
+      recipes::update_role(tidyr::any_of("subject_id"), new_role = "ID") %>% 
+      recipes::step_dummy(recipes::all_nominal_predictors()) 
+  }
   
   ## ML engine
   
   ## specify ML model and engine 
-  initial_mod <- parsnip::rand_forest(mode = type, 
-                                      mtry = tune(),
-                                      trees = 1500,
-                                      min_n = tune()) %>%
-    parsnip::set_engine("ranger", 
-                        num.threads = 1,
-                        importance = "none")
+  if (as.numeric(tune_time) == 0) {
+    initial_mod <- parsnip::rand_forest(mode = type) %>%
+      parsnip::set_engine("ranger", 
+                          num.threads = total_cores,
+                          importance = "none")
+    
+    initial_mod %>% parsnip::translate()
+    
+  } else {
+    ## specify ML model and engine 
+    initial_mod <- parsnip::rand_forest(mode = type, 
+                                        mtry = tune(),
+                                        trees = tune(),
+                                        min_n = tune()) %>%
+      parsnip::set_engine("ranger", 
+                          num.threads = as.numeric(total_cores),
+                          importance = "none")
+    
+    initial_mod %>% parsnip::translate()
+  }
   
-  initial_mod %>% parsnip::translate()
-  
-  ## workflow
+  ## workflow ====================================================================
   
   ## define workflow
-  diet_ml_wflow <- 
+  dietML_wflow <- 
     workflows::workflow() %>% 
     workflows::add_model(initial_mod) %>% 
     workflows::add_recipe(diet_ml_recipe)  
+  #print(dietML_wflow)
   
-  ## set up parallel jobs
-  ## remove any doParallel job setups that may have
-  ## unneccessarily hung around
-  unregister_dopar()
+  ## hyperparameters =============================================================
   
-  ## register parallel cluster
-  cl <- parallel::makePSOCKcluster(as.numeric(ncores))
-  doParallel::registerDoParallel(cl)
-  
-  ## hyperparameters
-  
-  ## define the hyper parameter set
-  diet_ml_param_set <- parsnip::extract_parameter_set_dials(diet_ml_wflow)
-  
-  ## for random forests, set mtry to max features after correlation
-  ## co-correlate features at specified threshold (get upper limit of mtry)
-  training_cor <- mikropml:::group_correlated_features(train %>% dplyr::select(where(is.numeric)) %>% dplyr::select(., -dplyr::any_of(c("feature_of_interest", "subject_id"))), 
-                                                       corr_thresh = as.numeric(cor_level), group_neg_corr = T)
-  
-  ## make dataframe of what is correlated at specified threshold.
-  training_cor <- as.data.frame(training_cor) %>% 
-    tidyr::separate(., col = training_cor, into = c("keep", "co_correlated"), sep = "\\|", extra = "merge")
-  
-  ## set mtry to max features after correlation
-  diet_ml_param_set <- 
-    diet_ml_param_set %>% 
-    # Pick an upper bound for mtry: 
-    recipes::update(mtry = mtry(range(c(2, round((NROW(training_cor) * 0.9), digits = 0)))), 
-                    min_n = min_n(range(c(2, nrow(test)))))
-  
-  ## set up hyper parameter search
-  if (type == "classification") {
+  if (as.numeric(tune_time) == 0) {
+    no_tune_model <- parsnip::fit(dietML_wflow, train)
+    ## create the last model based on best parameters
+    last_best_mod <- 
+      parsnip::rand_forest(mtry = no_tune_model$fit[[2]]$fit$mtry, min_n = no_tune_model$fit[[2]]$fit$min.node.size, trees = no_tune_model$fit[[2]]$fit$num.trees) %>% 
+      parsnip::set_engine("ranger", num.threads = as.numeric(total_cores), importance = "none") %>% 
+      parsnip::set_mode(type)
     
-    search_res <-
-      diet_ml_wflow %>% 
-      tune::tune_bayes(
-        resamples = folds,
-        # To use non-default parameter ranges
-        param_info = diet_ml_param_set,
-        # Generate five at semi-random to start
-        initial = 5,
-        iter = tune_length,
-        # How to measure performance?
-        metrics = yardstick::metric_set(bal_accuracy, roc_auc, accuracy, kap, f_meas),
-        control = tune::control_bayes(no_improve = as.numeric(tune_stop),
-                                      uncertain = 5,
-                                      verbose = FALSE,
-                                      parallel_over = "resamples",
-                                      time_limit = as.numeric(tune_time),
-                                      seed = as.numeric(seed))
-      )
+    ## update workflow with best model
+    best_tidy_workflow <- 
+      dietML_wflow %>% 
+      workflows::update_model(last_best_mod)
     
-  } else if (type == "regression") {
+  } else {
+    ## define the hyper parameter set
+    dietML_param_set <- parsnip::extract_parameter_set_dials(dietML_wflow)
     
-    search_res <-
-      diet_ml_wflow %>% 
-      tune::tune_bayes(
-        resamples = folds,
-        # To use non-default parameter ranges
-        param_info = diet_ml_param_set,
-        # Generate five at semi-random to start
-        initial = 5,
-        iter = tune_length,
-        # How to measure performance?
-        metrics = yardstick::metric_set(mae, rmse, rsq, ccc),
-        control = tune::control_bayes(no_improve = as.numeric(tune_stop),
-                                      uncertain = 5,
-                                      verbose = FALSE,
-                                      parallel_over = "resamples",
-                                      time_limit = as.numeric(tune_time),
-                                      seed = as.numeric(seed))
-      )
+    if (as.numeric(cor_level) < 1) {
+      ## for random forests, set mtry to max features after correlation
+      ## co-correlate features at specified threshold (get upper limit of mtry)
+      training_cor <- mikropml:::group_correlated_features(train %>% dplyr::select(where(is.numeric)) %>% dplyr::select(., -dplyr::any_of(c("feature_of_interest", "subject_id"))), 
+                                                           corr_thresh = as.numeric(cor_level), group_neg_corr = T)
+      
+      ## make dataframe of what is correlated at specified threshold.
+      training_cor <- as.data.frame(training_cor) %>% 
+        tidyr::separate(., col = training_cor, into = c("keep", "co_correlated"), sep = "\\|", extra = "merge")
+      
+      ## set mtry to max features after correlation
+      dietML_param_set <- 
+        dietML_param_set %>% 
+        # Pick an upper bound for mtry: 
+        recipes::update(mtry = mtry(range(c(2, round((NROW(training_cor) * 0.9), digits = 0)))), 
+                        min_n = min_n(range(c(2, nrow(test)))))
+      
+    } else {
+      dietML_param_set <- 
+        dietML_param_set %>% 
+        # Pick an upper bound for mtry: 
+        recipes::update(mtry = mtry(range(1, ncol(train %>% dplyr::select(., dplyr::any_of(c("feature_of_interest", "subject_id")))))))
+    }
+    
+    ## set up parallel jobs ========================================================
+    ## remove any doParallel job setups that may have
+    ## unneccessarily hung around
+    unregister_dopar()
+    
+    ## register parallel cluster
+    cl <- parallel::makePSOCKcluster(as.numeric(parallel_workers))
+    doParallel::registerDoParallel(cl)
+    
+    ## set up hyper parameter search
+    if (type == "classification") {
+      
+      search_res <-
+        dietML_wflow %>% 
+        tune::tune_bayes(
+          resamples = folds,
+          # To use non-default parameter ranges
+          param_info = dietML_param_set,
+          # Generate five at semi-random to start
+          initial = 5,
+          iter = tune_length,
+          # How to measure performance?
+          metrics = yardstick::metric_set(bal_accuracy, roc_auc, accuracy, kap, f_meas),
+          control = tune::control_bayes(no_improve = as.numeric(tune_stop),
+                                        uncertain = 5,
+                                        verbose = FALSE,
+                                        parallel_over = "resamples",
+                                        time_limit = as.numeric(tune_time),
+                                        seed = as.numeric(seed),
+                                        save_pred = FALSE)
+        )
+      
+    } else if (type == "regression") {
+      
+      search_res <-
+        dietML_wflow %>% 
+        tune::tune_bayes(
+          resamples = folds,
+          # To use non-default parameter ranges
+          param_info = dietML_param_set,
+          # Generate five at semi-random to start
+          initial = 5,
+          iter = tune_length,
+          # How to measure performance?
+          metrics = yardstick::metric_set(mae, rmse, rsq, ccc),
+          control = tune::control_bayes(no_improve = as.numeric(tune_stop),
+                                        uncertain = 5,
+                                        verbose = FALSE,
+                                        parallel_over = "resamples",
+                                        time_limit = as.numeric(tune_time),
+                                        seed = as.numeric(seed),
+                                        save_pred = FALSE)
+        )
+    }
+    
+    ## stop parallel jobs
+    parallel::stopCluster(cl)
+    ## remove any doParallel job setups that may have
+    ## unneccessarily hung around
+    unregister_dopar()
+    
+    ## fit best model ============================================================
+    
+    ## get the best parameters from tuning
+    best_mod <- 
+      search_res %>% 
+      tune::select_best(metric = metric)
+    
+    ## create the last model based on best parameters
+    last_best_mod <- 
+      parsnip::rand_forest(mtry = best_mod$mtry, min_n = best_mod$min_n, trees = best_mod$trees) %>% 
+      parsnip::set_engine("ranger", num.threads = as.numeric(total_cores), importance = "none") %>% 
+      parsnip::set_mode(type)
+    
+    ## update workflow with best model
+    best_tidy_workflow <- 
+      dietML_wflow %>% 
+      workflows::update_model(last_best_mod)
+    
+    ## graphs ====================================================================
+    
+    hyperpar_perf_plot <- autoplot(search_res, type = "performance")
+    ggplot2::ggsave(plot = hyperpar_perf_plot, filename = paste0(output, "/ml_analysis/", "training_performance.pdf"), width = 7, height = 2.5, units = "in")
+    
+    hyperpar_tested_plot <- autoplot(search_res, type = "parameters") + 
+      labs(x = "Iterations", y = NULL)
+    ggplot2::ggsave(plot = hyperpar_tested_plot, filename = paste0(output, "/ml_analysis/", "hyperpars_tested.pdf"), width = 7, height = 2.5, units = "in")
+    
   }
   
-  tune::show_best(search_res)
-  
-  ## stop parallel jobs
-  parallel::stopCluster(cl)
-  ## remove any doParallel job setups that may have
-  ## unneccessarily hung around
-  unregister_dopar()
-  
-  ## fit best model
-  
-  ## get the best parameters from tuning
-  best_mod <- 
-    search_res %>% 
-    tune::select_best(metric = metric)
-  
-  ## create the last model based on best parameters
-  last_best_mod <- 
-    parsnip::rand_forest(mtry = best_mod$mtry, min_n = best_mod$min_n) %>% 
-    parsnip::set_engine("ranger", num.threads = as.numeric(ncores), importance = "none") %>% 
-    parsnip::set_mode(type)
-  
-  ## update workflow with best model
-  best_tidy_workflow <- 
-    diet_ml_wflow %>% 
-    workflows::update_model(last_best_mod)
-  
   ## fit to test data
+  
   if (type == "classification") {
     final_res <- tune::last_fit(best_tidy_workflow, split_from_data_frame, 
                                 metrics = yardstick::metric_set(bal_accuracy, 
@@ -1623,7 +1681,7 @@ run_null_model <- function(train, test, seed, type, cor_level, random_effects, o
   
 }
 
-shap_analysis <- function(label, output, model, filename, shap_inputs, train, test, type, ncores) {
+shap_analysis <- function(label, output, model, filename, shap_inputs, train, test, type, parallel_workers) {
   
   # --- Setup ---
   shap_plot_env <- new.env()
@@ -1694,12 +1752,16 @@ shap_analysis <- function(label, output, model, filename, shap_inputs, train, te
         ## for smaller datasets, the above could lead to huge nsim. lets set max at 200.
         safe_nsim <- ifelse(safe_nsim > 199, 200, safe_nsim)
         
-        # Error if the data is too large
+        ## warning if shap analysis looks like its going to take a long time
         if ((n_cols * n_rows) > 500000) {
-          stop("This input dataset is pretty large for a SHAP analysis. We are skipping this and writing the files for you to re-run your own SHAP analysis")
+          warning("This input dataset is pretty large for a SHAP analysis. This may take a long time, potentially exceeding walltime limits for shared resources (e.g., HPCs)", immediate. = T)
         }
         
         message(glue::glue("Running SHAP with nsim = {safe_nsim}"))
+        
+        ## start a parallel process
+        cl <- parallel::makeForkCluster(as.numeric(parallel_workers))
+        doParallel::registerDoParallel(cl)
         
         # Compute SHAP values
         shap_explanations <- fastshap::explain(
@@ -1708,8 +1770,11 @@ shap_analysis <- function(label, output, model, filename, shap_inputs, train, te
           pred_wrapper = pfun,
           nsim = safe_nsim,
           adjust = TRUE,
-          parallel = FALSE
+          parallel = TRUE
         )
+        
+        parallel::stopCluster(cl)
+        
         assign(paste0("shap_explanations_", shap_data_subsets[[i]][[2]]), shap_explanations, envir = shap_plot_env)
         
         # SHAP object for plotting
