@@ -270,7 +270,7 @@ options:
                         Directory for the output files to be written. Defaults to a directory called 'outputs' (default: outputs)
   -v, --version         show program's version number and exit
   --data_dir <string>   Directory for MEATDATA, DATA, and output_dir, ignored if using absolute paths. Defaults to the current directory (default: .)
-  --seed <numeric>      Set the seed, if no value is provided, uses a random number from the range (-1 * 2^31, 2^31 - 1) (default: 2064927112)
+  --seed <numeric>      Set the seed, if no value is provided, uses a random number from the range (-1 * 2^31, 2^31 - 1) (default: 1556292297)
 
 TaxaHFE arguments:
   Options to pass to TaxaHFE
@@ -304,7 +304,7 @@ TaxaHFE arguments:
                         Write an output for pre and post super filter results, overridden by --disable_super_filter (default: False)
   --nperm <numeric>     Number of taxaHFE RF permutations (default: 40)
   -n <numeric>, --ncores <numeric>
-                        Number of parallel processes to run in certain portions of taxaHFE that support parallel processing. To limit overall resource usage of taxaHFE, limit the amount of resources available to the container (e.g. --cpus=4 for Docker) (default: 2)
+                        Number of parallel processes to run in certain portions of taxaHFE that support parallel processing. To limit overall resource usage of taxaHFE, limit the amount of resources available to the container (e.g. --cpus=4 for Docker). Note that total resources needed are parallel_workers * ncores. (default: 2)
 
 TaxaHFE-ML specific arguments:
   Options to pass to TaxaHFE-ML for machine learning and SHAP analysis of TaxaHFE features
@@ -322,6 +322,8 @@ TaxaHFE-ML specific arguments:
                         Time for hyperparameter search (in minutes) (default: 2)
   --tune_stop <numeric>
                         Number of HP iterations without improvement before stopping (default: 10)
+  --parallel_workers <numeric>
+                        Number of parallel search processes to run for hyperparameter tuning in dietML. Note that total resources needed are parallel_workers * ncores (e.g. --cpus=4 for Docker) (default: 1)
   --permute <numeric>   Number of times to permute the ML assessment process, resulting in n different test/train split inputs (default: 1)
   --shap                Calculate SHAP values (default: False)
   --summarized_levels   Include summarized levels in ML competition (default: False)
