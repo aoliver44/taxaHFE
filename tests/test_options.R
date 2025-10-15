@@ -232,8 +232,9 @@ test_flag_values <- list(
     cv_repeats=list(flags=list("--cv_repeats"), value=2, errors=list(-1,0), warnings=list(6)),
     metric=list(flags=list("--metric"), value="accuracy"),
     tune_length=list(flags=list("--tune_length"), value=70),
-    tune_time=list(flags=list("--tune_time"), value=1, errors=list(-1,0), warnings=list(30)),
+    tune_time=list(flags=list("--tune_time"), value=1, errors=list(-1,-10), warnings=list(481)),
     tune_stop=list(flags=list("--tune_stop"), value=9),
+    parallel_workers=list(flags=list("--parallel_workers"), value=2, errors=list(-4,0)),
     permute=list(flags=list("--permute"), value=2, errors=list(-1,0), warnings=list(50)),
     shap=list(flags=list("--shap"), value=TRUE),
     summarized_levels=list(flags=list("--summarized_levels"), value=TRUE)
@@ -395,5 +396,26 @@ test_that("program arg loaders work", {
         }
       }
     }
+  })
+
+  test_that("additional validators work", {
+    expect_true(TRUE)
+
+    quit <<- function(...) {
+      stop("quit")
+    }
+
+    test_that("validate_total_cores works", {
+      commandArgs <<- function(x) {
+        c("c", "m", "-n", as.character(parallelly::availableCores()), "--parallel_workers", as.character(parallelly::availableCores()))
+      }
+
+      # expect message for the actual error, but also expect an error from the new stop() call in the mocked quit function above
+      expect_error(
+        expect_message(load_taxa_hfe_ml_args(), regexp = "We detect \\d+ cores but you asked for \\d+ cores", info = "expected error when requested cores was higher than available cores"),
+        regexp = "quit",
+        info = "validate_total_cores error did not call quit() on error"
+      )
+    })
   })
 })

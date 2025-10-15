@@ -15,7 +15,7 @@ source("lib/methods.R")
 ## add commandline options =====================================================
 
 # to use this code line-by-line in the Rstudio context, commandArgs can be overloaded to specify the desired flags
-# ex. commandArgs <- function(x) { c("example_inputs/metadata.txt", "example_inputs/microbiome_data.txt", "-o", "example_outputs", "-s", "Sample", "-l", "Category", "-L", "3", "-n", "4", "--seed", "42", "--train_split", "0.8") }
+# ex. commandArgs <- function(x) { c("example_inputs/metadata.txt", "example_inputs/microbiome_data.txt", "-o", "example_outputs", "-s", "Sample", "-l", "Category", "-L", "3", "-n", "2", "--seed", "42", "--train_split", "0.8", "--tune_time", "0", "-W", "--parallel_workers", "2", "--shap") }
 # these will be used by the argparser
 opts <- load_taxa_hfe_ml_args()
 
@@ -30,12 +30,12 @@ metadata <- read_in_metadata(input = opts$METADATA,
                              random_effects = opts$random_effects, 
                              limit_covariates = TRUE, 
                              k = opts$k_splits,
-                             cores = opts$ncores)
+                             cores = (opts$ncores * opts$parallel_workers))
 
 ## hierarchical data file ======================================================
 hierarchical_data <- read_in_hierarchical_data(input = opts$DATA,
                                    metadata = metadata,
-                                   cores = opts$ncores)
+                                   cores = (opts$ncores * opts$parallel_workers))
 
 ## set initial test-train split for ML methods =================================
 tr_te_split <- rsample::initial_split(metadata, prop = as.numeric(opts$train_split), strata = feature_of_interest)
@@ -51,14 +51,16 @@ diet_ml_inputs <- method_taxa_hfe_ml(
   lowest_level = opts$lowest_level,
   max_level = opts$max_level,
   cor_level = opts$cor_level,
-  ncores = opts$ncores,
+  ncores = (opts$ncores * opts$parallel_workers),
   feature_type = opts$feature_type,
   nperm = opts$nperm,
   disable_super_filter = opts$disable_super_filter,
   train_metadata = train_metadata,
   test_metadata = test_metadata,
   seed = opts$seed,
-  random_effects = opts$random_effects
+  random_effects = opts$random_effects,
+  write_flattened_tree = opts$write_flattened_tree,
+  output = opts$output_dir
 )
 
 # also run summarized levels if requested
@@ -105,6 +107,7 @@ run_diet_ml(diet_ml_inputs,
             cv_repeats = opts$cv_repeats,
             cor_level = opts$cor_level,
             ncores = opts$ncores,
+            parallel_workers = opts$parallel_workers,
             tune_length = opts$tune_length,
             tune_stop = opts$tune_stop,
             tune_time = opts$tune_time,

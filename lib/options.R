@@ -40,7 +40,7 @@ argument_groups <- list(
       write_flattened_tree=list("-W", "--write_flattened_tree", action="store_true", help="Write a compressed backup of the entire competed tree"),
       write_both_outputs=list("-D", "--write_both_outputs", action="store_true", help="Write an output for pre and post super filter results, overridden by --disable_super_filter"),
       nperm=list("--nperm", type="integer", metavar="<numeric>", default="40", help="Number of taxaHFE RF permutations"),
-      ncores=list("-n", "--ncores", type="integer", metavar="<numeric>", default="2", help="Number of parallel processes to run in certain portions of taxaHFE that support parallel processing. To limit overall resource usage of taxaHFE, limit the amount of resources available to the container (e.g. --cpus=4 for Docker)")
+      ncores=list("-n", "--ncores", type="integer", metavar="<numeric>", default="2", help="Number of parallel processes to run in certain portions of taxaHFE that support parallel processing. To limit overall resource usage of taxaHFE, limit the amount of resources available to the container (e.g. --cpus=4 for Docker). Note that total resources needed are parallel_workers * ncores.")
     )
   ),
   taxa_hfe_ml_args=list(
@@ -55,6 +55,7 @@ argument_groups <- list(
       tune_length=list("--tune_length", type="numeric", metavar="<numeric>", default="80", help="Number of hyperparameter combinations to sample"),
       tune_time=list("--tune_time", type="numeric", metavar="<numeric>", default="2", help="Time for hyperparameter search (in minutes)"),
       tune_stop=list("--tune_stop", type="numeric", metavar="<numeric>", default="10", help="Number of HP iterations without improvement before stopping"),
+      parallel_workers=list("--parallel_workers", type="integer", metavar="<numeric>", default="1", help="Number of parallel search processes to run for hyperparameter tuning in dietML. Note that total resources needed are parallel_workers * ncores (e.g. --cpus=4 for Docker)"),
       permute=list("--permute", type="numeric", metavar="<numeric>", default="1", help="Number of times to permute the ML assessment process, resulting in n different test/train split inputs"),
       shap=list("--shap", action="store_true", help="Calculate SHAP values"),
       summarized_levels=list("--summarized_levels", action="store_true", help="Include summarized levels in ML competition")
@@ -83,12 +84,13 @@ validators <- list(
   abundance=validate_numeric(min=0),
   lowest_level=validate_numeric(min=1, min_warning=list(2, "values below 2 may include an artificial taxonomic root")),
   max_level=validate_numeric(min=1, max=1000, max_warning=list(16, "you have many hierarchical levels, which may increase run time")),
-  ncores=validate_numeric(min=1, max=parallel::detectCores()),
+  ncores=validate_numeric(min=1, max=as.numeric(parallelly::availableCores())),
+  parallel_workers=validate_numeric(min=1, max=as.numeric(parallelly::availableCores())),
   nperm=validate_numeric(min=1, max=99999, max_warning=list(200, "this nperm value is high and will likely increase run time")),
   train_split=validate_numeric(min=0, max=1, min_warning=list(0.5, "a train test split below 50-50 is very unusual")),
   folds=validate_numeric(min=2, max_warning=list(11, "a value above 10 may result in very small splits")),
   cv_repeats=validate_numeric(min=1, max_warning=list(5, "a high about of repeats can result in a large amount of model fits, increasing run time")),
-  tune_time=validate_numeric(min=0.1, max_warning=list(20, "spending excessive time tuning hyperparameters my not result in substaintal increases in accuracy")),
+  tune_time=validate_numeric(min=0, max_warning=list(480, "spending excessive time tuning hyperparameters my not result in substaintal increases in accuracy")),
   permute=validate_numeric(min=1, max_warning=list(11, "you are about to permute the ML assessment pipeline more than 10 times, which is likely unnecessary")),
   seed=validate_numeric(min = -1 * .Machine$integer.max, max = .Machine$integer.max)
 )
@@ -136,6 +138,14 @@ validate_options <- function(opts) {
       quit(status = 1)
     })
   }
+
+  # additional validators that involve more than one flag here
+  tryCatch({
+    validate_total_cores(opts)
+  }, error = function(e) {
+    message(e$message)
+    quit(status = 1)
+  })
 }
 
 # load the args for a program
