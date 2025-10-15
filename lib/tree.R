@@ -1114,7 +1114,7 @@ write_list_to_csv <- function(diet_ml_inputs, directory = ".") {
       readr::write_csv(item, filename)
     } else {
       # Print a warning if the item is not a data.frame or matrix
-      warning(paste("Item", item_name, "is not a data.frame or matrix and was not written to a CSV file."))
+      warning(paste("Item", item_name, "is not a data.frame or matrix and was not written to a CSV file."), immediate. = TRUE)
     }
   }
   
@@ -1751,10 +1751,10 @@ shap_analysis <- function(label, output, model, filename, shap_inputs, train, te
         ## for smaller datasets, the above could lead to huge nsim. lets set max at 200.
         safe_nsim <- ifelse(safe_nsim > 199, 200, safe_nsim)
         
-        # # Error if the data is too large
-        # if ((n_cols * n_rows) > 500000) {
-        #   stop("This input dataset is pretty large for a SHAP analysis. We are skipping this and writing the files for you to re-run your own SHAP analysis")
-        # }
+        ## warning if shap analysis looks like its going to take a long time
+        if ((n_cols * n_rows) > 500000) {
+          warning("This input dataset is pretty large for a SHAP analysis. This may take a long time, potentially exceeding walltime limits for shared resources (e.g., HPCs)", immediate. = T)
+        }
         
         message(glue::glue("Running SHAP with nsim = {safe_nsim}"))
         
