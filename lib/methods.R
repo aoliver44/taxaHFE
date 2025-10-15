@@ -69,8 +69,8 @@ method_taxa_hfe_ml <- function(
     ## Build tree ================================================================
     h_tree <- build_tree(
       h_data_split,
-      filter_prevalence = prevalence,
-      filter_mean_abundance = abundance
+      filter_prevalence = switch(count, prevalence, 0), # for test data, no prevalence filter
+      filter_mean_abundance = switch(count, abundance, 0) # for test data, no abundance filter
     )
 
     ## Main competition ==========================================================
@@ -134,16 +134,23 @@ method_taxa_hfe_ml <- function(
   ## The actual error that gets thrown (even if columns are just out of order):
   ## Error in `make_splits()` at lib/models/diet_ml_ranger_tidy.R:41:1:
   ##   ! The analysis and assessment sets must have the same columns
-  overlap_features <- dplyr::intersect(colnames(test_data), colnames(train_data))
-  test_data <- test_data %>% dplyr::select(., dplyr::any_of(overlap_features))
-  train_data_for_diet_ml <- train_data %>% dplyr::select(., dplyr::any_of(overlap_features))
+  test_data <- test_data %>% dplyr::select(., dplyr::any_of(colnames(train_data)))
   ## reorder test columns
-  test_data_for_diet_ml <- test_data[names(train_data_for_diet_ml)]
+  test_data_for_diet_ml <- test_data[names(train_data)]
+  
+  ## Error out if training data columns and testing columns do not match
+  ## (if working well, should be TRUE. Below it is asking if it is the inverse
+  ## of it is TRUE...basically a problem)
+  if (!all(colnames(train_data)==colnames(test_data_for_diet_ml))) {
+    stop("The training colnames and testing colnames do not match. This is unusual -
+         take note of the command and your data and raise an issue on our GitHub
+         (https://github.com/aoliver44/taxaHFE/issues)")
+  }
 
   ## store data in list of data for dietML
   diet_ml_inputs <- store_diet_ml_inputs(
     list(),
-    object = train_data_for_diet_ml,
+    object = train_data,
     super_filter = ifelse(disable_super_filter, "no_sf", "sf"),
     method = "taxa_hfe_ml",
     train_test_attr = "train",
