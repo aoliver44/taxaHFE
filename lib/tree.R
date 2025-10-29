@@ -1221,6 +1221,7 @@ prep_re_data <- function(input, feature_type, abund) {
   ## onehot encode any factors (only factors should be those from covariates)
   merged_data_hotencode <- input %>%
     recipes::recipe(~ .) %>% 
+    recipes::step_zv(all_predictors()) %>%
     recipes::step_dummy(recipes::all_nominal_predictors(), -feature_of_interest, -individual, -time) %>% 
     recipes::prep() %>% 
     recipes::bake(input) 
@@ -1364,8 +1365,8 @@ run_dietML_ranger <- function(train, test, seed, random_effects, folds, cv_repea
   ## specify recipe (this is like the pre-process work)
   diet_ml_recipe <- recipes::recipe(feature_of_interest ~ ., data = train) %>% 
     recipes::update_role(tidyr::any_of("subject_id"), new_role = "ID") %>% 
-    recipes::step_dummy(recipes::all_nominal_predictors()) %>%
-    recipes::step_zv(all_predictors())
+    recipes::step_zv(all_predictors()) %>%
+    recipes::step_dummy(recipes::all_nominal_predictors())
 
   ## ML engine
   
@@ -1581,8 +1582,8 @@ run_null_model <- function(train, test, seed, type, random_effects, output) {
   diet_ml_recipe <- 
     recipes::recipe(feature_of_interest ~ ., data = train) %>% 
     recipes::update_role(tidyr::any_of("subject_id"), new_role = "ID") %>%
-    recipes::step_dummy(recipes::all_nominal_predictors()) %>%
-    recipes::step_zv(all_predictors())
+    recipes::step_zv(all_predictors()) %>%
+    recipes::step_dummy(recipes::all_nominal_predictors())
   
   
   ## ML engine
