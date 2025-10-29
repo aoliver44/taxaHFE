@@ -1163,7 +1163,7 @@ extract_attributes <- function(diet_ml_inputs) {
 }
 
 ## run dietML based on diet_ml_input_df
-run_diet_ml <- function(diet_ml_inputs, metadata, n_repeat, feature_type, seed, train, test, model, program, random_effects, folds, cv_repeats, cor_level, ncores, parallel_workers, tune_length, tune_stop, tune_time, metric, label, output, shap) {
+run_diet_ml <- function(diet_ml_inputs, metadata, n_repeat, feature_type, seed, train, test, model, program, random_effects, folds, cv_repeats, ncores, parallel_workers, tune_length, tune_stop, tune_time, metric, label, output, shap) {
   input_df <- extract_attributes(diet_ml_inputs)
 
   ## create a number of random seeds, which are used across all programs 
@@ -1198,7 +1198,6 @@ run_diet_ml <- function(diet_ml_inputs, metadata, n_repeat, feature_type, seed, 
                      random_effects = random_effects, 
                      folds = folds,
                      cv_repeats = cv_repeats,
-                     cor_level = cor_level, 
                      ncores = ncores, 
                      parallel_workers = parallel_workers,
                      tune_length = tune_length, 
@@ -1273,7 +1272,7 @@ prep_re_data <- function(input, feature_type, abund) {
   } 
 }
   
-pass_to_dietML <- function(train, test, metadata, model, program, seed, random_effects, folds, cv_repeats, cor_level, ncores, parallel_workers, tune_length, tune_stop, tune_time, metric, label, output, feature_type, shap) {
+pass_to_dietML <- function(train, test, metadata, model, program, seed, random_effects, folds, cv_repeats, ncores, parallel_workers, tune_length, tune_stop, tune_time, metric, label, output, feature_type, shap) {
   
   ## check for outdir and make if not there
   if (dir.exists(paste0(output, "/ml_analysis")) != TRUE) {
@@ -1296,7 +1295,7 @@ pass_to_dietML <- function(train, test, metadata, model, program, seed, random_e
   }
   
   ## run null model first, results_df is needed for the actually runs
-  results_df <- run_null_model(train = train, test = test, seed = seed, type = type, cor_level = cor_level, random_effects = random_effects, output = output)
+  results_df <- run_null_model(train = train, test = test, seed = seed, type = type, random_effects = random_effects, output = output)
   
   ## if specified, run random forest
   if (model == "rf") {
@@ -1307,7 +1306,6 @@ pass_to_dietML <- function(train, test, metadata, model, program, seed, random_e
       random_effects = random_effects,
       folds = folds,
       cv_repeats = cv_repeats,
-      cor_level = cor_level,
       ncores = ncores,
       parallel_workers = parallel_workers,
       tune_length = tune_length,
@@ -1336,7 +1334,7 @@ pass_to_dietML <- function(train, test, metadata, model, program, seed, random_e
   }
 }
 
-run_dietML_ranger <- function(train, test, seed, random_effects, folds, cv_repeats, cor_level, parallel_workers, ncores, tune_length, tune_stop, tune_time, metric, label, model, program, output, type, null_results) {
+run_dietML_ranger <- function(train, test, seed, random_effects, folds, cv_repeats, parallel_workers, ncores, tune_length, tune_stop, tune_time, metric, label, model, program, output, type, null_results) {
   
   ## check and make sure results_df has been created from run_null_model,
   ## needed for this function downstream
@@ -1554,7 +1552,7 @@ run_dietML_ranger <- function(train, test, seed, random_effects, folds, cv_repea
   
 }
 
-run_null_model <- function(train, test, seed, type, cor_level, random_effects, output) {
+run_null_model <- function(train, test, seed, type, random_effects, output) {
   
   ## create results df
   if (type == "classification") {
@@ -1582,9 +1580,7 @@ run_null_model <- function(train, test, seed, type, cor_level, random_effects, o
   diet_ml_recipe <- 
     recipes::recipe(feature_of_interest ~ ., data = train) %>% 
     recipes::update_role(tidyr::any_of("subject_id"), new_role = "ID") %>%
-    recipes::step_dummy(recipes::all_nominal_predictors()) %>%
-    recipes::step_corr(all_numeric_predictors(), threshold = cor_level) %>%
-    recipes::step_zv(all_predictors())
+    recipes::step_dummy(recipes::all_nominal_predictors()) 
   
   
   ## ML engine
