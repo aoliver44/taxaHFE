@@ -81,7 +81,7 @@ read_in_metadata <- function(input, subject_identifier, label, feature_type, ran
   ## check and make sure there are not too many metadata columns
   ## we will allow 10 total columns (8 columns of additional covariates)
   if (ncol(metadata) > 10 & limit_covariates) {
-    warning("WARNING: You have selected quite a few covariates (this warning shows at > 8 covariates). TaxaHFE merely adds the covariates to the RF models. Its primary purpose is hierarchical feature engineering. Please do not rely on it to beautifully handle everything AND the kitchen sink.")
+    warning("WARNING: You have selected quite a few covariates (this warning shows at > 8 covariates). TaxaHFE merely adds the covariates to the RF models. Its primary purpose is hierarchical feature engineering. Please do not rely on it to beautifully handle everything AND the kitchen sink.", immediate. = TRUE)
   }
   
   ## notify user what covariates we find, if any
