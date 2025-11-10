@@ -1223,6 +1223,7 @@ prep_re_data <- function(input, feature_type, abund) {
   merged_data_hotencode <- input %>%
     recipes::recipe(~ .) %>% 
     recipes::step_zv(all_predictors()) %>%
+    recipes::step_novel() %>%
     recipes::step_dummy(recipes::all_nominal_predictors(), -feature_of_interest, -individual, -time) %>% 
     recipes::prep() %>% 
     recipes::bake(input) 
@@ -1388,6 +1389,7 @@ run_dietML_ranger <- function(train, test, seed, random_effects, folds, cv_repea
   diet_ml_recipe <- recipes::recipe(feature_of_interest ~ ., data = train) %>% 
     recipes::update_role(tidyr::any_of("subject_id"), new_role = "ID") %>% 
     recipes::step_zv(all_predictors()) %>%
+    recipes::step_novel(all_nominal_predictors()) %>%
     recipes::step_dummy(recipes::all_nominal_predictors())
 
   ## ML engine
@@ -1420,7 +1422,7 @@ run_dietML_ranger <- function(train, test, seed, random_effects, folds, cv_repea
   dietML_wflow <- 
     workflows::workflow() %>% 
     workflows::add_model(initial_mod) %>% 
-    workflows::add_recipe(diet_ml_recipe)  
+    workflows::add_recipe(diet_ml_recipe, blueprint = hardhat::default_recipe_blueprint(allow_novel_levels = TRUE))  
   #print(dietML_wflow)
   
   ## hyperparameters =============================================================
@@ -1607,6 +1609,7 @@ run_dietML_enet <- function(train, test, seed, random_effects, folds, cv_repeats
   diet_ml_recipe <- recipes::recipe(feature_of_interest ~ ., data = train) %>% 
     recipes::update_role(tidyr::any_of("subject_id"), new_role = "ID") %>% 
     recipes::step_zv(all_predictors()) %>%
+    recipes::step_novel(all_nominal_predictors()) %>%
     recipes::step_dummy(recipes::all_nominal_predictors())
   
   ## ML engine
@@ -1649,7 +1652,7 @@ run_dietML_enet <- function(train, test, seed, random_effects, folds, cv_repeats
   dietML_wflow <- 
     workflows::workflow() %>% 
     workflows::add_model(initial_mod) %>% 
-    workflows::add_recipe(diet_ml_recipe)  
+    workflows::add_recipe(diet_ml_recipe, blueprint = hardhat::default_recipe_blueprint(allow_novel_levels = TRUE))  
   #print(dietML_wflow)
   
   ## hyperparameters =============================================================
@@ -1822,10 +1825,10 @@ run_null_model <- function(train, test, seed, type, random_effects, output) {
   ## recipe
   
   ## specify recipe (this is like the pre-process work)
-  diet_ml_recipe <- 
-    recipes::recipe(feature_of_interest ~ ., data = train) %>% 
-    recipes::update_role(tidyr::any_of("subject_id"), new_role = "ID") %>%
+  diet_ml_recipe <- recipes::recipe(feature_of_interest ~ ., data = train) %>% 
+    recipes::update_role(tidyr::any_of("subject_id"), new_role = "ID") %>% 
     recipes::step_zv(all_predictors()) %>%
+    recipes::step_novel(all_nominal_predictors()) %>%
     recipes::step_dummy(recipes::all_nominal_predictors())
   
   
@@ -1843,7 +1846,7 @@ run_null_model <- function(train, test, seed, type, random_effects, output) {
   diet_ml_wflow <- 
     workflows::workflow() %>% 
     workflows::add_model(initial_mod) %>% 
-    workflows::add_recipe(diet_ml_recipe)  
+    workflows::add_recipe(diet_ml_recipe, blueprint = hardhat::default_recipe_blueprint(allow_novel_levels = TRUE))  
   
   
   ## fit model
