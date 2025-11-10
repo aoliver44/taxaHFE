@@ -1223,7 +1223,6 @@ prep_re_data <- function(input, feature_type, abund) {
   merged_data_hotencode <- input %>%
     recipes::recipe(~ .) %>% 
     recipes::step_zv(all_predictors()) %>%
-    recipes::step_novel() %>%
     recipes::step_dummy(recipes::all_nominal_predictors(), -feature_of_interest, -individual, -time) %>% 
     recipes::prep() %>% 
     recipes::bake(input) 
