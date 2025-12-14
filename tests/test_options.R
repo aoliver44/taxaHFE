@@ -41,7 +41,25 @@ test_that("initialize_parser works as expected", {
   })
 
   test_that("parser requires 2 positional arguments for the files", {
+    # empty and single items
     not_enough_positional_args <- list(c(), c("m"), c("d"))
+    # mock this method from the argparse package so it doesn't call quit but still raises the error it would have with stop()
+    local_mocked_bindings(
+      print_message_and_exit = function(message, x) stop(message),
+      .package = 'argparse'
+    )
+
+    for (bad_args in not_enough_positional_args) {
+      expect_error(parser$parse_args(bad_args), "error: the following arguments are required:")
+    }
+  })
+
+  test_that("parser requires one positional arg when metadata input is not required", {
+    # new parser that doesn't require metatdata
+    parser <- initialize_parser(version, program, description, list(), include_metadata_input = FALSE)
+
+    # empty args
+    not_enough_positional_args <- list(c())
     # mock this method from the argparse package so it doesn't call quit but still raises the error it would have with stop()
     local_mocked_bindings(
       print_message_and_exit = function(message, x) stop(message),
@@ -212,7 +230,7 @@ test_flag_values <- list(
     random_effects=list(flags=list("-R", "--random_effects"), value=TRUE),
     k_splits=list(flags=list("-k", "--k_splits"), value=4, errors=list(-1), warnings=list(10)),
     abundance=list(flags=list("-a", "--abundance"), value=0.9, errors=list(-1)),
-    prevalence=list(flags=list("-p", "--prevalence"), value=0.02, errors=list(-1,2)),
+    prevalence=list(flags=list("-p", "--prevalence"), value=0.02, errors=list(-1, 2)),
     lowest_level=list(flags=list("-L", "--lowest_level"), value=4, warnings=list(1), errors=list(-1)),
     max_level=list(flags=list("-m", "--max_level"), value=10, warnings=list(30, 500)),
     cor_level=list(flags=list("-c", "--cor_level"), value=.99, errors=list(-1, 2), warnings=list(.4)),
@@ -221,23 +239,41 @@ test_flag_values <- list(
     write_flattened_tree=list(flags=list("-W", "--write_flattened_tree"), value=TRUE),
     write_both_outputs=list(flags=list("-D", "--write_both_outputs"), value=TRUE),
     nperm=list(flags=list("--nperm"), value=100),
-    ncores=list(flags=list("-n", "--ncores"), value=1, errors=list(-4,0)),
+    ncores=list(flags=list("-n", "--ncores"), value=1, errors=list(-4, 0)),
     # this is technically part of the initialized parser args but is tested as a part of this group
     seed=list(flags=list("--seed"), value=314159, errors=list("-1000000000000000", "1000000000000000"))
   ),
   taxa_hfe_ml_args=list(
-    train_split=list(flags=list("--train_split"), value=0.7, errors=list(-1,2), warnings=list(0.4)),
+    train_split=list(flags=list("--train_split"), value=0.7, errors=list(-1, 2), warnings=list(0.4)),
     model=list(flags=list("--model"), value="enet"),
-    folds=list(flags=list("--folds"), value=5, errors=list(-1,0), warnings=list(12)),
-    cv_repeats=list(flags=list("--cv_repeats"), value=2, errors=list(-1,0), warnings=list(6)),
+    folds=list(flags=list("--folds"), value=5, errors=list(-1, 0), warnings=list(12)),
+    cv_repeats=list(flags=list("--cv_repeats"), value=2, errors=list(-1, 0), warnings=list(6)),
     metric=list(flags=list("--metric"), value="accuracy"),
     tune_length=list(flags=list("--tune_length"), value=70),
-    tune_time=list(flags=list("--tune_time"), value=1, errors=list(-1,-10), warnings=list(481)),
+    tune_time=list(flags=list("--tune_time"), value=1, errors=list(-1, -10), warnings=list(481)),
     tune_stop=list(flags=list("--tune_stop"), value=9),
-    parallel_workers=list(flags=list("--parallel_workers"), value=2, errors=list(-4,0)),
-    permute=list(flags=list("--permute"), value=2, errors=list(-1,0), warnings=list(50)),
+    parallel_workers=list(flags=list("--parallel_workers"), value=2, errors=list(-4, 0)),
+    permute=list(flags=list("--permute"), value=2, errors=list(-1, 0), warnings=list(50)),
     shap=list(flags=list("--shap"), value=TRUE),
     summarized_levels=list(flags=list("--summarized_levels"), value=TRUE)
+  ),
+  diet_ml_args=list(
+    subject_identifier=list(flags=list("-s", "--subject_identifier"), value="sid"),
+    label=list(flags=list("-l", "--label"), value="label_factor"),
+    cor_level=list(flags=list("-c", "--cor_level"), value=.99, errors=list(-1, 2), warnings=list(.4)),
+    info_gain_n=list(flags=list("--info_gain_n"), value=.9, errors=list(-1, 2)),
+    train_split=list(flags=list("--train_split"), value=0.7, errors=list(-1, 2), warnings=list(0.4)),
+    model=list(flags=list("--model"), value="enet"),
+    folds=list(flags=list("--folds"), value=5, errors=list(-1, 0), warnings=list(12)),
+    cv_repeats=list(flags=list("--cv_repeats"), value=2, errors=list(-1, 0), warnings=list(6)),
+    metric=list(flags=list("--metric"), value="accuracy"),
+    type=list(flags=list("--type"), value="regression"),
+    tune_length=list(flags=list("--tune_length"), value=70),
+    tune_time=list(flags=list("--tune_time"), value=1, errors=list(-1, -10), warnings=list(481)),
+    tune_stop=list(flags=list("--tune_stop"), value=9),
+    shap=list(flags=list("--shap"), value=TRUE),
+    ncores=list(flags=list("-n", "--ncores"), value=1, errors=list(-4, 0)),
+    parallel_workers=list(flags=list("--parallel_workers"), value=2, errors=list(-4, 0))
   )
 )
 
@@ -263,6 +299,11 @@ test_that("program arg loaders work", {
     taxa_hfe_ml_args=list(
       load_arg_function=load_taxa_hfe_ml_args,
       flag_values=c(test_flag_values$taxa_hfe_base_args, test_flag_values$taxa_hfe_ml_args)
+    ),
+    # diet ml flags
+    diet_ml_args=list(
+      load_arg_function=load_diet_ml_args,
+      flag_values=test_flag_values$diet_ml_args
     )
   )
 

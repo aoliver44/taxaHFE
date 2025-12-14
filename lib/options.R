@@ -60,6 +60,28 @@ argument_groups <- list(
       shap=list("--shap", action="store_true", help="Calculate SHAP values"),
       summarized_levels=list("--summarized_levels", action="store_true", help="Include summarized levels in ML competition")
     )
+  ),
+  diet_ml_args=list(
+    name="DietML arguments",
+    desc="Run regression or classification ML models on a dataframe",
+    args=list(
+      subject_identifier=list("-s", "--subject_identifier", type="character", metavar="<string>", default="subject_id", help="Metadata column name containing subject IDs"),
+      label=list("-l", "--label", type="character", metavar="<string>", default="feature_of_interest", help="Metadata column name of interest for ML"),
+      cor_level=list("-c", "--cor_level", type="numeric", metavar="<numeric>", default="0.95", help="Initial pearson correlation filter"),
+      info_gain_n=list("--info_gain_n", type="numeric", metavar="<numeric>", default="0", help="should information gain preprocessing be used? Set threshold, eg 0.9 means top 10%% features selected. Default is no info_gain"),
+      train_split=list("--train_split", type="numeric", metavar="<numeric>", default="0.8", help="Percentage of samples to use for training"),
+      model=list("--model", type="character", metavar="<string>", default="rf", choices=c("rf", "enet"), help="ML model to use"),
+      folds=list("--folds", type="numeric", metavar="<numeric>", default="10", help="Number of CV folds for tuning"),
+      cv_repeats=list("--cv_repeats", type="numeric", metavar="<numeric>", default="3", help="Number of CV repeats to perform for repeated CV"),
+      metric=list("--metric", type="character", metavar="<string>", default="bal_accuracy", choices=c("roc_auc", "bal_accuracy", "accuracy", "mae", "rmse", "rsq", "kap", "f_meas", "ccc"), help="Metric to optimize"),
+      type=list("--type", type="character", metavar="<string>", default="classification", choices=c("classification", "regression"), help="choose type for models that do both regression and classification"),
+      tune_length=list("--tune_length", type="numeric", metavar="<numeric>", default="80", help="Number of hyperparameter combinations to sample"),
+      tune_time=list("--tune_time", type="numeric", metavar="<numeric>", default="2", help="Time for hyperparameter search (in minutes)"),
+      tune_stop=list("--tune_stop", type="numeric", metavar="<numeric>", default="10", help="Number of HP iterations without improvement before stopping"),
+      shap=list("--shap", action="store_true", help="Calculate SHAP values"),
+      ncores=list("-n", "--ncores", type="integer", metavar="<numeric>", default="2", help="Number of parallel processes to run in certain portions of taxaHFE that support parallel processing. To limit overall resource usage of taxaHFE, limit the amount of resources available to the container (e.g. --cpus=4 for Docker). Note that total resources needed are parallel_workers * ncores."),
+      parallel_workers=list("--parallel_workers", type="integer", metavar="<numeric>", default="1", help="Number of parallel search processes to run for hyperparameter tuning in dietML. Note that total resources needed are parallel_workers * ncores (e.g. --cpus=4 for Docker)")
+    )
   )
 )
 
@@ -92,22 +114,29 @@ validators <- list(
   cv_repeats=validate_numeric(min=1, max_warning=list(5, "a high about of repeats can result in a large amount of model fits, increasing run time")),
   tune_time=validate_numeric(min=0, max_warning=list(480, "spending excessive time tuning hyperparameters my not result in substaintal increases in accuracy")),
   permute=validate_numeric(min=1, max_warning=list(11, "you are about to permute the ML assessment pipeline more than 10 times, which is likely unnecessary")),
-  seed=validate_numeric(min = -1 * .Machine$integer.max, max = .Machine$integer.max)
+  seed=validate_numeric(min = -1 * .Machine$integer.max, max = .Machine$integer.max),
+  info_gain_n=validate_numeric(min=0, max=1)
 )
 
 # Function to initialize parser for a program
 # this takes in the data to make the parser but does not run it
-initialize_parser <- function(version, program_name, description, argument_groups) {
+initialize_parser <- function(version, program_name, description, argument_groups, include_metadata_input=TRUE) {
+  # only include the METADATA string if it needs to be included
+  usage <- sprintf("[options] %sDATA", if (include_metadata_input) "METADATA " else "")
+
   parser <- argparse::ArgumentParser(
     description=description,
-    usage=paste(program_name, "[options] METADATA DATA"),
+    usage=paste(program_name, usage),
     formatter_class="type('CustomFormatter', (argparse.ArgumentDefaultsHelpFormatter, argparse.MetavarTypeHelpFormatter, argparse.RawTextHelpFormatter), {})"
   )
 
-  # Common arguments for all programs
-  parser$add_argument("METADATA", metavar="METADATA", type="character", help="path to metadata input (txt | tsv | csv)")
+  # positional input args
+  if (include_metadata_input) {
+    parser$add_argument("METADATA", metavar="METADATA", type="character", help="path to metadata input (txt | tsv | csv)")
+  }
   parser$add_argument("DATA", metavar="DATA", type="character", help="path to input file from hierarchical data (i.e. hData data) (txt | tsv | csv)")
 
+  # common flags
   parser$add_argument("-o", "--output_dir", type="character", metavar="<string>", default="outputs", help="Directory for the output files to be written. Defaults to a directory called 'outputs'")
   parser$add_argument("-v", "--version", action="version", version=version)
   parser$add_argument("--data_dir", type="character", metavar="<string>", default=".", help="Directory for MEATDATA, DATA, and output_dir, ignored if using absolute paths. Defaults to the current directory")
@@ -152,7 +181,7 @@ validate_options <- function(opts) {
 # - loads version from env
 # - initializes the parser with the desired argument groups
 # - runs the parser and returns the arguments
-load_args <- function(program_name, description, argument_groups) {
+load_args <- function(program_name, description, argument_groups, include_metadata_input=TRUE) {
   # load version from the environment, defaulting to 0
   version <- Sys.getenv("TAXA_HFE_VERSION")
   if (version == "") {
@@ -160,7 +189,7 @@ load_args <- function(program_name, description, argument_groups) {
   }
 
   # load the parser, including any arguments groups
-  parser <- initialize_parser(version, program_name, description, argument_groups)
+  parser <- initialize_parser(version, program_name, description, argument_groups, include_metadata_input)
 
   # Parse the command-line arguments and return them
   opts <- parser$parse_args(commandArgs(TRUE))
@@ -174,6 +203,9 @@ load_args <- function(program_name, description, argument_groups) {
   # also normalize all input paths to the data_dir
   # will ignore the data_dir if the path links to valid file based on where the script is being run
   for (f in list("METADATA", "DATA", "output_dir")) {
+    if (!exists(f, where = opts)) {
+      next
+    }
     # lazyish check for abs path
     # change the file path to "data_dir / path" if the path doesn't start with "/"
     if (substr(opts[[f]], 0, 1) != "/") {
@@ -204,4 +236,10 @@ load_taxa_hfe_ml_args <- function() {
   )
 
   return(load_args("taxa_hfe_ml", "Hierarchical feature engineering (HFE) with ML", arg_groups))
+}
+
+load_diet_ml_args <- function() {
+  arg_groups <- list(argument_groups$diet_ml_args)
+
+  return(load_args("diet_ml", "Another ML pipeline wrapper", arg_groups, include_metadata_input=FALSE))
 }
