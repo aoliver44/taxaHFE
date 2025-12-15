@@ -23,6 +23,7 @@ library(shapviz, quietly = TRUE, verbose = FALSE, warn.conflicts = FALSE)
 suppressPackageStartupMessages(library(doParallel, quietly = TRUE, verbose = FALSE, warn.conflicts = FALSE))
 library(foreach, quietly = TRUE, verbose = FALSE, warn.conflicts = FALSE)
 library(doParallel, quietly = TRUE, verbose = FALSE, warn.conflicts = FALSE)
+suppressPackageStartupMessages(library(glmnet, quietly = T, verbose = F, warn.conflicts = F))
 
 ## helper functions ============================================================
 
@@ -1321,7 +1322,28 @@ pass_to_dietML <- function(train, test, metadata, model, program, seed, random_e
       null_results = results_df
     )
   }
-  
+  if (model == "enet") {
+    shap_inputs <- run_dietML_enet(
+      train = train,
+      test = test,
+      seed = seed,
+      random_effects = random_effects,
+      folds = folds,
+      cv_repeats = cv_repeats,
+      ncores = ncores,
+      parallel_workers = parallel_workers,
+      tune_length = tune_length,
+      tune_stop = tune_stop,
+      tune_time = tune_time,
+      metric = metric,
+      label = label,
+      model = model,
+      program = program,
+      output = output,
+      type = type,
+      null_results = results_df
+    )
+  }
   if (shap) {
     shap_analysis(label = label, 
                   output = output, 
@@ -1366,6 +1388,7 @@ run_dietML_ranger <- function(train, test, seed, random_effects, folds, cv_repea
   diet_ml_recipe <- recipes::recipe(feature_of_interest ~ ., data = train) %>% 
     recipes::update_role(tidyr::any_of("subject_id"), new_role = "ID") %>% 
     recipes::step_zv(all_predictors()) %>%
+    recipes::step_novel(all_nominal_predictors()) %>%
     recipes::step_dummy(recipes::all_nominal_predictors())
 
   ## ML engine
@@ -1398,7 +1421,7 @@ run_dietML_ranger <- function(train, test, seed, random_effects, folds, cv_repea
   dietML_wflow <- 
     workflows::workflow() %>% 
     workflows::add_model(initial_mod) %>% 
-    workflows::add_recipe(diet_ml_recipe)  
+    workflows::add_recipe(diet_ml_recipe, blueprint = hardhat::default_recipe_blueprint(allow_novel_levels = TRUE))  
   #print(dietML_wflow)
   
   ## hyperparameters =============================================================
@@ -1554,6 +1577,228 @@ run_dietML_ranger <- function(train, test, seed, random_effects, folds, cv_repea
   
 }
 
+run_dietML_enet <- function(train, test, seed, random_effects, folds, cv_repeats, parallel_workers, ncores, tune_length, tune_stop, tune_time, metric, label, model, program, output, type, null_results) {
+  
+  ## check and make sure results_df has been created from run_null_model,
+  ## needed for this function downstream
+  if (!exists("null_results")) {
+    stop("Null model was not run. Cannot complete model evaluation.")
+  }
+  
+  ## set total cores
+  total_cores <- (as.numeric(ncores) * as.numeric(parallel_workers))
+  
+  ## remove individual and train if random effects
+  if (random_effects) {
+    train <- train %>% dplyr::select(., -dplyr::any_of(c("individual", "time")))
+    test <- train %>% dplyr::select(., -dplyr::any_of(c("individual", "time")))
+  }
+  
+  split_from_data_frame <- make_splits(
+    x = train,
+    assessment = test
+  )
+  
+  ## set resampling scheme
+  folds <- rsample::vfold_cv(train, v = as.numeric(folds), strata = feature_of_interest, repeats = cv_repeats)
+  
+  ## recipe
+  
+  ## specify recipe (this is like the pre-process work)
+  diet_ml_recipe <- recipes::recipe(feature_of_interest ~ ., data = train) %>% 
+    recipes::update_role(tidyr::any_of("subject_id"), new_role = "ID") %>% 
+    recipes::step_zv(all_predictors()) %>%
+    recipes::step_novel(all_nominal_predictors()) %>%
+    recipes::step_dummy(recipes::all_nominal_predictors())
+  
+  ## ML engine
+  
+  ## specify ML model and engine 
+  if (as.numeric(tune_time) == 0) {
+    # Define model with fixed penalty and mixture
+    if (type == "classification") {
+      initial_mod <- parsnip::logistic_reg(
+        mode = "classification",
+        penalty = double(1),
+        mixture = 0.5
+      ) %>%
+        parsnip::set_engine("glmnet")
+    } else {
+      initial_mod <- parsnip::linear_reg(
+        mode = "regression",
+        penalty = double(1),
+        mixture = 0.5
+      ) %>%
+        parsnip::set_engine("glmnet")
+    }
+  } else {
+    if (type == "classification") {
+      initial_mod <- parsnip::logistic_reg(mode = "classification", 
+                                           penalty = tune(),
+                                           mixture = tune()) %>%
+        parsnip::set_engine("glmnet")
+    } else {
+      initial_mod <- parsnip::linear_reg(mode = "regression", 
+                                         penalty = tune(),
+                                         mixture = tune()) %>%
+        parsnip::set_engine("glmnet")
+    }
+  } 
+  
+  initial_mod %>% parsnip::translate()
+  
+  ## define workflow
+  dietML_wflow <- 
+    workflows::workflow() %>% 
+    workflows::add_model(initial_mod) %>% 
+    workflows::add_recipe(diet_ml_recipe, blueprint = hardhat::default_recipe_blueprint(allow_novel_levels = TRUE))  
+  #print(dietML_wflow)
+  
+  ## hyperparameters =============================================================
+  if (as.numeric(tune_time) == 0) {
+    best_tidy_workflow <- dietML_wflow 
+    } 
+  else {
+    ## define the hyper parameter set
+    dietML_param_set <- parsnip::extract_parameter_set_dials(dietML_wflow)
+    
+    ## set up parallel jobs ========================================================
+    ## remove any doParallel job setups that may have
+    ## unneccessarily hung around
+    unregister_dopar()
+    
+    ## register parallel cluster
+    cl <- parallel::makePSOCKcluster(as.numeric(parallel_workers))
+    doParallel::registerDoParallel(cl)
+    
+    ## set up hyper parameter search
+    if (type == "classification") {
+      
+      search_res <-
+        dietML_wflow %>% 
+        tune::tune_bayes(
+          resamples = folds,
+          # To use non-default parameter ranges
+          param_info = dietML_param_set,
+          # Generate five at semi-random to start
+          initial = 5,
+          iter = tune_length,
+          # How to measure performance?
+          metrics = yardstick::metric_set(bal_accuracy, roc_auc, accuracy, kap, f_meas),
+          control = tune::control_bayes(no_improve = as.numeric(tune_stop),
+                                        uncertain = 5,
+                                        verbose = FALSE,
+                                        parallel_over = "resamples",
+                                        time_limit = as.numeric(tune_time),
+                                        seed = as.numeric(seed),
+                                        save_pred = FALSE)
+        )
+      
+    } else if (type == "regression") {
+      
+      search_res <-
+        dietML_wflow %>% 
+        tune::tune_bayes(
+          resamples = folds,
+          # To use non-default parameter ranges
+          param_info = dietML_param_set,
+          # Generate five at semi-random to start
+          initial = 5,
+          iter = tune_length,
+          # How to measure performance?
+          metrics = yardstick::metric_set(mae, rmse, rsq, ccc),
+          control = tune::control_bayes(no_improve = as.numeric(tune_stop),
+                                        uncertain = 5,
+                                        verbose = FALSE,
+                                        parallel_over = "resamples",
+                                        time_limit = as.numeric(tune_time),
+                                        seed = as.numeric(seed),
+                                        save_pred = FALSE)
+        )
+    }
+    
+    ## stop parallel jobs
+    parallel::stopCluster(cl)
+    ## remove any doParallel job setups that may have
+    ## unneccessarily hung around
+    unregister_dopar()
+    
+    ## fit best model ============================================================
+    
+    ## get the best parameters from tuning
+    best_mod <- 
+      search_res %>% 
+      tune::select_best(metric = metric)
+    
+    ## create the last model based on best parameters
+    ## create the last model based on best parameters
+    if (type == "classification") {
+      last_best_mod <- 
+        parsnip::logistic_reg(mode = "classification", penalty = best_mod$penalty, mixture = best_mod$mixture) %>% 
+        parsnip::set_engine("glmnet") %>% 
+        parsnip::set_mode(type)
+    } else {
+      last_best_mod <- 
+        parsnip::linear_reg(mode = "regression", penalty = best_mod$penalty, mixture = best_mod$mixture) %>% 
+        parsnip::set_engine("glmnet") %>% 
+        parsnip::set_mode(type)
+    }
+    
+    ## update workflow with best model
+    best_tidy_workflow <- 
+      dietML_wflow %>% 
+      workflows::update_model(last_best_mod)
+    
+    ## graphs ====================================================================
+    
+    hyperpar_perf_plot <- autoplot(search_res, type = "performance")
+    ggplot2::ggsave(plot = hyperpar_perf_plot, filename = paste0(output, "/ml_analysis/", "training_performance.pdf"), width = 7, height = 2.5, units = "in")
+    
+    hyperpar_tested_plot <- autoplot(search_res, type = "parameters") + 
+      labs(x = "Iterations", y = NULL)
+    ggplot2::ggsave(plot = hyperpar_tested_plot, filename = paste0(output, "/ml_analysis/", "hyperpars_tested.pdf"), width = 7, height = 2.5, units = "in")
+    
+  }
+  
+  ## fit to test data
+  
+  if (type == "classification") {
+    final_res <- tune::last_fit(best_tidy_workflow, split_from_data_frame, 
+                                metrics = yardstick::metric_set(bal_accuracy, 
+                                                                roc_auc, accuracy, 
+                                                                kap, f_meas))
+  } else if (type == "regression") {
+    final_res <- tune::last_fit(best_tidy_workflow, split_from_data_frame, 
+                                metrics = yardstick::metric_set(mae, rmse, rsq, 
+                                                                ccc))
+  }
+  
+  ## merge null results with trained results and write table
+  null_results <- null_results %>% 
+    dplyr::select(., -seed) %>% 
+    summarise_all(., mean) %>% 
+    t() %>% 
+    as.data.frame() %>% 
+    tibble::rownames_to_column(var = ".metric") %>% 
+    dplyr::rename(., "null_model_avg" = 2)
+  full_results <- merge(workflowsets::collect_metrics(final_res), null_results, by = ".metric", all = T)
+  full_results$seed <- seed
+  
+  ## keep track of what program is being run for compete all levels
+  full_results$program <- program
+  ## keep track of what model is being run for compete all levels
+  full_results$model <- model
+  
+  ## write final results to file or append if file exists
+  readr::write_csv(x = full_results, file = paste0(output, "/ml_analysis/ml_results.csv"), 
+                   append = T, col_names = !file.exists(paste0(output, "/ml_analysis/ml_results.csv")))
+  
+  ## load up list for shap analysis
+  shap_inputs <- list("split_from_data_frame" = split_from_data_frame, "diet_ml_recipe" = diet_ml_recipe, "best_tidy_workflow" = best_tidy_workflow)
+  return(shap_inputs)
+  
+}
+
 run_null_model <- function(train, test, seed, type, random_effects, output) {
   
   ## create results df
@@ -1579,10 +1824,10 @@ run_null_model <- function(train, test, seed, type, random_effects, output) {
   ## recipe
   
   ## specify recipe (this is like the pre-process work)
-  diet_ml_recipe <- 
-    recipes::recipe(feature_of_interest ~ ., data = train) %>% 
-    recipes::update_role(tidyr::any_of("subject_id"), new_role = "ID") %>%
+  diet_ml_recipe <- recipes::recipe(feature_of_interest ~ ., data = train) %>% 
+    recipes::update_role(tidyr::any_of("subject_id"), new_role = "ID") %>% 
     recipes::step_zv(all_predictors()) %>%
+    recipes::step_novel(all_nominal_predictors()) %>%
     recipes::step_dummy(recipes::all_nominal_predictors())
   
   
@@ -1600,7 +1845,7 @@ run_null_model <- function(train, test, seed, type, random_effects, output) {
   diet_ml_wflow <- 
     workflows::workflow() %>% 
     workflows::add_model(initial_mod) %>% 
-    workflows::add_recipe(diet_ml_recipe)  
+    workflows::add_recipe(diet_ml_recipe, blueprint = hardhat::default_recipe_blueprint(allow_novel_levels = TRUE))  
   
   
   ## fit model
@@ -1681,18 +1926,33 @@ shap_analysis <- function(label, output, model, filename, shap_inputs, train, te
   
   # --- Define prediction wrapper (pfun) ---
   pfun <- NULL
-  if (length(levels(as.factor(split_from_data_frame$data$feature_of_interest))) == 2) {
-    # Binary classification
-    pfun <- function(object, newdata) {
-      preds <- predict(object, data = newdata)$predictions
-      class_level <- levels(as.factor(split_from_data_frame$data$feature_of_interest))[1]
-      return(preds[, class_level])
+  if (model == "rf") {
+    if (type == "classification" && length(levels(as.factor(split_from_data_frame$data$feature_of_interest))) == 2) {
+      pfun <- function(object, newdata) {
+        preds <- predict(object, data = newdata)$predictions
+        class_level <- levels(as.factor(split_from_data_frame$data$feature_of_interest))[1]
+        preds[, class_level]
+      }
+    } else {
+      pfun <- function(object, newdata) {
+        preds <- predict(object, data = newdata)$predictions
+        as.numeric(preds)
+      }
     }
-  } else if (type == "regression" && model == "rf") {
-    # Regression
-    pfun <- function(object, newdata) {
-      preds <- predict(object, data = newdata)$predictions
-      return(preds)
+    
+  } else if (model == "enet") {
+    if (type == "classification" && length(levels(as.factor(split_from_data_frame$data$feature_of_interest))) == 2) {
+      pfun <- function(object, newdata) {
+        preds <- predict(object, new_data = newdata, type = "prob")
+        # take the probability of the second level (positive class)
+        pos_class <- names(preds)[2]
+        as.numeric(preds[[pos_class]])
+      }
+    } else if (type == "regression") {
+      pfun <- function(object, newdata) {
+        preds <- predict(object, new_data = newdata, type = "numeric")
+        as.numeric(preds$.pred)
+      }
     }
   }
   
@@ -1735,9 +1995,16 @@ shap_analysis <- function(label, output, model, filename, shap_inputs, train, te
         cl <- parallel::makeForkCluster(as.numeric(parallel_workers))
         doParallel::registerDoParallel(cl)
         
+        # set the appropriate object for the model
+        if (model == "rf") {
+          shap_model_object <- best_workflow_mod$fit
+        } else if (model == "enet") {
+          shap_model_object <- best_workflow_mod
+        }
+        
         # Compute SHAP values
         shap_explanations <- fastshap::explain(
-          object = best_workflow_mod$fit,
+          object = shap_model_object,
           X = shap_data,
           pred_wrapper = pfun,
           nsim = safe_nsim,
@@ -1761,7 +2028,8 @@ shap_analysis <- function(label, output, model, filename, shap_inputs, train, te
           split_from_data_frame = split_from_data_frame,
           filename = filename,
           output_dir = output_dir,
-          data_subset_index = i
+          data_subset_index = i,
+          type = type
         )
         assign(paste0("plot_", shap_data_subsets[[i]][[2]]), plot, envir = shap_plot_env)
       }
@@ -1815,7 +2083,8 @@ shap_plot <- function(
     split_from_data_frame,
     filename,
     output_dir,
-    data_subset_index
+    data_subset_index,
+    type
 ) {
   # Ensure output directory exists
   if (!dir.exists(output_dir)) {
@@ -1838,12 +2107,14 @@ shap_plot <- function(
     max_display = 10
   ) +
     ggtitle(label = paste0("SHAP: ", label, " (", data_subset_label, ")")) +
-    labs(x = paste0(
+    labs(x = ifelse(type == "classification", paste0(
       "predictive of ",
       class_levels[2],
       " < SHAP > predictive of ",
       class_levels[1]
-    )) +
+    ), paste0(
+      "low response < SHAP > high response "
+    ))) +
     theme_bw(base_size = 14)
   
   # Construct filename and save plot
