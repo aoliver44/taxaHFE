@@ -18,6 +18,7 @@ else
     RSTUDIO_TAGS="-t aoliver44/taxa_hfe_rstudio:latest"
     TAXA_HFE_TAGS="-t aoliver44/taxa_hfe:latest"
     TAXA_HFE_ML_TAGS="-t aoliver44/taxa_hfe_ml:latest"
+    DIET_ML_TAGS="-t aoliver44/diet_ml:latest"
 fi
 
 BUILD_ARGS="--build-arg version=$VERSION --build-arg BASE_IMAGE=aoliver44/taxa_hfe_base:$VERSION"
@@ -32,5 +33,6 @@ echo "Building individual command containers..."
 # build args specifies which cmd/ script to use
 docker build --platform linux/amd64 -f docker/taxa_hfe.dockerfile $BUILD_ARGS -t aoliver44/taxa_hfe:$VERSION $TAXA_HFE_TAGS .
 docker build --platform linux/amd64 -f docker/taxa_hfe_ml.dockerfile $BUILD_ARGS -t aoliver44/taxa_hfe_ml:$VERSION $TAXA_HFE_ML_TAGS .
+docker build --platform linux/amd64 -f docker/diet_ml.dockerfile $BUILD_ARGS -t aoliver44/diet_ml:$VERSION $DIET_ML_TAGS .
 
 # TODO docker login/push
