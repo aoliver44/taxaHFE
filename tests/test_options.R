@@ -293,17 +293,20 @@ test_that("program arg loaders work", {
     # base taxa hfe flags
     taxa_hfe_base_args=list(
       load_arg_function=load_taxa_hfe_args,
-      flag_values=test_flag_values$taxa_hfe_base_args
+      flag_values=test_flag_values$taxa_hfe_base_args,
+      base_flags=c("m.txt", "d.txt")
     ),
     # taxa hfe ml flags, includes base taxa hfe flags
     taxa_hfe_ml_args=list(
       load_arg_function=load_taxa_hfe_ml_args,
-      flag_values=c(test_flag_values$taxa_hfe_base_args, test_flag_values$taxa_hfe_ml_args)
+      flag_values=c(test_flag_values$taxa_hfe_base_args, test_flag_values$taxa_hfe_ml_args),
+      base_flags=c("m.txt", "d.txt")
     ),
     # diet ml flags
     diet_ml_args=list(
       load_arg_function=load_diet_ml_args,
-      flag_values=test_flag_values$diet_ml_args
+      flag_values=test_flag_values$diet_ml_args,
+      base_flags=c("d.txt")
     )
   )
 
@@ -321,6 +324,9 @@ test_that("program arg loaders work", {
 
   test_that("parsers load with default values", {
     for (parser in parser_flag_values_map) {
+      commandArgs <<- function(x) {
+        parser$base_flags
+      }
       expect_no_error(parser$load_arg_function())
     }
   })
@@ -328,12 +334,11 @@ test_that("program arg loaders work", {
   test_that("parsers set flags as expected", {
     expect_true(TRUE)
 
-    base_flags <- c("m.txt", "d.txt")
-
     for (parser_name in names(parser_flag_values_map)) {
       parser_flag_values <- parser_flag_values_map[[parser_name]]
       load_arg_function <- parser_flag_values$load_arg_function
       flags_to_test <- parser_flag_values$flag_values
+      base_flags <- parser_flag_values$base_flags
 
       # get default opts for all flags to compare against set values
       commandArgs <<- function(x) {
