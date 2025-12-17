@@ -7,6 +7,7 @@
 ##          compete feature engineering methods
 
 ## load libraries & functions ==================================================
+source("lib/requirements.R")
 source("lib/tree.R")
 source("lib/options.R")
 source("lib/methods.R")

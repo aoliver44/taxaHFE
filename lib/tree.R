@@ -1,29 +1,7 @@
 ## HFE FUNCTIONS
 
-library(janitor, quietly = TRUE, verbose = FALSE, warn.conflicts = FALSE)
-library(tidyr, quietly = TRUE, verbose = FALSE, warn.conflicts = FALSE)
-library(tibble, quietly = TRUE, verbose = FALSE, warn.conflicts = FALSE)
-library(progress, quietly = TRUE, verbose = FALSE, warn.conflicts = FALSE)
-library(data.tree, quietly = TRUE, verbose = FALSE, warn.conflicts = FALSE)
-library(dplyr, quietly = TRUE, verbose = FALSE, warn.conflicts = FALSE)
-options(dplyr.summarise.inform = FALSE)
-library(corrr, quietly = TRUE, verbose = FALSE, warn.conflicts = FALSE)
-library(tibble, quietly = TRUE, verbose = FALSE, warn.conflicts = FALSE)
-library(purrr, quietly = TRUE, verbose = FALSE, warn.conflicts = FALSE)
-library(ranger, quietly = TRUE, verbose = FALSE, warn.conflicts = FALSE)
-library(readr, quietly = TRUE, verbose = FALSE, warn.conflicts = FALSE)
-library(vroom, quietly = TRUE, verbose = FALSE, warn.conflicts = FALSE)
-library(tidyselect, quietly = TRUE, verbose = FALSE, warn.conflicts = FALSE)
-library(recipes, quietly = TRUE, verbose = FALSE, warn.conflicts = FALSE)
-library(mikropml, quietly = TRUE, verbose = FALSE, warn.conflicts = FALSE)
-suppressPackageStartupMessages(library(ggplot2, quietly = TRUE, verbose = FALSE, warn.conflicts = FALSE))
-suppressPackageStartupMessages(library(tidymodels, quietly = TRUE, verbose = FALSE, warn.conflicts = FALSE))
-library(fastshap, quietly = TRUE, verbose = FALSE, warn.conflicts = FALSE)
-library(shapviz, quietly = TRUE, verbose = FALSE, warn.conflicts = FALSE)
-suppressPackageStartupMessages(library(doParallel, quietly = TRUE, verbose = FALSE, warn.conflicts = FALSE))
-library(foreach, quietly = TRUE, verbose = FALSE, warn.conflicts = FALSE)
-library(doParallel, quietly = TRUE, verbose = FALSE, warn.conflicts = FALSE)
-suppressPackageStartupMessages(library(glmnet, quietly = T, verbose = F, warn.conflicts = F))
+## libraries  ==================================================================
+source("lib/requirements.R")
 
 ## helper functions ============================================================
 

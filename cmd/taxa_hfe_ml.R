@@ -8,6 +8,7 @@
 ##          ML model) of taxaHFE feature reduction
 
 ## load libraries & functions ==================================================
+source("lib/requirements.R")
 source("lib/tree.R")
 source("lib/options.R")
 source("lib/methods.R")
