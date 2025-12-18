@@ -23,3 +23,5 @@ suppressPackageStartupMessages(library(doParallel, quietly = TRUE, verbose = FAL
 library(foreach, quietly = TRUE, verbose = FALSE, warn.conflicts = FALSE)
 library(doParallel, quietly = TRUE, verbose = FALSE, warn.conflicts = FALSE)
 suppressPackageStartupMessages(library(glmnet, quietly = T, verbose = F, warn.conflicts = F))
+library("FSelectorRcpp", quietly = T, verbose = F, warn.conflicts = F)
+library(colino, quietly = T, verbose = F, warn.conflicts = F)
