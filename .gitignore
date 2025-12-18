@@ -20,3 +20,4 @@ example_inputs/hmp_metadata.tsv
 example_inputs/metadata-mars.tsv
 .RData
 example_inputs/species-mars.tsv
+/.cache
