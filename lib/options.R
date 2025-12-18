@@ -48,6 +48,7 @@ argument_groups <- list(
     desc="Options to pass to TaxaHFE-ML for machine learning and SHAP analysis of TaxaHFE features",
     args=list(
       train_split=list("--train_split", type="numeric", metavar="<numeric>", default="0.8", help="Percentage of samples to use for training"),
+      info_gain_n=list("--info_gain_n", type="numeric", metavar="<numeric>", default="0", help="should information gain preprocessing be used? Set n number of features to be selected during preprocessesing."),
       model=list("--model", type="character", metavar="<string>", default="rf", choices=c("rf", "enet"), help="ML model to use. Options: rf, enet."),
       folds=list("--folds", type="numeric", metavar="<numeric>", default="10", help="Number of CV folds for tuning"),
       cv_repeats=list("--cv_repeats", type="numeric", metavar="<numeric>", default="3", help="Number of CV repeats to perform for repeated CV"),
@@ -56,7 +57,6 @@ argument_groups <- list(
       tune_time=list("--tune_time", type="numeric", metavar="<numeric>", default="2", help="Time for hyperparameter search (in minutes)"),
       tune_stop=list("--tune_stop", type="numeric", metavar="<numeric>", default="10", help="Number of HP iterations without improvement before stopping"),
       parallel_workers=list("--parallel_workers", type="integer", metavar="<numeric>", default="1", help="Number of parallel search processes to run for hyperparameter tuning in dietML. Note that total resources needed are parallel_workers * ncores (e.g. --cpus=4 for Docker)"),
-      permute=list("--permute", type="numeric", metavar="<numeric>", default="1", help="Number of times to permute the ML assessment process, resulting in n different test/train split inputs"),
       shap=list("--shap", action="store_true", help="Calculate SHAP values"),
       summarized_levels=list("--summarized_levels", action="store_true", help="Include summarized levels in ML competition")
     )
@@ -68,18 +68,18 @@ argument_groups <- list(
       subject_identifier=list("-s", "--subject_identifier", type="character", metavar="<string>", default="subject_id", help="Metadata column name containing subject IDs"),
       label=list("-l", "--label", type="character", metavar="<string>", default="feature_of_interest", help="Metadata column name of interest for ML"),
       cor_level=list("-c", "--cor_level", type="numeric", metavar="<numeric>", default="0.95", help="Initial pearson correlation filter"),
-      info_gain_n=list("--info_gain_n", type="numeric", metavar="<numeric>", default="0", help="should information gain preprocessing be used? Set threshold, eg 0.9 means top 10%% features selected. Default is no info_gain"),
+      info_gain_n=list("--info_gain_n", type="numeric", metavar="<numeric>", default="0", help="should information gain preprocessing be used? Set n number of features to be selected during preprocessesing."),
       train_split=list("--train_split", type="numeric", metavar="<numeric>", default="0.8", help="Percentage of samples to use for training"),
       model=list("--model", type="character", metavar="<string>", default="rf", choices=c("rf", "enet"), help="ML model to use"),
       folds=list("--folds", type="numeric", metavar="<numeric>", default="10", help="Number of CV folds for tuning"),
       cv_repeats=list("--cv_repeats", type="numeric", metavar="<numeric>", default="3", help="Number of CV repeats to perform for repeated CV"),
       metric=list("--metric", type="character", metavar="<string>", default="bal_accuracy", choices=c("roc_auc", "bal_accuracy", "accuracy", "mae", "rmse", "rsq", "kap", "f_meas", "ccc"), help="Metric to optimize"),
-      type=list("--type", type="character", metavar="<string>", default="classification", choices=c("classification", "regression"), help="choose type for models that do both regression and classification"),
+      feature_type=list("-t", "--feature_type", type="character", metavar="<string>", default="factor", help="Is the ML label a factor or numeric"),
       tune_length=list("--tune_length", type="numeric", metavar="<numeric>", default="80", help="Number of hyperparameter combinations to sample"),
       tune_time=list("--tune_time", type="numeric", metavar="<numeric>", default="2", help="Time for hyperparameter search (in minutes)"),
       tune_stop=list("--tune_stop", type="numeric", metavar="<numeric>", default="10", help="Number of HP iterations without improvement before stopping"),
       shap=list("--shap", action="store_true", help="Calculate SHAP values"),
-      ncores=list("-n", "--ncores", type="integer", metavar="<numeric>", default="2", help="Number of parallel processes to run in certain portions of taxaHFE that support parallel processing. To limit overall resource usage of taxaHFE, limit the amount of resources available to the container (e.g. --cpus=4 for Docker). Note that total resources needed are parallel_workers * ncores."),
+      ncores=list("-n", "--ncores", type="integer", metavar="<numeric>", default="2", help="Number of threads/cores to use in certain functions that can perform parallel processing. To limit overall resource usage of dietML., limit the amount of resources available to the container (e.g. --cpus=4 for Docker). Note that total resources needed are parallel_workers * ncores."),
       parallel_workers=list("--parallel_workers", type="integer", metavar="<numeric>", default="1", help="Number of parallel search processes to run for hyperparameter tuning in dietML. Note that total resources needed are parallel_workers * ncores (e.g. --cpus=4 for Docker)")
     )
   )
@@ -113,9 +113,8 @@ validators <- list(
   folds=validate_numeric(min=2, max_warning=list(11, "a value above 10 may result in very small splits")),
   cv_repeats=validate_numeric(min=1, max_warning=list(5, "a high about of repeats can result in a large amount of model fits, increasing run time")),
   tune_time=validate_numeric(min=0, max_warning=list(480, "spending excessive time tuning hyperparameters my not result in substaintal increases in accuracy")),
-  permute=validate_numeric(min=1, max_warning=list(11, "you are about to permute the ML assessment pipeline more than 10 times, which is likely unnecessary")),
   seed=validate_numeric(min = -1 * .Machine$integer.max, max = .Machine$integer.max),
-  info_gain_n=validate_numeric(min=0, max=1)
+  info_gain_n=validate_numeric(min=0, min_warning=list(0, "setting info_gain_n to 0 defeats this filter; it is not used"))
 )
 
 # Function to initialize parser for a program
