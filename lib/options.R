@@ -48,7 +48,7 @@ argument_groups <- list(
     desc="Options to pass to TaxaHFE-ML for machine learning and SHAP analysis of TaxaHFE features",
     args=list(
       train_split=list("--train_split", type="numeric", metavar="<numeric>", default="0.8", help="Percentage of samples to use for training"),
-      info_gain_n=list("--info_gain_n", type="numeric", metavar="<numeric>", default="0", help="should information gain preprocessing be used? Set n number of features to be selected during preprocessesing."),
+      info_gain_n=list("--info_gain_n", type="numeric", metavar="<numeric>", default="0", help="should information gain preprocessing be used? Set n number of features to be selected during preprocessesing. 0 bypasses this step."),
       model=list("--model", type="character", metavar="<string>", default="rf", choices=c("rf", "enet"), help="ML model to use. Options: rf, enet."),
       folds=list("--folds", type="numeric", metavar="<numeric>", default="10", help="Number of CV folds for tuning"),
       cv_repeats=list("--cv_repeats", type="numeric", metavar="<numeric>", default="3", help="Number of CV repeats to perform for repeated CV"),
@@ -68,7 +68,7 @@ argument_groups <- list(
       subject_identifier=list("-s", "--subject_identifier", type="character", metavar="<string>", default="subject_id", help="Metadata column name containing subject IDs"),
       label=list("-l", "--label", type="character", metavar="<string>", default="feature_of_interest", help="Metadata column name of interest for ML"),
       cor_level=list("-c", "--cor_level", type="numeric", metavar="<numeric>", default="0.95", help="Initial pearson correlation filter"),
-      info_gain_n=list("--info_gain_n", type="numeric", metavar="<numeric>", default="0", help="should information gain preprocessing be used? Set n number of features to be selected during preprocessesing."),
+      info_gain_n=list("--info_gain_n", type="numeric", metavar="<numeric>", default="0", help="should information gain preprocessing be used? Set n number of features to be selected during preprocessesing. 0 bypasses this step."),
       train_split=list("--train_split", type="numeric", metavar="<numeric>", default="0.8", help="Percentage of samples to use for training"),
       model=list("--model", type="character", metavar="<string>", default="rf", choices=c("rf", "enet"), help="ML model to use"),
       folds=list("--folds", type="numeric", metavar="<numeric>", default="10", help="Number of CV folds for tuning"),
@@ -114,7 +114,7 @@ validators <- list(
   cv_repeats=validate_numeric(min=1, max_warning=list(5, "a high about of repeats can result in a large amount of model fits, increasing run time")),
   tune_time=validate_numeric(min=0, max_warning=list(480, "spending excessive time tuning hyperparameters my not result in substaintal increases in accuracy")),
   seed=validate_numeric(min = -1 * .Machine$integer.max, max = .Machine$integer.max),
-  info_gain_n=validate_numeric(min=0, min_warning=list(0, "setting info_gain_n to 0 defeats this filter; it is not used"))
+  info_gain_n=validate_numeric(min=0)
 )
 
 # Function to initialize parser for a program

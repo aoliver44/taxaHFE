@@ -246,7 +246,7 @@ test_flag_values <- list(
   taxa_hfe_ml_args=list(
     train_split=list(flags=list("--train_split"), value=0.7, errors=list(-1, 2), warnings=list(0.4)),
     model=list(flags=list("--model"), value="enet"),
-    info_gain_n=list(flags=list("--info_gain_n"), value=4, errors=list(-1, -10), warnings=list(0)),
+    info_gain_n=list(flags=list("--info_gain_n"), value=4, errors=list(-1, -10)),
     folds=list(flags=list("--folds"), value=5, errors=list(-1, 0), warnings=list(12)),
     cv_repeats=list(flags=list("--cv_repeats"), value=2, errors=list(-1, 0), warnings=list(6)),
     metric=list(flags=list("--metric"), value="accuracy"),
@@ -261,7 +261,7 @@ test_flag_values <- list(
     subject_identifier=list(flags=list("-s", "--subject_identifier"), value="sid"),
     label=list(flags=list("-l", "--label"), value="label_factor"),
     cor_level=list(flags=list("-c", "--cor_level"), value=.99, errors=list(-1, 2), warnings=list(.4)),
-    info_gain_n=list(flags=list("--info_gain_n"), value=4, errors=list(-1, -10), warnings=list(0)),
+    info_gain_n=list(flags=list("--info_gain_n"), value=4, errors=list(-1, -10)),
     train_split=list(flags=list("--train_split"), value=0.7, errors=list(-1, 2), warnings=list(0.4)),
     model=list(flags=list("--model"), value="enet"),
     folds=list(flags=list("--folds"), value=5, errors=list(-1, 0), warnings=list(12)),
