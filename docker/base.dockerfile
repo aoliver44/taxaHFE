@@ -6,18 +6,23 @@
 ## base image to start with
 FROM rocker/r-ver:4.2.3
 
+## include latest pkg mirrors for installing pkgs
+## see https://rocker-project.org/images/versioned/r-ver#switch-the-default-cran-mirror
+RUN echo 'options(repos = c(P3M = "https://packagemanager.posit.co/cran/__linux__/jammy/latest", CRAN = "https://cloud.r-project.org"))' >>"${R_HOME}/etc/Rprofile.site"
 ## taxaHFE version, read in from `--build-arg version={}` in the docker build command
 ARG version
 ENV TAXA_HFE_VERSION=${version}
 
 ## RENV version
-ENV RENV_VERSION=0.16.0
+ENV RENV_VERSION=1.1.5
 
 RUN apt-get update
-RUN apt-get install -y libz-dev libxml2-dev python3
+RUN apt-get install -y libz-dev libxml2-dev libcurl4-openssl-dev libssl-dev libpng-dev python3
 
+## install RENV the suggested way: https://rstudio.github.io/renv/articles/docker.html#creating-docker-images-with-renv
+RUN R -e "install.packages('renv', repos = c(CRAN = 'https://cloud.r-project.org'))"
+## install remotes bc its nice to have in the images esp for development
 RUN R -e "install.packages('remotes', repos = c(CRAN = 'https://cloud.r-project.org'))"
-RUN R -e "remotes::install_github('rstudio/renv@${RENV_VERSION}')"
 
 WORKDIR /app
 
