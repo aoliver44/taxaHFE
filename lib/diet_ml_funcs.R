@@ -206,7 +206,7 @@ run_dietML_enet <- function(split_from_data_frame, seed, folds, cv_repeats,
                                            mixture = tune()) %>%
         parsnip::set_engine("glmnet")
     } else {
-      initial_mod <- parsnip::linear_reg(mode = split_from_data_frame, mode = "regression", 
+      initial_mod <- parsnip::linear_reg(mode = "regression", 
                                          penalty = tune(),
                                          mixture = tune()) %>%
         parsnip::set_engine("glmnet")
@@ -462,15 +462,33 @@ dietml_workflow <- function(model_obj, recipe) {
 
 dietml_hp_tune <- function(diet_ml_workflow, model, parallel_workers, folds, type, tune_time, seed, tune_stop, metric, ncores, output, split_from_data_frame, tune_length) {
   
+  ## for tuning, initiate the search space with 5 random models unless
+  ## told otherwise
+  n_inital_models = 5
+  
   train <- split_from_data_frame$data[split_from_data_frame$in_id,]
   ## define the hyper parameter set
   dietML_param_set <- parsnip::extract_parameter_set_dials(diet_ml_workflow)
   
+  ## make sure mtry is not ever more than the predictors we have
   if (model == "rf") {
     dietML_param_set <- 
       dietML_param_set %>% 
       # Pick an upper bound for mtry: 
       recipes::update(mtry = mtry(range(1, ncol(train %>% dplyr::select(., dplyr::any_of(c("feature_of_interest", "subject_id")))))))
+  }
+  
+  ## make sure the penalty is a wide enough space, else some metrics like MAE
+  ## can be the same, resulting in an error. Also we'll ask the tuner to 
+  ## intialize more models to help prevent this.
+  if (model %in% c("ridge", "lasso", "enet")) {
+    dietML_param_set <- 
+      dietML_param_set %>% 
+      # widen the penalty search space, help prevent MAE from locking into zero variance: 
+      recipes::update(penalty = penalty(range(-8,2))) %>%
+      {if (model == "enet") recipes::update(., mixture = mixture(range(0.2, 0.8))) else .}
+    
+    n_inital_models = 20
   }
   
   ## set up parallel jobs
@@ -492,7 +510,7 @@ dietml_hp_tune <- function(diet_ml_workflow, model, parallel_workers, folds, typ
         # To use non-default parameter ranges
         param_info = dietML_param_set,
         # Generate five at semi-random to start
-        initial = 5,
+        initial = n_inital_models,
         iter = tune_length,
         # How to measure performance?
         metrics = yardstick::metric_set(bal_accuracy, roc_auc, accuracy, kap, f_meas),
@@ -514,7 +532,7 @@ dietml_hp_tune <- function(diet_ml_workflow, model, parallel_workers, folds, typ
         # To use non-default parameter ranges
         param_info = dietML_param_set,
         # Generate five at semi-random to start
-        initial = 5,
+        initial = n_inital_models,
         iter = tune_length,
         # How to measure performance?
         metrics = yardstick::metric_set(mae, rmse, rsq, ccc),
