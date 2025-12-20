@@ -53,7 +53,7 @@ shap_analysis <- function(label, output, model, filename, shap_inputs, train, te
       }
     }
     
-  } else if (model == "enet") {
+  } else if (model %in% c("enet", "ridge", "lasso")) {
     if (feature_type == "factor" && length(levels(as.factor(split_from_data_frame$data$feature_of_interest))) == 2) {
       pfun <- function(object, newdata) {
         preds <- predict(object, new_data = newdata, type = "prob")
@@ -111,7 +111,7 @@ shap_analysis <- function(label, output, model, filename, shap_inputs, train, te
         # set the appropriate object for the model
         if (model == "rf") {
           shap_model_object <- best_workflow_mod$fit
-        } else if (model == "enet") {
+        } else if (model %in% c("enet", "ridge", "lasso")) {
           shap_model_object <- best_workflow_mod
         }
         

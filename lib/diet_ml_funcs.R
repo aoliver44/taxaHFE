@@ -55,7 +55,7 @@ run_dietML <- function(train, test, model, program, seed,
                                      parallel_workers = parallel_workers, ncores = ncores, 
                                      tune_length = tune_length, tune_stop = tune_stop, 
                                      tune_time = tune_time, metric = metric, 
-                                     model = "rf", program = program, output = output, 
+                                     model = model, program = program, output = output, 
                                      feature_of_interest = "feature_of_interest",
                                      type = type, null_results = null_results,
                                      cor_level = cor_level, info_gain_n = info_gain_n
@@ -67,7 +67,19 @@ run_dietML <- function(train, test, model, program, seed,
                                    parallel_workers = parallel_workers, ncores = ncores, 
                                    tune_length = tune_length, tune_stop = tune_stop, 
                                    tune_time = tune_time, metric = metric, 
-                                   model = "rf", program = program, output = output, 
+                                   model = model, program = program, output = output, 
+                                   feature_of_interest = "feature_of_interest",
+                                   type = type, null_results = null_results,
+                                   cor_level = cor_level, info_gain_n = info_gain_n
+    )
+  }
+  if (model %in% c("ridge", "lasso")) {
+    shap_inputs <- run_dietML_ridge_lasso(split_from_data_frame = split_from_data_frame, 
+                                   seed = seed, folds = folds, cv_repeats = cv_repeats, 
+                                   parallel_workers = parallel_workers, ncores = ncores, 
+                                   tune_length = tune_length, tune_stop = tune_stop, 
+                                   tune_time = tune_time, metric = metric, 
+                                   model = model, program = program, output = output, 
                                    feature_of_interest = "feature_of_interest",
                                    type = type, null_results = null_results,
                                    cor_level = cor_level, info_gain_n = info_gain_n
@@ -152,11 +164,10 @@ run_dietML_ranger <- function(split_from_data_frame, seed, folds, cv_repeats,
   
 }
 
-run_dietML_enet <- function(split_from_data_frame, seed, 
-                            folds, cv_repeats, parallel_workers, ncores, 
-                            tune_length, tune_stop, tune_time, metric, label, 
-                            model, program, output, type, null_results,
-                            cor_level, info_gain_n) {
+run_dietML_enet <- function(split_from_data_frame, seed, folds, cv_repeats, 
+                            parallel_workers, ncores, tune_length, tune_stop, 
+                            tune_time, metric, feature_of_interest, model, program, 
+                            output, type, null_results, cor_level, info_gain_n) {
 
   ## set resampling scheme
   folds <- set_cv_strategy(split_from_data_frame = split_from_data_frame, 
@@ -233,6 +244,85 @@ run_dietML_enet <- function(split_from_data_frame, seed,
   
 }
 
+run_dietML_ridge_lasso <- function(split_from_data_frame, seed, folds, cv_repeats, 
+                                   parallel_workers, ncores, tune_length, tune_stop, 
+                                   tune_time, metric, feature_of_interest, model, program, 
+                                   output, type, null_results, cor_level, info_gain_n) {
+  
+  ## set resampling scheme
+  folds <- set_cv_strategy(split_from_data_frame = split_from_data_frame, 
+                           folds = folds, feature_of_interest = feature_of_interest, 
+                           cv_repeats = cv_repeats)
+  
+  ## recipe
+  diet_ml_recipe <- dietml_recipe(split_from_data_frame = split_from_data_frame, 
+                                  cor_level = cor_level, info_gain_n = info_gain_n, 
+                                  type = type, ncores = ncores)
+  
+  ## ML engine
+  
+  ## specify ML model and engine 
+  if (as.numeric(tune_time) == 0) {
+    # Define model with fixed penalty and mixture
+    if (type == "classification") {
+      initial_mod <- parsnip::logistic_reg(
+        mode = "classification",
+        penalty = double(1),
+        mixture = ifelse(model == "lasso", 1, 0)
+      ) %>%
+        parsnip::set_engine("glmnet")
+    } else {
+      initial_mod <- parsnip::linear_reg(
+        mode = "regression",
+        penalty = double(1),
+        mixture = ifelse(model == "lasso", 1, 0)
+      ) %>%
+        parsnip::set_engine("glmnet")
+    }
+  } else {
+    if (type == "classification") {
+      initial_mod <- parsnip::logistic_reg(mode = "classification", 
+                                           penalty = tune(),
+                                           mixture = ifelse(model == "lasso", 1, 0)) %>%
+        parsnip::set_engine("glmnet")
+    } else {
+      initial_mod <- parsnip::linear_reg(mode = "regression", 
+                                         penalty = tune(),
+                                         mixture = ifelse(model == "lasso", 1, 0)) %>%
+        parsnip::set_engine("glmnet")
+    }
+  } 
+  
+  ## workflow ==================================================================
+  
+  ## define workflow
+  diet_ml_workflow <- dietml_workflow(model_obj = initial_mod, recipe = diet_ml_recipe)
+  
+  ## hyperparameters =============================================================
+  if (as.numeric(tune_time) == 0) {
+    best_tidy_workflow <- diet_ml_workflow 
+  } 
+  else {
+    best_tidy_workflow <- dietml_hp_tune(split_from_data_frame = split_from_data_frame, 
+                                         diet_ml_workflow = diet_ml_workflow, model = model, 
+                                         parallel_workers = parallel_workers, 
+                                         folds = folds, type = type, tune_time = tune_time, 
+                                         seed = seed, tune_stop = tune_stop, metric = metric, 
+                                         ncores = ncores, output = output, tune_length = tune_length)
+  }
+  
+  ## write dietml outputs
+  full_results <- write_dietml_outputs(type = type, best_tidy_workflow = best_tidy_workflow, 
+                                       split_from_data_frame = split_from_data_frame, 
+                                       seed = seed, null_results = null_results, 
+                                       program = program, output = output)
+  
+  ## load up list for shap analysis
+  shap_inputs <- list("split_from_data_frame" = split_from_data_frame, "diet_ml_recipe" = diet_ml_recipe, "best_tidy_workflow" = best_tidy_workflow)
+  
+  return(shap_inputs)
+  
+}
 run_null_model <- function(split_from_data_frame, seed, type, output, cv_repeats, feature_of_interest, folds, cor_level, info_gain_n, ncores) {
   
   ## create results df
@@ -457,7 +547,7 @@ dietml_hp_tune <- function(diet_ml_workflow, model, parallel_workers, folds, typ
       parsnip::rand_forest(mtry = best_mod$mtry, min_n = best_mod$min_n, trees = best_mod$trees) %>% 
       parsnip::set_engine("ranger", num.threads = as.numeric(ncores), importance = "none") %>% 
       parsnip::set_mode(type)
-  }
+  } 
   
   ## create the last model based on best parameters: Elastic Net
   if (model == "enet") {
@@ -469,6 +559,28 @@ dietml_hp_tune <- function(diet_ml_workflow, model, parallel_workers, folds, typ
     } else {
       last_best_mod <- 
         parsnip::linear_reg(mode = "regression", penalty = best_mod$penalty, mixture = best_mod$mixture) %>% 
+        parsnip::set_engine("glmnet") %>% 
+        parsnip::set_mode(type)
+    }
+  }
+  
+  ## create the last model based on best parameters: Ridge or Lasso
+  if (model %in% c("ridge", "lasso")) {
+    ## create the last model based on best parameters
+    if (type == "classification" && model == "lasso") {
+      last_best_mod <- parsnip::logistic_reg(mode = "classification", penalty = best_mod$penalty, mixture = 1) %>% 
+        parsnip::set_engine("glmnet") %>% 
+        parsnip::set_mode(type)
+    } else if (type == "classification" && model == "ridge") {
+      last_best_mod <- parsnip::logistic_reg(mode = "classification", penalty = best_mod$penalty, mixture = 0) %>% 
+        parsnip::set_engine("glmnet") %>% 
+        parsnip::set_mode(type)
+    } else if (type == "regression" && model == "lasso") {
+      last_best_mod <- parsnip::linear_reg(mode = "regression", penalty = best_mod$penalty, mixture = 1) %>% 
+        parsnip::set_engine("glmnet") %>% 
+        parsnip::set_mode(type)
+    } else if (type == "regression" && model == "ridge") {
+      last_best_mod <- parsnip::linear_reg(mode = "regression", penalty = best_mod$penalty, mixture = 0) %>% 
         parsnip::set_engine("glmnet") %>% 
         parsnip::set_mode(type)
     }

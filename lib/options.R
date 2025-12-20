@@ -49,7 +49,7 @@ argument_groups <- list(
     args=list(
       train_split=list("--train_split", type="numeric", metavar="<numeric>", default="0.8", help="Percentage of samples to use for training"),
       info_gain_n=list("--info_gain_n", type="numeric", metavar="<numeric>", default="0", help="should information gain preprocessing be used? Set n number of features to be selected during preprocessesing. 0 bypasses this step."),
-      model=list("--model", type="character", metavar="<string>", default="rf", choices=c("rf", "enet"), help="ML model to use. Options: rf, enet."),
+      model=list("--model", type="character", metavar="<string>", default="rf", choices=c("rf", "enet", "lasso", "ridge"), help="ML model to use. Options: rf, enet, lasso, ridge."),
       folds=list("--folds", type="numeric", metavar="<numeric>", default="10", help="Number of CV folds for tuning"),
       cv_repeats=list("--cv_repeats", type="numeric", metavar="<numeric>", default="3", help="Number of CV repeats to perform for repeated CV"),
       metric=list("--metric", type="character", metavar="<string>", default="bal_accuracy", choices=c("roc_auc", "bal_accuracy", "accuracy", "mae", "rmse", "rsq", "kap", "f_meas", "ccc"), help="Metric to optimize"),
@@ -70,7 +70,7 @@ argument_groups <- list(
       cor_level=list("-c", "--cor_level", type="numeric", metavar="<numeric>", default="0.95", help="Initial pearson correlation filter"),
       info_gain_n=list("--info_gain_n", type="numeric", metavar="<numeric>", default="0", help="should information gain preprocessing be used? Set n number of features to be selected during preprocessesing. 0 bypasses this step."),
       train_split=list("--train_split", type="numeric", metavar="<numeric>", default="0.8", help="Percentage of samples to use for training"),
-      model=list("--model", type="character", metavar="<string>", default="rf", choices=c("rf", "enet"), help="ML model to use"),
+      model=list("--model", type="character", metavar="<string>", default="rf", choices=c("rf", "enet", "lasso", "ridge"), help="ML model to use. Options: rf, enet, lasso, ridge."),
       folds=list("--folds", type="numeric", metavar="<numeric>", default="10", help="Number of CV folds for tuning"),
       cv_repeats=list("--cv_repeats", type="numeric", metavar="<numeric>", default="3", help="Number of CV repeats to perform for repeated CV"),
       metric=list("--metric", type="character", metavar="<string>", default="bal_accuracy", choices=c("roc_auc", "bal_accuracy", "accuracy", "mae", "rmse", "rsq", "kap", "f_meas", "ccc"), help="Metric to optimize"),
@@ -100,7 +100,7 @@ argument_groups <- list(
 #   }
 # }
 validators <- list(
-  cor_level=validate_numeric(min=0, max=1, min_warning=list(0.6, "correlation below 0.6 is departing from the spirit of this competition - to group things that likely contain redundant information")),
+  cor_level=validate_numeric(min=0, max=1, min_warning=list(0.6, "A correlation this low will likely group many features together! You probably know what you are doing...?")),
   k_splits=validate_numeric(min=2, max_warning=list(6, "these are a lot of splits...using this many splits with small data is probably unwise")),
   prevalence=validate_numeric(min=0, max=1),
   abundance=validate_numeric(min=0),
