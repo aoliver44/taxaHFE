@@ -431,8 +431,8 @@ dietml_recipe <- function(split_from_data_frame, cor_level, info_gain_n, type, n
     recipes::step_zv(recipes::all_predictors()) %>%
     recipes::step_novel(recipes::all_nominal_predictors()) %>%
     recipes::step_dummy(recipes::all_nominal_predictors()) %>% 
-    {if (!is.null(cor_level)) recipes::step_corr(., recipes::all_numeric_predictors(), threshold = cor_level, use = "everything") else .} %>%
-    {if (!is.null(info_gain_n)) colino::step_select_infgain(., recipes::all_predictors(), 
+    {if (cor_level < 1) recipes::step_corr(., recipes::all_numeric_predictors(), threshold = cor_level, use = "everything") else .} %>%
+    {if (info_gain_n > 0) colino::step_select_infgain(., recipes::all_predictors(), 
                                                           top_p = info_gain_n,
                                                           outcome = "feature_of_interest",
                                                           threads = ncores, scores = "tmp_scores") else .}
