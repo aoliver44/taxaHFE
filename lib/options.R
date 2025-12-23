@@ -46,7 +46,7 @@ argument_groups <- list(
     desc="Options to pass to TaxaHFE-ML for machine learning and SHAP analysis of TaxaHFE features",
     args=list(
       train_split=list("--train_split", type="numeric", metavar="<numeric>", default="0.8", help="Percentage of samples to use for training"),
-      info_gain_n=list("--info_gain_n", type="numeric", metavar="<numeric>", default="0", help="should information gain preprocessing be used? Set n number of features to be selected during preprocessesing. 0 bypasses this step."),
+      info_gain_n=list("--info_gain_n", type="numeric", metavar="<numeric>", help="Should information gain preprocessing be used? Set n number of features to be selected during preprocessesing. Bypasses info_gain_n if not set."),
       model=list("--model", type="character", metavar="<string>", default="rf", choices=c("rf", "enet", "lasso", "ridge"), help="ML model to use. Options: rf, enet, lasso, ridge."),
       folds=list("--folds", type="numeric", metavar="<numeric>", default="10", help="Number of CV folds for tuning"),
       cv_repeats=list("--cv_repeats", type="numeric", metavar="<numeric>", default="3", help="Number of CV repeats to perform for repeated CV"),
@@ -65,8 +65,8 @@ argument_groups <- list(
     args=list(
       subject_identifier=list("-s", "--subject_identifier", type="character", metavar="<string>", default="subject_id", help="Metadata column name containing subject IDs"),
       label=list("-l", "--label", type="character", metavar="<string>", default="feature_of_interest", help="Metadata column name of interest for ML"),
-      cor_level=list("-c", "--cor_level", type="numeric", metavar="<numeric>", default="0.95", help="Initial pearson correlation filter"),
-      info_gain_n=list("--info_gain_n", type="numeric", metavar="<numeric>", default="0", help="should information gain preprocessing be used? Set n number of features to be selected during preprocessesing. 0 bypasses this step."),
+      cor_level=list("-c", "--cor_level", type="numeric", metavar="<numeric>", help="Initial pearson correlation filter"),
+      info_gain_n=list("--info_gain_n", type="numeric", metavar="<numeric>", help="Should information gain preprocessing be used? Set n number of features to be selected during preprocessesing. Bypasses info_gain_n if not set."),
       train_split=list("--train_split", type="numeric", metavar="<numeric>", default="0.8", help="Percentage of samples to use for training"),
       model=list("--model", type="character", metavar="<string>", default="rf", choices=c("rf", "enet", "lasso", "ridge"), help="ML model to use. Options: rf, enet, lasso, ridge."),
       folds=list("--folds", type="numeric", metavar="<numeric>", default="10", help="Number of CV folds for tuning"),

@@ -423,14 +423,6 @@ set_cv_strategy <- function(split_from_data_frame, folds, feature_of_interest, c
 }
 
 dietml_recipe <- function(split_from_data_frame, cor_level, info_gain_n, type, ncores) {
-  # IMPORTANT:
-  # tidymodels / recipes perform *static code inspection* on all recipe steps
-  # (even conditionally skipped ones) during tuning and resampling.
-  # If `threads` is given a symbol (e.g., `ncores`) or an unevaluated promise,
-  # the inspector will try to `get()` it later and fail.
-  # For safety, we *materialize* `ncores` here and unquote it (via `!!`)
-  # so the recipe contains a literal numeric value instead of a lookup.
-  ncores <- as.numeric(ncores)
   
   train <- split_from_data_frame$data[split_from_data_frame$in_id,]
   ## specify recipe (this is like the pre-process work)
@@ -439,11 +431,11 @@ dietml_recipe <- function(split_from_data_frame, cor_level, info_gain_n, type, n
     recipes::step_zv(recipes::all_predictors()) %>%
     recipes::step_novel(recipes::all_nominal_predictors()) %>%
     recipes::step_dummy(recipes::all_nominal_predictors()) %>% 
-    {if (cor_level < 1) recipes::step_corr(., recipes::all_numeric_predictors(), threshold = cor_level, use = "everything") else .} %>%
-    {if (info_gain_n > 0) colino::step_select_infgain(., recipes::all_predictors(), 
+    {if (!is.null(cor_level)) recipes::step_corr(., recipes::all_numeric_predictors(), threshold = cor_level, use = "everything") else .} %>%
+    {if (!is.null(info_gain_n)) colino::step_select_infgain(., recipes::all_predictors(), 
                                                           top_p = info_gain_n,
                                                           outcome = "feature_of_interest",
-                                                          threads = !!ncores, scores = "tmp_scores") else .}
+                                                          threads = ncores, scores = "tmp_scores") else .}
   
   ## idea - log intermediate file of what these steps do to the data
   
