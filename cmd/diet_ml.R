@@ -12,8 +12,8 @@ source("lib/tree.R")
 opts <- load_diet_ml_args()
 program <- paste0("dietml")
 
-# TODO: the rest
-print(as.data.frame(unlist(opts)))
+## print everything that opts is seeing
+#print(as.data.frame(unlist(opts)))
 
 ## read in data
 data <- read_in_metadata(input = opts$DATA,
