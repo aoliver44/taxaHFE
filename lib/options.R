@@ -1,7 +1,5 @@
 source("lib/validators.R")
-
-suppressPackageStartupMessages(library(argparse, quietly = TRUE, verbose = FALSE, warn.conflicts = FALSE))
-suppressPackageStartupMessages(library(parallel, quietly = TRUE, verbose = FALSE, warn.conflicts = FALSE))
+source("lib/requirements.R")
 
 # generates a seed for the default value of --seed
 # seeds must be valid R 32-bit integers, so the range is between (-max int, max int)
