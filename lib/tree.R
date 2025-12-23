@@ -21,11 +21,11 @@ options(warn = -1)
 ## predictors would look like covariates.
 read_in_metadata <- function(input, subject_identifier, label, feature_type, random_effects, limit_covariates = TRUE, k, cores) {
 
-  cat("\n\n", "Checking for DATA/METADATA...", "\n")
+  cat("\n\n", "Checking for DATA", "\n")
   if (file.exists(input) == FALSE) {
     stop("DATA/METADATA input not found.")
   }
-  cat("\n", paste0("Using ", input, " as DATA/METADATA"), "\n")
+  cat("\n", paste0("Using ", input, " as DATA"), "\n")
   
   # read extension to determine file delim
   if (strsplit(basename(input), split = "\\.")[[1]][2] %in% c("tsv","txt")) {
@@ -862,20 +862,19 @@ prepare_flattened_df <- function(node, metadata, disable_super_filter, col_names
   ## as it is (dont remove columns)
   if (levels) {
     return(flattened_df)
-    ## else clean it up
-  } else {
-    flattened_df_clean <- flattened_df %>%
-      dplyr::select(., pathString, 11:dplyr::last_col()) %>%
-      tibble::remove_rownames() %>%
-      tibble::column_to_rownames(., var = "pathString") %>%
-      t() %>%
-      as.data.frame() %>%
-      tibble::rownames_to_column(var = "subject_id")
-    
-    flattened_df_clean <- merge(metadata, flattened_df_clean, by = "subject_id")
-    
-    return(flattened_df_clean)
   }
+  ## else clean it up
+  flattened_df_clean <- flattened_df %>%
+    dplyr::select(., pathString, 11:dplyr::last_col()) %>%
+    tibble::remove_rownames() %>%
+    tibble::column_to_rownames(., var = "pathString") %>%
+    t() %>%
+    as.data.frame() %>%
+    tibble::rownames_to_column(var = "subject_id")
+  
+  flattened_df_clean <- merge(metadata, flattened_df_clean, by = "subject_id")
+  
+  return(flattened_df_clean)
 }
 
 # write an output file containing the HFE results
