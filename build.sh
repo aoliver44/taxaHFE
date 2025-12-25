@@ -26,13 +26,13 @@ BUILD_ARGS="--build-arg version=$VERSION --build-arg BASE_IMAGE=aoliver44/taxa_h
 echo "Building taxaHFE containers for version $VERSION"
 
 echo "Building the base image and the rstudio image..."
-docker build --platform linux/amd64 -f docker/base.dockerfile $BUILD_ARGS -t aoliver44/taxa_hfe_base:$VERSION $BASE_TAGS .
-docker build --platform linux/amd64 -f docker/rstudio.dockerfile $BUILD_ARGS -t aoliver44/taxa_hfe_rstudio:$VERSION $RSTUDIO_TAGS .
+docker buildx build --platform linux/amd64,linux/arm64 -f docker/base.dockerfile $BUILD_ARGS -t aoliver44/taxa_hfe_base:$VERSION $BASE_TAGS .
+docker buildx build --platform linux/amd64,linux/arm64 -f docker/rstudio.dockerfile $BUILD_ARGS -t aoliver44/taxa_hfe_rstudio:$VERSION $RSTUDIO_TAGS .
 
 echo "Building individual command containers..."
 # build args specifies which cmd/ script to use
-docker build --platform linux/amd64 -f docker/taxa_hfe.dockerfile $BUILD_ARGS -t aoliver44/taxa_hfe:$VERSION $TAXA_HFE_TAGS .
-docker build --platform linux/amd64 -f docker/taxa_hfe_ml.dockerfile $BUILD_ARGS -t aoliver44/taxa_hfe_ml:$VERSION $TAXA_HFE_ML_TAGS .
-docker build --platform linux/amd64 -f docker/diet_ml.dockerfile $BUILD_ARGS -t aoliver44/diet_ml:$VERSION $DIET_ML_TAGS .
+docker buildx build --platform linux/amd64,linux/arm64 -f docker/taxa_hfe.dockerfile $BUILD_ARGS -t aoliver44/taxa_hfe:$VERSION $TAXA_HFE_TAGS .
+docker buildx build --platform linux/amd64,linux/arm64 -f docker/taxa_hfe_ml.dockerfile $BUILD_ARGS -t aoliver44/taxa_hfe_ml:$VERSION $TAXA_HFE_ML_TAGS .
+docker buildx build --platform linux/amd64,linux/arm64 -f docker/diet_ml.dockerfile $BUILD_ARGS -t aoliver44/diet_ml:$VERSION $DIET_ML_TAGS .
 
 # TODO docker login/push
