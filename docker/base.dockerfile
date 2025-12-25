@@ -4,20 +4,22 @@
 ## Run: TODO
 
 ## base image to start with
-FROM rocker/r-ver:4.2.3
+FROM rocker/r-ver:4.5.2
 
 ## taxaHFE version, read in from `--build-arg version={}` in the docker build command
 ARG version
 ENV TAXA_HFE_VERSION=${version}
 
 ## RENV version
-ENV RENV_VERSION=0.16.0
+ENV RENV_VERSION=1.1.5
 
 RUN apt-get update
 RUN apt-get install -y libz-dev libxml2-dev python3
 
+## install RENV the suggested way: https://rstudio.github.io/renv/articles/docker.html#creating-docker-images-with-renv
+RUN R -e "install.packages('renv', repos = c(CRAN = 'https://cloud.r-project.org'))"
+## install remotes bc its nice to have in the images esp for development
 RUN R -e "install.packages('remotes', repos = c(CRAN = 'https://cloud.r-project.org'))"
-RUN R -e "remotes::install_github('rstudio/renv@${RENV_VERSION}')"
 
 WORKDIR /app
 

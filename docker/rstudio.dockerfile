@@ -9,14 +9,14 @@ ARG BASE_IMAGE=aoliver44/taxa_hfe_base
 FROM $BASE_IMAGE
 
 ## base rstudio image
-FROM rocker/rstudio:4.2.3
+FROM rocker/rstudio:4.5.2
 
 ## taxaHFE version, read in from `--build-arg version={}` in the docker build command
 ARG version
 ENV TAXA_HFE_VERSION=${version}
 
 ## RENV version
-ENV RENV_VERSION=0.16.0
+ENV RENV_VERSION=1.1.5
 
 RUN apt-get update
 RUN apt-get install -y libz-dev libxml2-dev python3
