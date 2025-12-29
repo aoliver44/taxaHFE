@@ -13,7 +13,7 @@ Finally, ```dietML``` is a machine learning pipeline which takes in a set of fea
 
 ## **Acknowledgments**
 
-Special thanks to Stephanie M.G. Wilson for the logo.
+Special thanks to Stephanie M.G. Wilson for the logos.
 </br>
 
 ## **Contribute**
