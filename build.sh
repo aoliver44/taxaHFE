@@ -19,20 +19,20 @@ else
     TAXA_HFE_TAGS="-t aoliver44/taxa_hfe:latest"
     TAXA_HFE_ML_TAGS="-t aoliver44/taxa_hfe_ml:latest"
     DIET_ML_TAGS="-t aoliver44/diet_ml:latest"
-fi
 
-BUILD_ARGS="--build-arg version=$VERSION --build-arg BASE_IMAGE=aoliver44/taxa_hfe_base:$VERSION"
+    # set platforms for max machine capability
+    PLATFORM_FLAG="--platform linux/amd64,linux/arm64 "
+fi
 
 echo "Building taxaHFE containers for version $VERSION"
 
-echo "Building the base image and the rstudio image..."
-docker buildx build --platform linux/amd64,linux/arm64 -f docker/base.dockerfile $BUILD_ARGS -t aoliver44/taxa_hfe_base:$VERSION $BASE_TAGS .
-docker buildx build --platform linux/amd64,linux/arm64 -f docker/rstudio.dockerfile $BUILD_ARGS -t aoliver44/taxa_hfe_rstudio:$VERSION $RSTUDIO_TAGS .
-
 echo "Building individual command containers..."
 # build args specifies which cmd/ script to use
-docker buildx build --platform linux/amd64,linux/arm64 -f docker/taxa_hfe.dockerfile $BUILD_ARGS -t aoliver44/taxa_hfe:$VERSION $TAXA_HFE_TAGS .
-docker buildx build --platform linux/amd64,linux/arm64 -f docker/taxa_hfe_ml.dockerfile $BUILD_ARGS -t aoliver44/taxa_hfe_ml:$VERSION $TAXA_HFE_ML_TAGS .
-docker buildx build --platform linux/amd64,linux/arm64 -f docker/diet_ml.dockerfile $BUILD_ARGS -t aoliver44/diet_ml:$VERSION $DIET_ML_TAGS .
+docker build --target taxa_hfe $PLATFORM_FLAG --build-arg version=$VERSION -t aoliver44/taxa_hfe:$VERSION $TAXA_HFE_TAGS .
+docker build --target taxa_hfe_ml $PLATFORM_FLAG --build-arg version=$VERSION -t aoliver44/taxa_hfe_ml:$VERSION $TAXA_HFE_ML_TAGS .
+docker build --target diet_ml $PLATFORM_FLAG --build-arg version=$VERSION -t aoliver44/diet_ml:$VERSION $DIET_ML_TAGS .
+
+echo "Building the rstudio development image..."
+docker build --target rstudio $PLATFORM_FLAG --build-arg version=$VERSION -t aoliver44/taxa_hfe_rstudio:$VERSION $RSTUDIO_TAGS .
 
 # TODO docker login/push
