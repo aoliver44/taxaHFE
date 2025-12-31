@@ -130,13 +130,15 @@ Using the default of 2 cores on a MacBook Pro with an M3 chip, the above command
 ├── test_outputs
 │   ├── ml_analysis
 │   │   ├── dummy_model_results.csv
+│   │   ├── hyperpars_tested.pdf
 │   │   ├── ml_results.csv
-│   │   ├── shap_inputs_taxa_hfe_ml_sf_1234.RData
-│   │   ├── shap_taxa_hfe_ml_sf_1234_full.pdf
-│   │   ├── shap_taxa_hfe_ml_sf_1234_test.pdf
-│   │   └── shap_taxa_hfe_ml_sf_1234_train.pdf
-│   ├── taxa_hfe_ml_sf_test_NA.csv
-│   └── taxa_hfe_ml_sf_train_NA.csv
+│   │   ├── shap_inputs_taxahfe_ml_sf_1234.RData
+│   │   ├── shap_taxahfe_ml_sf_1234_full.pdf
+│   │   ├── shap_taxahfe_ml_sf_1234_test.pdf
+│   │   ├── shap_taxahfe_ml_sf_1234_train.pdf
+│   │   └── training_performance.pdf
+│   ├── taxahfe_ml_sf_test_1234.csv
+│   └── taxahfe_ml_sf_train_1234.csv
 ```
 
 The file names are written to be somewhat informative. For example, ```taxa_hfe_ml_sf_train_NA.csv``` is the post-HFE, feature-reduced training set that was input to the downstream ML pipeline. The "sf" in the filename indicates that the "super filter" was applied (see default flag arguments for more details).
@@ -342,7 +344,13 @@ Below are some some additional details about certain flags.
 
 - Setting this flag to ```--max_level 5``` means that, in a microbiome example, ```taxaHFE``` will at most choose taxa at the order level, but never at the genus, family, species, etc.
 
-```--ncores```: Once again, we highly recommend you set the container resources (e.g., ```docker run --cpus=2```), to match whatever you set with ```--ncores```.
+```--info_gain_n```: For ```taxaHFE-ML```, the number of features that should be selected during feature engineering, based on information gain. This is AFTER hierarchical feature engineering and the optional super filter. For example, if set to 5, the resulting training models will only see the top 5 features by information gain. This step is conducted at the end, meaning all other feature engineering steps come before it. Finally, if you set this too high, as in more features than are present, the program will still run. Setting the value to 0 (the default) will bypass this step entirely. You can read more about the underlying code [here](https://stevenpawley.github.io/colino/reference/step_select_infgain.html).
+
+```--parallel_workers```: During hyperparameter tuning and the SHAPley analysis, parallel workers can be utilized. This is done using makePSOCKcluster(), which spawns new R sessions for parallel work. Note that the resources you will need will be ncores * parallel workers. Note, this may increase RAM needs.
+
+```--ncores```: ncores are set seperately from parallel workers. These specify resources availible in functions such as reading and writing data, and the individual models themselves (e.g., for a random forest, how many cores does Ranger see?). This is distinct from how many processes are run in parallel, as definied by parallel_workers. Once again, we highly recommend you set the container resources (e.g., ```docker run --cpus=2```), to match whatever you set with ```--ncores```.
+
+```--shap```: The presence of this flag will tell ```taxaHFE-ML``` to run a SHAPley analysis. Presently, only regression models, or models with a binary factor, will be able to make use of this. Otherwise the process will error out.
 
 ```--seed```: the default behavior is to generate a random seed each time ```taxaHFE``` is run, between the minimum and maximum values of machine precision for the R language (-2e31 - 2e31). If you set it to a number, it will likely return the same results across repeated runs (assuming you are on the same machine).
 

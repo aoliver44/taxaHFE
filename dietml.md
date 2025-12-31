@@ -9,7 +9,7 @@ Note, ```dietML``` is not a "specialized" solution for ML. For example, when you
 
 - [Outline of ML pipeline](#outline-of-ml-pipeline)
 - [Installing dietml](#installing-dietml)
-- [Example: the mtcars dataset](#example-gut-microbiome-industrial-vs-non-industrial)
+- [Example: the mtcars dataset](#example-the-mtcars-dataset)
 - [Flag information](#information-about-the-flags)
 - [Troubleshooting](#troubleshooting)
 - [FAQ](#faq)
@@ -30,9 +30,10 @@ Note, ```dietML``` is not a "specialized" solution for ML. For example, when you
 6. Identify variables of importance using Shapley values
 
 
-### **Graphical outline of taxaHFE**
 
-![Outline of taxaHFE algorithm](pictures/Figure1_v2.png "Outline of taxaHFE algorithm")
+### **Graphical outline of dietML**
+
+![Outline of dietML pipeline](pictures/dietml_outline.png "Outline of dietML pipeline")
 
 
 ## **Installing dietML**
@@ -94,9 +95,9 @@ wsl
 </details>
 
 ------------------------------
-## **Example: Gut Microbiome, Industrial vs. Non-Industrial**
+## **Example: the Capital Bike dataset**
 
-This example is included in the repository for several reasons. First, it’s a dataset we use to test ```taxaHFE``` (and ```taxaHFE-ML```) as we continue to develop the program and implement enhancements to improve the user experience. Second, it provides users with a reference set of files to compare their own inputs against—these files are in the correct format! Lastly, they’re just cool samples from work one of the developers did during grad school.
+This example is included in the repository for several reasons. First, it’s a dataset we use to test ```dietML``` as we continue to develop the program and implement enhancements to improve the user experience. Second, it provides users with a reference set of files to compare their own inputs against—these files are in the correct format! Lastly, both of the developers have made ue of Captial Bike rentals (ok Matt, one more than the other).
 
 
 **Step 1:** Clone the repository or download the example data files in the [example_inputs/](https://github.com/aoliver44/taxaHFE/tree/main/example_inputs) directory on GitHub
@@ -106,13 +107,13 @@ This example is included in the repository for several reasons. First, it’s a 
 git clone https://github.com/aoliver44/taxaHFE.git && cd taxaHFE/
 ```
 
-**Step 2:**  Run ```taxaHFE-ML``` using the example files and default parameters. This command will work with the example data. If it doesn't, check out our troubleshooting tips below (do you have Docker running?), or consider opening an issue on GitHub. 
+**Step 2:**  Run ```dietML``` using the example files. This command will work with the example data. If it doesn't, check out our troubleshooting tips below (do you have Docker running?), or consider opening an issue on GitHub. 
 
 > [!CAUTION] 
-> Setting container-level resources is by far the most reliable way (in our experience) to ensure that ```taxaHFE``` uses the appropriate system resources. If you set ```--ncores 2``` without also specifying ```--cpus=2``` in the Docker command (or the equivalent flag in Apptainer), some processes within ```taxaHFE``` and ```taxaHFE-ML``` may exceed the intended resource limits. </br> </br> Setting ```--ncores 1``` will instruct ```taxaHFE``` to limit resource usage as best it can, but this is not foolproof. The main situation where excessive core usage becomes an issue is when the ```--shap``` flag is used. To avoid this, we strongly recommend setting CPU and memory limits directly in the ```docker run``` command. Adjust the values to suit the capabilities of your machine.
+> Setting container-level resources is by far the most reliable way (in our experience) to ensure that ```taxaHFE``` uses the appropriate system resources. If you set ```--ncores 2``` without also specifying ```--cpus=2``` in the Docker command (or the equivalent flag in Apptainer), some processes within ```dietML``` may exceed the intended resource limits. </br> </br> Setting ```--ncores 1``` will instruct ```dietML``` to limit resource usage as best it can, but this is not foolproof. The main situation where excessive core usage becomes an issue is when the ```--shap``` flag is used. To avoid this, we strongly recommend setting CPU and memory limits directly in the ```docker run``` command. Adjust the values to suit the capabilities of your machine.
 
 ```
-docker run --cpus=2 --memory=4g --rm -it -v `pwd`:/data aoliver44/taxa_hfe_ml:latest example_inputs/metadata.txt example_inputs/microbiome_data.txt -o test_outputs -s Sample -l Category --seed 1234 --shap -n 2
+docker run --cpus=2 --memory=4g --rm -it -v `pwd`:/data aoliver44/diet_ml:latest example_inputs/bike_share_day.csv -o test_outputs -s instant -l cnt --model ridge -t numeric --metric rsq --tune_time 1 --seed 1234 --shap -n 2
 ```
 
 Using the default of 2 cores on a MacBook Pro with an M3 chip, the above command took approximately 8 minutes and 21 seconds to complete. RAM usage peaked at around 1.4 GB. Increasing resources to 8 cpus (```--cups=8``` *and* ```--ncores 8```), and ```--memory=8g``` cut that runtime significantly (runtime = 3 minutes and 12 seconds). The input data included 288 samples and 1,187 MetaPhlAn-generated taxonomic features. We put in some effort to provide progress bars so you know something is happening. In some situations—especially certain computer or HPC environments—these progress bars may not show up. Bummer.
@@ -121,20 +122,20 @@ Using the default of 2 cores on a MacBook Pro with an M3 chip, the above command
 
 ```
 ├── test_outputs
-│   ├── ml_analysis
-│   │   ├── dummy_model_results.csv
-│   │   ├── ml_results.csv
-│   │   ├── shap_inputs_taxa_hfe_ml_sf_1234.RData
-│   │   ├── shap_taxa_hfe_ml_sf_1234_full.pdf
-│   │   ├── shap_taxa_hfe_ml_sf_1234_test.pdf
-│   │   └── shap_taxa_hfe_ml_sf_1234_train.pdf
-│   ├── taxa_hfe_ml_sf_test_NA.csv
-│   └── taxa_hfe_ml_sf_train_NA.csv
+│   ├── dietml_test_1234.csv
+│   ├── dietml_train_1234.csv
+│   └── ml_analysis
+│       ├── dummy_model_results.csv
+│       ├── hyperpars_tested.pdf
+│       ├── ml_results.csv
+│       ├── shap_dietml_1234_full.pdf
+│       ├── shap_dietml_1234_test.pdf
+│       ├── shap_dietml_1234_train.pdf
+│       ├── shap_inputs_dietml_1234.RData
+│       └── training_performance.pdf
 ```
 
-The file names are written to be somewhat informative. For example, ```taxa_hfe_ml_sf_train_NA.csv``` is the post-HFE, feature-reduced training set that was input to the downstream ML pipeline. The "sf" in the filename indicates that the "super filter" was applied (see default flag arguments for more details).
-
-After the run is complete, a directory called ```ml_analysis/``` is created, where the machine learning results for both the trained and dummy models are stored. Additionally, SHAP plots are generated to illustrate the top features driving the ML model. The "1234" in the SHAP plot filenames refers to the random seed used for that run.
+The train and test data that fed the machine learning models are written to files (dietml_test_seed.csv and dietml_train_seed.csv). The results of the machine learning model (the performance of the model on the test data, along with the perforamnce of the null model). With the ```--shap``` command run, the shap_* files are written. Probably the most important one to view is shap_dietml_1234_full.pdf, which is a beeswarm SHAP plot on the full input dataset.
 
 For a great overview of SHAP analyses and how to interpret these plots, check out [this guide](https://www.aidancooper.co.uk/a-non-technical-guide-to-interpreting-shap-analyses/).
 
@@ -144,29 +145,29 @@ For a great overview of SHAP analyses and how to interpret these plots, check ou
 1) Lets look at: ./test_outputs/ml_analysis/ml_results.csv
 </summary>
 
-| metric       | estimator | estimate | config               | null_model_avg      | seed | program        |
-|--------------|-----------|----------|----------------------|---------------------|------|----------------|
-| accuracy     | binary    | 1        | Preprocessor1_Model1 | 0.6785714285714286  | 1234 | taxa_hfe_ml_sf |
-| bal_accuracy | binary    | 1        | Preprocessor1_Model1 | 0.5                 | 1234 | taxa_hfe_ml_sf |
-| f_meas       | binary    | 1        | Preprocessor1_Model1 | 0.8085106382978724  | 1234 | taxa_hfe_ml_sf |
-| kap          | binary    | 1        | Preprocessor1_Model1 | NA                  | 1234 | taxa_hfe_ml_sf |
-| roc_auc      | binary    | 1        | Preprocessor1_Model1 | NA                  | 1234 | taxa_hfe_ml_sf |
+| metric | estimator | estimate | config            | null_model_avg | seed | program |
+|--------|-----------|----------|-------------------|----------------|------|---------|
+| ccc    | standard  | 0.9931642435986459 | pre0_mod0_post0 | 0              | 1234 | dietml  |
+| mae    | standard  | 160.10850142514704 | pre0_mod0_post0 | 1576.8851351351352 | 1234 | dietml  |
+| rmse   | standard  | 218.52784945338402 | pre0_mod0_post0 | 1912.5710321507745 | 1234 | dietml  |
+| rsq    | standard  | 0.9886360024069695 | pre0_mod0_post0 | NA             | 1234 | dietml  |
 
-Here we see the performance of the ```taxaHFE```-engineered microbiome features in predicting whether an individual resides in an industrialized or non-industrialized area. For example, a naïve model would be correct about 68% of the time (see the 'null_model_avg' for accuracy) in predicting industrialized vs. non-industrialized status (this model has no real skill—it simply predicts the majority class, and note there is some class imbalance). In contrast, the trained model is correct 100% of the time (see 'estimate' for accuracy)!
+
+Here we see the r-squared the model is 0.988...(way too many digits). Additionally, the MAE of the trained model (160.1) is far lower than the MAE of the null model (1576.9). This suggests ```dietML``` did a pretty good job predicting bike share using the features in the example dataset. 
 </details>
 </br>
 <details>
 <summary> 
-2) Lets next look at: ./test_outputs/ml_analysis/shap_taxa_hfe_ml_sf_1234_full.pdf
+2) Lets next look at: ./test_outputs/ml_analysis/shap_dietml_1234_full.pdf
 </summary>
 
 The below figure shows the ```taxaHFE```-selected features that driving the ML model predictions:
 
-![SHAP output from Example 1](pictures/shap_taxa_hfe_ml_sf_1234_full.png "Example 1 SHAP output")
+![Outline of dietML pipeline](pictures/shap_dietml_1234_full.png "Outline of dietML pipeline")
 
-> First, take note in the above figure of the hierarchical feature engineering that occured! For example, all the species in the phylum *Firmicutes* has now been collapsed to the phylum level. However, different species of *Prevotella* remain!
 
-```taxaHFE-ML``` will plot the top 10 most important features, determined by a SHAP analysis, using a beeswarm plot.  For example, in the above plot, note that higher abundances of *Firmicutes* were more predictive of industrialized gut microbiomes.
+
+```dietML``` will plot the top 10 most important features, determined by a SHAP analysis, using a beeswarm plot.  For example, in the above plot, note that the top feature, "registered" (Capital Bike registered users on a given day), is positively associated with number of active users on a given day.
 </details>
 
 
@@ -175,136 +176,49 @@ The below figure shows the ```taxaHFE```-selected features that driving the ML m
 ### Usage:
 
 ```
-## help menu for taxahfe
-docker run --rm -it aoliver44/taxa_hfe:latest -h
-
-## help menu for taxahfe-ml
-docker run --rm -it aoliver44/taxa_hfe_ml:latest -h
+## help menu for dietml
+docker run --rm -it aoliver44/diet_ml:latest -h
 ```
 
 Don't forget to set docker resources (```--cpus``` and ```--memory```), and to bind your data directory (```-v `pwd`:/data```) when you are ready to run the program!
 
 </details>
-
 <details>
-<summary> <b>taxaHFE flags:</b> 
+<summary> <b>dietML flags:</b> 
 </summary>
 
 ```
-TaxaHFE arguments:
-  Options to pass to TaxaHFE
+DietML arguments:
+  Run regression or classification ML models on a dataframe
 
   -s <string>, --subject_identifier <string>
                         Metadata column name containing subject IDs (default: subject_id)
   -l <string>, --label <string>
                         Metadata column name of interest for ML (default: feature_of_interest)
-  -t <string>, --feature_type <string>
-                        Is the ML label a factor or numeric (default: factor)
-  -R, --random_effects  Consider repeated measures. Note: columns 'individual' and 'time' must be present. [BETA] (default: False)
-  -k <numeric>, --k_splits <numeric>
-                        We use kmeans to factorize a numeric response for repeated measures. How many categories should we create? [BETA] (default: 3)
-  -a <numeric>, --abundance <numeric>
-                        Minimum mean abundance of feature (default: 0)
-  -p <numeric>, --prevalence <numeric>
-                        Minimum prevalence of feature (default: 0.01)
-  -L <numeric>, --lowest_level <numeric>
-                        Most general level allowed to compete (default: 3)
-  -m <numeric>, --max_level <numeric>
-                        How many hierarchical levels should be allowed to compete (default: 15)
   -c <numeric>, --cor_level <numeric>
-                        Initial pearson correlation filter (default: 0.95)
-  -d, --disable_super_filter
-                        Disable running of the super filter (final forest competition) (default: False)
-  -w, --write_old_files
-                        Write individual level files and old HFE files (default: False)
-  -W, --write_flattened_tree
-                        Write a compressed backup of the entire competed tree (default: False)
-  -D, --write_both_outputs
-                        Write an output for pre and post super filter results, overridden by --disable_super_filter (default: False)
-  --nperm <numeric>     Number of taxaHFE RF permutations (default: 40)
-  -n <numeric>, --ncores <numeric>
-                        Number of parallel processes to run in certain portions of taxaHFE that support parallel processing. To limit overall resource usage of taxaHFE, limit the amount of resources available to the container (e.g. --cpus=4 for Docker). Note that total resources needed are parallel_workers * ncores. (default: 2)
-```
-</details>
-</br>
-
-<details>
-<summary> <b>taxaHFE-ML flags:</b> 
-</summary>
-
-```
-usage: taxa_hfe_ml [options] METADATA DATA
-
-Hierarchical feature engineering (HFE) with ML
-
-positional arguments:
-  METADATA              path to metadata input (txt | tsv | csv)
-  DATA                  path to input file from hierarchical data (i.e. hData data) (txt | tsv | csv)
-
-options:
-  -h, --help            show this help message and exit
-  -o <string>, --output_dir <string>
-                        Directory for the output files to be written. Defaults to a directory called 'outputs' (default: outputs)
-  -v, --version         show program's version number and exit
-  --data_dir <string>   Directory for MEATDATA, DATA, and output_dir, ignored if using absolute paths. Defaults to the current directory (default: .)
-  --seed <numeric>      Set the seed, if no value is provided, uses a random number from the range (-1 * 2^31, 2^31 - 1) (default: 1137588388)
-
-TaxaHFE arguments:
-  Options to pass to TaxaHFE
-
-  -s <string>, --subject_identifier <string>
-                        Metadata column name containing subject IDs (default: subject_id)
-  -l <string>, --label <string>
-                        Metadata column name of interest for ML (default: feature_of_interest)
-  -t <string>, --feature_type <string>
-                        Is the ML label a factor or numeric (default: factor)
-  -R, --random_effects  Consider repeated measures. Note: columns 'individual' and 'time' must be present. [BETA] (default: False)
-  -k <numeric>, --k_splits <numeric>
-                        We use kmeans to factorize a numeric response for repeated measures. How many categories should we create? [BETA] (default: 3)
-  -a <numeric>, --abundance <numeric>
-                        Minimum mean abundance of feature (default: 0)
-  -p <numeric>, --prevalence <numeric>
-                        Minimum prevalence of feature (default: 0.01)
-  -L <numeric>, --lowest_level <numeric>
-                        Most general level allowed to compete (default: 3)
-  -m <numeric>, --max_level <numeric>
-                        How many hierarchical levels should be allowed to compete (default: 15)
-  -c <numeric>, --cor_level <numeric>
-                        Initial pearson correlation filter (default: 0.95)
-  -d, --disable_super_filter
-                        Disable running of the super filter (final forest competition) (default: False)
-  -w, --write_old_files
-                        Write individual level files and old HFE files (default: False)
-  -W, --write_flattened_tree
-                        Write a compressed backup of the entire competed tree (default: False)
-  -D, --write_both_outputs
-                        Write an output for pre and post super filter results, overridden by --disable_super_filter (default: False)
-  --nperm <numeric>     Number of taxaHFE RF permutations (default: 40)
-  -n <numeric>, --ncores <numeric>
-                        Number of parallel processes to run in certain portions of taxaHFE that support parallel processing. To limit overall resource usage of taxaHFE, limit the amount of resources available to the container (e.g. --cpus=4 for Docker). Note that total resources needed are parallel_workers * ncores. (default: 2)
-
-TaxaHFE-ML specific arguments:
-  Options to pass to TaxaHFE-ML for machine learning and SHAP analysis of TaxaHFE features
-
-  --train_split <numeric>
-                        Percentage of samples to use for training (default: 0.8)
+                        Initial pearson correlation filter. Bypasses cor_level filter if set to 1 (default: 1)
   --info_gain_n <numeric>
                         Should information gain preprocessing be used? Set n number of features to be selected during preprocessesing. Bypasses info_gain_n if set to 0. (default: 0)
+  --train_split <numeric>
+                        Percentage of samples to use for training (default: 0.8)
   --model <string>      ML model to use. Options: rf, enet, lasso, ridge. (default: rf)
   --folds <numeric>     Number of CV folds for tuning (default: 10)
   --cv_repeats <numeric>
                         Number of CV repeats to perform for repeated CV (default: 3)
   --metric <string>     Metric to optimize (default: bal_accuracy)
+  -t <string>, --feature_type <string>
+                        Is the ML label a factor or numeric (default: factor)
   --tune_length <numeric>
                         Number of hyperparameter combinations to sample (default: 80)
   --tune_time <numeric>
                         Time for hyperparameter search (in minutes) (default: 2)
   --tune_stop <numeric>
                         Number of HP iterations without improvement before stopping (default: 10)
+  --shap                Calculate SHAP values (default: False)
+  -n <numeric>, --ncores <numeric>
+                        Number of threads/cores to use in certain functions that can perform parallel processing. To limit overall resource usage of dietML., limit the amount of resources available to the container (e.g. --cpus=4 for Docker). Note that total resources needed are parallel_workers * ncores. (default: 2)
   --parallel_workers <numeric>
                         Number of parallel search processes to run for hyperparameter tuning in dietML. Note that total resources needed are parallel_workers * ncores (e.g. --cpus=4 for Docker) (default: 1)
-  --shap                Calculate SHAP values (default: False)
-  --summarized_levels   Include summarized levels in ML competition (default: False)
 ```
 </details>
 </br>
@@ -317,25 +231,15 @@ Below are some some additional details about certain flags.
 
 ```--subject_identifier```: Specifies the column in the input metadata that identifies each sample or subject ID. All subject IDs should be unique. They will be coerced to unique, simplified snake_case alphanumeric values using ```janitor::make_clean_names()```.
 
-```--abundance```: A per-feature abundance filter. If your sampling effort is not standardized (e.g., not expressed as relative abundance), this filter may behave unpredictably. The default is ```0```, meaning no features are filtered out as long as the minimum abundance is ```0```.
+```--cor_level```: A number between 0-1, which defines a Pearson correlation threshold at which features are combined. The underlying function can be found [here](https://recipes.tidymodels.org/reference/step_corr.html). Note that if set to 1--its defualt value--this correlation filter is entirely bypassed.
 
-```--prevalence```: A per-feature prevalence filter that controls how many non-zero occurrences are required for a feature to be retained. By default, features with 99% zeros are dropped from analysis. This filter is somewhat sensitive to sampling depth—samples with greater sequencing depth may detect more rare features.
+```--info_gain_n```: The number of features that should be selected during feature engineering, based on information gain. For example, if set to 5, the resulting training models will only see the top 5 features by information gain. This step is conducted at the end, meaning all other feature engineering steps come before it. Finally, if you set this too high, as in more features than are present, the program will still run. Setting the value to 0 (the default) will bypass this step entirely. You can read more about the underlying code [here](https://stevenpawley.github.io/colino/reference/step_select_infgain.html).
 
-```--lowest_level```: Specifies the lowest taxonomic level at which ```taxaHFE``` should run its feature competitions. In microbiome datasets, features often span taxonomic levels from general to specific (e.g., kingdom → phylum → class → order → family → genus → species). ```taxaHFE``` adds one extra level above kingdom called taxa_tree, representing the total abundance per sample.
+```--parallel_workers```: During hyperparameter tuning and the SHAPley analysis, parallel workers can be utilized. This is done using makePSOCKcluster(), which spawns new R sessions for parallel work. Note that the resources you will need will be ncores * parallel workers. Note, this may increase RAM needs.
 
-- Setting ```--lowest_level 1``` allows competitions down to taxa_tree, meaning it could be selected as the sole informative feature (e.g., if total abundance best explains your metadata label).
+```--ncores```: ncores are set seperately from parallel workers. These specify resources availible in functions such as reading and writing data, and the individual models themselves (e.g., for a random forest, how many cores does Ranger see?). This is distinct from how many processes are run in parallel, as definied by parallel_workers. Once again, we highly recommend you set the container resources (e.g., ```docker run --cpus=2```), to match whatever you set with ```--ncores```.
 
-- Setting ```--lowest_level 2```, stopping at the kingdom level (e.g., if the abundance of k_Archaea was the most informative feature)
-
-- The default value, ```--lowest_level 3```, is if you're specifically interested in what features are informative within general groupings (e.g., which bacteria, archaea, etc.). 
-
-- Setting this flag higher will stop the competitions earlier (e.g., ```--lowest_level 4``` will stop at the 'class' level)
-
-```--max_level```: Controls how far away from the root to consider the first set of children to compete. The default is ```--max_level 15```, allowing a child feature which is up to 15 levels away from the root to compete. 
-
-- Setting this flag to ```--max_level 5``` means that, in a microbiome example, ```taxaHFE``` will at most choose taxa at the order level, but never at the genus, family, species, etc.
-
-```--ncores```: Once again, we highly recommend you set the container resources (e.g., ```docker run --cpus=2```), to match whatever you set with ```--ncores```.
+```--shap```: The presence of this flag will tell ```dietML``` to run a SHAPley analysis. Presently, only regression models, or models with a binary factor, will be able to make use of this. Otherwise the process will error out.
 
 ```--seed```: the default behavior is to generate a random seed each time ```taxaHFE``` is run, between the minimum and maximum values of machine precision for the R language (-2e31 - 2e31). If you set it to a number, it will likely return the same results across repeated runs (assuming you are on the same machine).
 
@@ -359,8 +263,8 @@ Make sure the Docker application is running! If you can't run ```docker image li
 **Problem #2:** Docker is running but I immediately get this error:
 
 ```
-usage: taxa_hfe_ml [options] METADATA DATA
-taxa_hfe_ml.R: error: unrecognized arguments:
+usage: diet_ml [options] METADATA DATA
+diet_ml.R: error: unrecognized arguments:
 ```
 
 <details>
@@ -418,15 +322,7 @@ If your outcome factor is encoded as 0 and 1 the downstream ML will break. Pleas
 
 </br>
 
-**Problem #5:** This is taking FOREVER!
-
-<details>
-<summary> <b>Fix #5:</b> 
-</summary>
-Welp, it might still be working, in which case, "Okay!! We get it!! You have a ton of samples!!". More seriously, larger files may take a ton of time to read in, especially for the metadata file. If you have a lot of levels to compete, this could take time too. Consider giving it more resources. If it is still giving you trouble, let us know about it by opening an issue. 
-</details>
-
-**Problem #6:** I see this message when running SHAP analysis
+**Problem #5:** I see this message when running SHAP analysis
 
 ```
 SHAP analysis encountered an issue and all output files may not have been generated
@@ -443,74 +339,6 @@ Additionally, the SHAP analysis only supports a binary factor (2 levels), or a c
 
 ## **FAQ**
 
-<b>Question #1:</b> Why can't I add more than 8 covariates in my metadata?
-
-<details>
-<summary> <b>Answer #1:</b> 
-</summary>
-Well, you can if you want to fork the code and get rid of those gaurd-rails (1 line of code). But we suggest you analyze your covariates and really determine if you need them all (or are you just throwing in the kitchen sink?). You do not need to one-hot encode your metadata variables. Ultimately our algorithm is for Hierarchical Feature Engineering, and messing around with lots of covariates amounts, at least, to scope creep, which we didn't want for ourselves.
-</details>
-
-</br>
-
-<b>Question #2:</b> Can ```taxaHFE``` work with time-series data?
-
-
-<details>
-<summary> <b>Answer #2:</b> 
-</summary>
- 
-A: I think? The flags that allow for this have a big ```[BETA]``` in their descriptions, so use them at your own risk. We will try and get an example up here showing how it works. For now, there is some information in the flags, and also some example files in ```example_inputs/``` (metadata_time.txt and microbiome_time.txt). The inspiration for dealing with time data comes from a [Scientific Reports paper](https://doi.org/10.1038/s41598-022-14632-w). Here is a command that we have success with for use with the example time files:
-
-```
-docker run --cpus=8 --memory=8g --rm -it -v `pwd`:/data aoliver44/taxa_hfe_ml:latest example_inputs/metadata_time.txt example_inputs/microbiome_time.txt -o test_outputs -s subject_id -l Intervention --seed 1234 --shap -n 8 -R
-```
-> Note, currently only the feature engineering considers the longitudinal aspect of the features. The downstream ML analysis treats every sample as independent. A good discussion of longitudinal methods in biomedical data can be found [here](https://doi.org/10.1007/s10462-023-10561-w). With regards to that paper, our approach is a combination of "Summary Features" and "Stacked Vertically".
-
-</details>
-
-</br>
-
-<b>Question #3:</b> What if there are missing levels in my data?
-
-
-<details>
-<summary> <b>Answer #3:</b> 
-
-</summary>
-
-Great question! ```taxaHFE``` can readily take in 2 'styles' of data for the hierarchical data (the metadata file is pretty straightforward, but let us know if more examples are needed). The first style is that of the program MetaPhlan, which looks, in essence, like this:
-
-| clade_name                        | subject_1 | subject_2 | subject_3 |
-|----------------------------------|-----------|-----------|-----------|
-| GrandparentA                     | 23        | 15        | 15        |
-| GrandparentA\|ParentA            | 19        | 11        | 8         |
-| GrandparentA\|ParentA\|ChildA    | 4         | 1         | 5         |
-| GrandparentA\|ParentA\|ChildB    | 7         | 2         | 3         |
-| GrandparentA\|ParentA\|ChildC    | 8         | 8         | 0         |
-| GrandparentA\|ParentB            | 4         | 4         | 7         |
-| GrandparentA\|ParentB\|ChildA    | 4         | 4         | 7         |
-| GrandparentB                     | 0         | 10        | 1         |
-
-Note in the table above that all child taxa sum to their respective parent taxa. Additionally, each level of the hierarchy is represented as a separate feature—for example, GrandparentA is listed independently from GrandparentA|ParentA.
-
-If ```taxaHFE``` detects that a taxonomic level is missing, it will automatically create that feature by summing the abundances of its child nodes. However, it is not a strict requirement that child taxa must sum to the parent. For instance, if the abundance of GrandparentA were 30 for subject_1, ```taxaHFE``` would not raise an error. It does not enforce that parent taxa equal the sum of their children. That said, when ```taxaHFE``` fills in missing taxonomic levels, it does so by summing the abundances of the child taxa under that node.
-
-```taxaHFE``` may also take in data structured like this:
-
-| clade_name                        | subject_1 | subject_2 | subject_3 |
-|----------------------------------|-----------|-----------|-----------|
-| GrandparentA\|ParentA\|ChildA    | 4         | 1         | 5         |
-| GrandparentA\|ParentA\|ChildB    | 7         | 2         | 3         |
-| GrandparentA\|ParentA\|ChildC    | 8         | 8         | 0         |
-
-Note in the above example, the parent taxonomic groups are not seperated as their own feature. Again, based on the previous paragraph, ```taxaHFE``` will create the parent nodes by summing the abundances of the children.
-
-Also note in both examples, the taxonomic groups are found in a column named "clade_name" and the levels are seperated by a "|" (pipe) symbol.
-
-
-</details>
-
 ## **Acknowledgments**
 
 Special thanks to Stephanie M.G. Wilson for the logo.
@@ -523,7 +351,4 @@ Feel free to raise an issue, contribute with a pull request, or reach out!
 ------------------------------
 ## **Citation**
 
-To cite this work please use:
-
-Oliver A, Kay M, Lemay DG. TaxaHFE: a machine learning approach to collapse microbiome datasets using taxonomic structure. *Bioinformatics Advances* 2023;3:, https://doi.org/10.1093/bioadv/vbad165
-
+In progress...
