@@ -9,7 +9,7 @@ Note, ```dietML``` is not a "specialized" solution for ML. For example, when you
 
 - [Outline of ML pipeline](#outline-of-ml-pipeline)
 - [Installing dietml](#installing-dietml)
-- [Example: the mtcars dataset](#example-the-mtcars-dataset)
+- [Example: the Capital Bike dataset](#example-the-capital-bike-dataset)
 - [Flag information](#information-about-the-flags)
 - [Troubleshooting](#troubleshooting)
 - [FAQ](#faq)
