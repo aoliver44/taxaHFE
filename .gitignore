@@ -22,3 +22,8 @@ example_inputs/metadata-mars.tsv
 example_inputs/species-mars.tsv
 /.cache
 example_inputs/summarized_level_2_42.csv
+example_inputs/day.csv
+example_inputs/hour.csv
+pictures/dietml_outline.afdesign
+pictures/shap_dietml_1234_full.pdf
+pictures/taxahfe_outline.afdesign
