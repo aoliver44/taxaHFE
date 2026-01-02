@@ -19,10 +19,9 @@ else
     TAXA_HFE_TAGS="-t aoliver44/taxa_hfe:latest"
     TAXA_HFE_ML_TAGS="-t aoliver44/taxa_hfe_ml:latest"
     DIET_ML_TAGS="-t aoliver44/diet_ml:latest"
-
-    # set platforms for max machine capability
 fi
 
+# set platforms for max machine capability
 PLATFORM_FLAG="--platform linux/amd64,linux/arm64"
 
 echo "Building taxaHFE containers for version $VERSION"
