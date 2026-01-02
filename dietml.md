@@ -69,11 +69,11 @@ singularity pull dietML.sif docker://aoliver44/diet_ml:latest
 <details>
 <summary> <i>A note on using Docker on Windows</i> </summary> 
 
-```taxaHFE``` can run on Windows through [Powershell](https://aka.ms/PSWindows) and [Docker Desktop for Windows](https://docs.docker.com/desktop/install/windows-install/). In order for the program to run smoothly, several adjustments are recommended beforehand:
+```dietML``` can run on Windows through [Powershell](https://aka.ms/PSWindows) and [Docker Desktop for Windows](https://docs.docker.com/desktop/install/windows-install/). In order for the program to run smoothly, several adjustments are recommended beforehand:
 
  1) **Prepare wsl (Windows Subsystem for Linux)**
 
-    In Powershell, set the default wsl to Ubuntu. The default will only need to be set once, but wsl will need to be turned on with every ```taxaHFE``` run. 
+    In Powershell, set the default wsl to Ubuntu. The default will only need to be set once, but wsl will need to be turned on with every ```dietML``` run. 
     
     *Note*: Error without setting default, "VS Code Server for WSL closed unexpectedly"
 
@@ -110,7 +110,7 @@ git clone https://github.com/aoliver44/taxaHFE.git && cd taxaHFE/
 **Step 2:**  Run ```dietML``` using the example files. This command will work with the example data. If it doesn't, check out our troubleshooting tips below (do you have Docker running?), or consider opening an issue on GitHub. 
 
 > [!CAUTION] 
-> Setting container-level resources is by far the most reliable way (in our experience) to ensure that ```taxaHFE``` uses the appropriate system resources. If you set ```--ncores 2``` without also specifying ```--cpus=2``` in the Docker command (or the equivalent flag in Apptainer), some processes within ```dietML``` may exceed the intended resource limits. </br> </br> Setting ```--ncores 1``` will instruct ```dietML``` to limit resource usage as best it can, but this is not foolproof. The main situation where excessive core usage becomes an issue is when the ```--shap``` flag is used. To avoid this, we strongly recommend setting CPU and memory limits directly in the ```docker run``` command. Adjust the values to suit the capabilities of your machine.
+> Setting container-level resources is by far the most reliable way (in our experience) to ensure that ```dietML``` uses the appropriate system resources. If you set ```--ncores 2``` without also specifying ```--cpus=2``` in the Docker command (or the equivalent flag in Apptainer), some processes within ```dietML``` may exceed the intended resource limits. </br> </br> Setting ```--ncores 1``` will instruct ```dietML``` to limit resource usage as best it can, but this is not foolproof. The main situation where excessive core usage becomes an issue is when the ```--shap``` flag is used. To avoid this, we strongly recommend setting CPU and memory limits directly in the ```docker run``` command. Adjust the values to suit the capabilities of your machine.
 
 ```
 docker run --cpus=2 --memory=4g --rm -it -v `pwd`:/data aoliver44/diet_ml:latest example_inputs/bike_share_day.csv -o test_outputs -s instant -l cnt --model ridge -t numeric --metric rsq --tune_time 1 --seed 1234 --shap -n 2
@@ -161,7 +161,7 @@ Here we see the r-squared the model is 0.988...(way too many digits). Additional
 2) Lets next look at: ./test_outputs/ml_analysis/shap_dietml_1234_full.pdf
 </summary>
 
-The below figure shows the ```taxaHFE```-selected features that driving the ML model predictions:
+The below figure shows the ```dietML```-selected features that driving the ML model predictions:
 
 ![Outline of dietML pipeline](pictures/shap_dietml_1234_full.png "Outline of dietML pipeline")
 
@@ -241,7 +241,7 @@ Below are some some additional details about certain flags.
 
 ```--shap```: The presence of this flag will tell ```dietML``` to run a SHAPley analysis. Presently, only regression models, or models with a binary factor, will be able to make use of this. Otherwise the process will error out.
 
-```--seed```: the default behavior is to generate a random seed each time ```taxaHFE``` is run, between the minimum and maximum values of machine precision for the R language (-2e31 - 2e31). If you set it to a number, it will likely return the same results across repeated runs (assuming you are on the same machine).
+```--seed```: the default behavior is to generate a random seed each time ```dietML``` is run, between the minimum and maximum values of machine precision for the R language (-2e31 - 2e31). If you set it to a number, it will likely return the same results across repeated runs (assuming you are on the same machine).
 
 </details>
 
