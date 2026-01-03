@@ -7,13 +7,15 @@ source("lib/tree.R")
 
 # load flags
 # to use this code line-by-line in the Rstudio context, commandArgs can be overloaded to specify the desired flags
-# ex. commandArgs <- function(x) { c("example_inputs/metadata.txt", "example_inputs/microbiome_data.txt", "-o", "example_outputs", "-s", "Sample", "-l", "Category", "-L", "3", "-n", "2", "--seed", "42", "--train_split", "0.8", "--tune_time", "0", "-W", "--parallel_workers", "2", "--shap") }
+# Example cmd:
+# command <- "example_inputs/bike_share_day.csv -o test_outputs -s instant -l cnt --model ridge -t numeric --metric rsq --tune_time 1 --seed 1234 --shap -n 2"
+# commandArgs <- function(x) { unlist(strsplit(command, split = " ")) }
 # these will be used by the argparser
 opts <- load_diet_ml_args()
 program <- paste0("dietml")
 
-## print everything that opts is seeing
-#print(as.data.frame(unlist(opts)))
+## initiate logger
+initiate_logger(opts_object = opts, program = program)
 
 ## read in data
 data <- read_in_metadata(input = opts$DATA,
@@ -39,6 +41,7 @@ readr::write_csv(x = as.data.frame(train_data),
 readr::write_csv(x = as.data.frame(test_data), 
                  file = paste0(opts$output_dir, "/", program, "_test_", opts$seed, ".csv"), 
                  append = FALSE)
+logger::log_info("Training and testing data written to file")
 
 ## pass to dietML if selected
 shap_inputs <- run_dietML(train = as.data.frame(train_data), 
