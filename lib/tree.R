@@ -11,6 +11,33 @@ source("lib/requirements.R")
 ## suppress warnings
 options(warn = -1)
 
+## initiate logger =============================================================
+initiate_logger <- function(opts_object, program) {
+  
+  ## make output directory if doesnt exist
+  if (!dir.exists(opts_object$output_dir)) {
+    dir.create(path = opts_object$output_dir, showWarnings = FALSE)
+  }
+  
+  ## initiate log file if doesnt exist
+  if (!file.exists(paste0(opts_object$output_dir, "/", program, "_", opts_object$seed, ".log"))) {
+    file.create(paste0(opts_object$output_dir, "/", program, "_", opts_object$seed, ".log"), showWarnings = FALSE)
+  } else {
+    logger::log_warn("Log file", paste0(opts_object$output_dir, "/", program, "_", opts_object$seed, ".log") ,"exists with this name in this directory. You might be re-running this analysis with the same seed. The log will continue to append here.")
+  }
+  
+  ## start log, create log file, specify log level, and record program and version
+  logger::log_appender(logger::appender_file(file = paste0(opts_object$output_dir, "/", program, "_", opts_object$seed, ".log")), )
+  ## To do: create option for verbosity in log file ie logger::log_threshold(TRACE, namespace = ".logger")
+  logger::log_info("{program}, version={Sys.getenv(\"TAXA_HFE_VERSION\")} is starting...")
+  ## log arguments from opts
+  arg_logs <- as.data.frame(unlist(opts_object)) %>% tibble::rownames_to_column(., var = "FLAG") %>% dplyr::rename(., "VALUE" = 2)
+  logger::log_info("Arguments specified: ", paste(arg_logs$FLAG, arg_logs$VALUE, sep = ":", collapse = " | "))
+  
+  ## return nothing
+  invisible()
+}
+
 ## read in metadata  ===========================================================
 ## rename the subject_identifier to subject_id and
 ## rename the label to feature_of_interest
@@ -21,11 +48,11 @@ options(warn = -1)
 ## predictors would look like covariates.
 read_in_metadata <- function(input, subject_identifier, label, feature_type, random_effects, limit_covariates = TRUE, k, cores) {
 
-  cat("\n\n", "Checking for DATA", "\n")
+  logger::log_info("Reading in data...")
   if (file.exists(input) == FALSE) {
-    stop("DATA/METADATA input not found.")
+    logger::log_fatal("DATA/METADATA input not found.")
+    stop()
   }
-  cat("\n", paste0("Using ", input, " as DATA"), "\n")
   
   # read extension to determine file delim
   if (strsplit(basename(input), split = "\\.")[[1]][2] %in% c("tsv","txt")) {
@@ -54,25 +81,26 @@ read_in_metadata <- function(input, subject_identifier, label, feature_type, ran
   metadata <- metadata %>% tidyr::drop_na()
   new_row_count <- nrow(metadata)
   
+  ## log read in
+  logger::log_info("Read in {input}, which originally contains {original_row_count} rows and {NCOL(metadata)} columns")
+  
   if (original_row_count > new_row_count) {
-    warning(paste0((original_row_count - new_row_count), " number of metadata rows were dropped because they contained NAs"), immediate. = TRUE)
+    logger::log_warn("{(original_row_count - new_row_count)} number of DATA/METADATA rows were dropped because they contained NAs")
     if ((original_row_count - new_row_count) <= 0) {
-      stop("All rows were dropped in NA removal.")
+      logger::log_fatal("All rows were dropped in NA removal.")
+      stop()
     }
   }
   
   ## check and make sure there are not too many metadata columns
   ## we will allow 10 total columns (8 columns of additional covariates)
   if (ncol(metadata) > 10 & limit_covariates) {
-    warning("WARNING: You have selected quite a few covariates (this warning shows at > 8 covariates). TaxaHFE merely adds the covariates to the RF models. Its primary purpose is hierarchical feature engineering. Please do not rely on it to beautifully handle everything AND the kitchen sink.", immediate. = TRUE)
+    logger::log_warn("WARNING: You have selected quite a few covariates (this warning shows at > 8 covariates). TaxaHFE merely adds the covariates to the RF models. Its primary purpose is hierarchical feature engineering. Please do not rely on it to beautifully handle everything AND the kitchen sink")
   }
   
   ## notify user what covariates we find, if any
   if (ncol(metadata) > 2 & limit_covariates) {
-    cat("You supplied covariates to consider for the RF competition. They are:\n")
-    print(metadata %>% 
-            dplyr::select(., -subject_id, -feature_of_interest) %>%
-            colnames())
+    logger::log_info("You supplied covariates to consider for the RF competition. They are: ", paste(metadata %>% dplyr::select(., -subject_id, -feature_of_interest) %>% colnames(), collapse = " "))
   }
   
   ## this is an effort to clean names for the RF later, which will complain big time
@@ -82,7 +110,8 @@ read_in_metadata <- function(input, subject_identifier, label, feature_type, ran
   ## for now, we convert continous response to k levels for a random effects run
   if (random_effects) {
     if (FALSE %in% (c("individual", "time") %in% colnames(metadata))) {
-      stop("You specified random effects, you must have metadata columns named individual and time")
+      logger::log_fatal("You specified random effects, you must have metadata columns named individual and time")
+      stop()
     }
     if (feature_type == "numeric") {
       ## this is real ugly code, from SO (https://stackoverflow.com/questions/39906180/consistent-cluster-order-with-kmeans-in-r)
@@ -93,6 +122,9 @@ read_in_metadata <- function(input, subject_identifier, label, feature_type, ran
       metadata <- metadata %>% dplyr::select(., -feature_of_interest) %>% dplyr::rename(., "feature_of_interest" = "cluster")
     }
   }
+  
+  ## log levels of response
+  logger::log_info("The response variable is {label}, classified as a {feature_type}, with {dplyr::n_distinct(metadata$feature_of_interest)} levels")
   
   return(metadata)
 }

@@ -3286,6 +3286,14 @@
       "Maintainer": "Yihui Xie <xie@yihui.name>",
       "Repository": "CRAN"
     },
+    "logger": {
+      "Package": "logger",
+      "Version": "0.4.1",
+      "Source": "Repository",
+      "Repository": "CRAN",
+      "Imports": "utils",
+      "Depends": "R (>= 4.0.0"
+    },
     "lubridate": {
       "Package": "lubridate",
       "Version": "1.9.4",

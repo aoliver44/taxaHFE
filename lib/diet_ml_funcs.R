@@ -20,13 +20,14 @@ run_dietML <- function(train, test, model, program, seed,
                        info_gain_n) {
   
   ## check for outdir and make if not there
-  if (dir.exists(paste0(output, "/ml_analysis")) != TRUE) {
+  if (!dir.exists(paste0(output, "/ml_analysis"))) {
     dir.create(path = paste0(output, "/ml_analysis"))
   }
 
   ## check for label
   if ("feature_of_interest" %in% colnames(train) == FALSE & "feature_of_interest" %in% colnames(test) == FALSE) {
-    stop(paste0("label not found in training AND testing data"))
+    logger::log_fatal("label not found in training AND testing data")
+    stop()
   } 
   
   ## combine train and test data into a data split object
@@ -37,7 +38,8 @@ run_dietML <- function(train, test, model, program, seed,
   if (feature_type == "factor") {
     type <- "classification"
     if(length(levels(as.factor(split_from_data_frame$data$feature_of_interest))) > 9)
-      stop("You are trying to predict 10 or more classes. That is a bit much. Did you mean to do regression?")
+      logger::log_fatal("You are trying to predict 10 or more classes. That is a bit much. Did you mean to do regression?")
+      stop()
   } else {
     type <- "regression"
   }
@@ -92,6 +94,9 @@ run_dietML_ranger <- function(split_from_data_frame, seed, folds, cv_repeats,
                               parallel_workers, ncores, tune_length, tune_stop, 
                               tune_time, metric, feature_of_interest, model, program, 
                               output, type, null_results, cor_level, info_gain_n) {
+  
+  ## log start of RF function
+  logger::log_info("{model} model started...")
   
   ## set resampling scheme
   folds <- set_cv_strategy(split_from_data_frame = split_from_data_frame, 
@@ -156,10 +161,12 @@ run_dietML_ranger <- function(split_from_data_frame, seed, folds, cv_repeats,
                                        split_from_data_frame = split_from_data_frame,
                                        seed = seed, null_results = null_results, 
                                        program = program, output = output)
-    
+  
+  ## log end of rf model
+  logger::log_info("{model} model finished!")
+  
   ## load up list for shap analysis
   shap_inputs <- list("split_from_data_frame" = split_from_data_frame, "diet_ml_recipe" = diet_ml_recipe, "best_tidy_workflow" = best_tidy_workflow)
-  
   return(shap_inputs)
   
 }
@@ -168,7 +175,10 @@ run_dietML_enet <- function(split_from_data_frame, seed, folds, cv_repeats,
                             parallel_workers, ncores, tune_length, tune_stop, 
                             tune_time, metric, feature_of_interest, model, program, 
                             output, type, null_results, cor_level, info_gain_n) {
-
+  
+  ## log start of ENET function
+  logger::log_info("{model} model started...")
+  
   ## set resampling scheme
   folds <- set_cv_strategy(split_from_data_frame = split_from_data_frame, 
                            folds = folds, feature_of_interest = feature_of_interest, 
@@ -237,9 +247,11 @@ run_dietML_enet <- function(split_from_data_frame, seed, folds, cv_repeats,
                                        seed = seed, null_results = null_results, 
                                        program = program, output = output)
   
+  ## log end of enet model
+  logger::log_info("{model} model finished!")
+  
   ## load up list for shap analysis
   shap_inputs <- list("split_from_data_frame" = split_from_data_frame, "diet_ml_recipe" = diet_ml_recipe, "best_tidy_workflow" = best_tidy_workflow)
-  
   return(shap_inputs)
   
 }
@@ -248,6 +260,9 @@ run_dietML_ridge_lasso <- function(split_from_data_frame, seed, folds, cv_repeat
                                    parallel_workers, ncores, tune_length, tune_stop, 
                                    tune_time, metric, feature_of_interest, model, program, 
                                    output, type, null_results, cor_level, info_gain_n) {
+  
+  ## log start of ridge, lasso function
+  logger::log_info("{model} model started...")
   
   ## set resampling scheme
   folds <- set_cv_strategy(split_from_data_frame = split_from_data_frame, 
@@ -317,13 +332,18 @@ run_dietML_ridge_lasso <- function(split_from_data_frame, seed, folds, cv_repeat
                                        seed = seed, null_results = null_results, 
                                        program = program, output = output)
   
+  ## log end of ridge/lasso model
+  logger::log_info("{model} model finished!")
+  
   ## load up list for shap analysis
   shap_inputs <- list("split_from_data_frame" = split_from_data_frame, "diet_ml_recipe" = diet_ml_recipe, "best_tidy_workflow" = best_tidy_workflow)
-  
   return(shap_inputs)
   
 }
 run_null_model <- function(split_from_data_frame, seed, type, output, cv_repeats, feature_of_interest, folds, cor_level, info_gain_n, ncores) {
+  
+  ## log start of null model
+  logger::log_info("null model started...")
   
   ## create results df
   if (type == "classification") {
@@ -398,6 +418,9 @@ run_null_model <- function(split_from_data_frame, seed, type, output, cv_repeats
   readr::write_csv(x = results_df, file = paste0(output, "/ml_analysis/dummy_model_results.csv"), 
                    append = T, col_names = !file.exists(paste0(output, "/ml_analysis/dummy_model_results.csv")))
   
+  ## log end of null model
+  logger::log_info("null model finished!")
+  
   ## return results_df because that is what the other models need (ranger, enet)
   return(results_df)
   
@@ -418,8 +441,11 @@ create_data_split_obj <- function(train, test, random_effects) {
 set_cv_strategy <- function(split_from_data_frame, folds, feature_of_interest, cv_repeats) {
   train <- split_from_data_frame$data[split_from_data_frame$in_id,]
   ## set resampling scheme
-  folds <- rsample::vfold_cv(train, v = as.numeric(folds), strata = feature_of_interest, repeats = cv_repeats)
-  return(folds)
+  cv_folds <- rsample::vfold_cv(train, v = as.numeric(folds), strata = feature_of_interest, repeats = cv_repeats)
+  
+  ## log CV strategy
+  logger::log_info("Stratified (across the response) cross validation strategy set, using {as.numeric(folds)} and repeating {cv_repeats}x time(s).")
+  return(cv_folds)
 }
 
 dietml_recipe <- function(split_from_data_frame, cor_level, info_gain_n, type, ncores) {
@@ -477,7 +503,7 @@ dietml_hp_tune <- function(diet_ml_workflow, model, parallel_workers, folds, typ
     dietML_param_set <- 
       dietML_param_set %>% 
       # widen the penalty search space, help prevent MAE from locking into zero variance: 
-      recipes::update(penalty = penalty(range(-8,2))) %>%
+      recipes::update(penalty = penalty(range(1e-6,1e3))) %>%
       {if (model == "enet") recipes::update(., mixture = mixture(range(0.2, 0.8))) else .}
     
     n_inital_models = 20
