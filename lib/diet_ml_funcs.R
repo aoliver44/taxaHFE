@@ -441,11 +441,11 @@ create_data_split_obj <- function(train, test, random_effects) {
 set_cv_strategy <- function(split_from_data_frame, folds, feature_of_interest, cv_repeats) {
   train <- split_from_data_frame$data[split_from_data_frame$in_id,]
   ## set resampling scheme
-  folds <- rsample::vfold_cv(train, v = as.numeric(folds), strata = feature_of_interest, repeats = cv_repeats)
+  cv_folds <- rsample::vfold_cv(train, v = as.numeric(folds), strata = feature_of_interest, repeats = cv_repeats)
   
   ## log CV strategy
-  logger::log_info("Stratified (across the response) cross validation strategy set, using {folds} and repeating {cv_repeats}x time{s}.")
-  return(folds)
+  logger::log_info("Stratified (across the response) cross validation strategy set, using {as.numeric(folds)} and repeating {cv_repeats}x time(s).")
+  return(cv_folds)
 }
 
 dietml_recipe <- function(split_from_data_frame, cor_level, info_gain_n, type, ncores) {
