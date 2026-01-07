@@ -48,7 +48,7 @@ run_dietML <- function(train, test, model, program, seed,
   null_results <- run_null_model(split_from_data_frame = split_from_data_frame, seed = seed, 
                                  type = type, output = output, cv_repeats = cv_repeats, 
                                  feature_of_interest = "feature_of_interest", folds = folds, cor_level = cor_level, 
-                                 info_gain_n = info_gain_n, ncores = ncores)
+                                 info_gain_n = info_gain_n, ncores = ncores, model = model)
   
   ## if specified, run random forest
   if (model == "rf") {
@@ -106,7 +106,7 @@ run_dietML_ranger <- function(split_from_data_frame, seed, folds, cv_repeats,
   ## recipe
   diet_ml_recipe <- dietml_recipe(split_from_data_frame = split_from_data_frame, 
                                   cor_level = cor_level, info_gain_n = info_gain_n, 
-                                  type = type, ncores = ncores)
+                                  type = type, ncores = ncores, model = model)
   
   ## Random Forest ML engine
   ## specify ML model and engine 
@@ -187,7 +187,7 @@ run_dietML_enet <- function(split_from_data_frame, seed, folds, cv_repeats,
   ## recipe
   diet_ml_recipe <- dietml_recipe(split_from_data_frame = split_from_data_frame, 
                                   cor_level = cor_level, info_gain_n = info_gain_n, 
-                                  type = type, ncores = ncores)
+                                  type = type, ncores = ncores, model = model)
   
   ## ML engine
   
@@ -272,9 +272,12 @@ run_dietML_ridge_lasso <- function(split_from_data_frame, seed, folds, cv_repeat
   ## recipe
   diet_ml_recipe <- dietml_recipe(split_from_data_frame = split_from_data_frame, 
                                   cor_level = cor_level, info_gain_n = info_gain_n, 
-                                  type = type, ncores = ncores)
+                                  type = type, ncores = ncores, model = model)
   
   ## ML engine
+  ## specify regularizaton path for pure ridge regression because of theis issue
+  ## https://github.com/tidymodels/parsnip/issues/431#issuecomment-782883848
+  coef_path_values <- c(0, 10^seq(-6, 2, length.out = 100))
   
   ## specify ML model and engine 
   if (as.numeric(tune_time) == 0) {
@@ -285,26 +288,27 @@ run_dietML_ridge_lasso <- function(split_from_data_frame, seed, folds, cv_repeat
         penalty = double(1),
         mixture = ifelse(model == "lasso", 1, 0)
       ) %>%
-        parsnip::set_engine("glmnet")
+        {if (model == "lasso") parsnip::set_engine("glmnet") else parsnip::set_engine("glmnet", path_values = coef_path_values)}
     } else {
       initial_mod <- parsnip::linear_reg(
         mode = "regression",
         penalty = double(1),
         mixture = ifelse(model == "lasso", 1, 0)
       ) %>%
-        parsnip::set_engine("glmnet")
+        {if (model == "lasso") parsnip::set_engine("glmnet") else parsnip::set_engine("glmnet", path_values = coef_path_values)}
     }
   } else {
     if (type == "classification") {
       initial_mod <- parsnip::logistic_reg(mode = "classification", 
                                            penalty = tune(),
                                            mixture = ifelse(model == "lasso", 1, 0)) %>%
-        parsnip::set_engine("glmnet")
+        {if (model == "lasso") parsnip::set_engine(., "glmnet") else parsnip::set_engine(., "glmnet", path_values = coef_path_values)}
+        
     } else {
       initial_mod <- parsnip::linear_reg(mode = "regression", 
                                          penalty = tune(),
                                          mixture = ifelse(model == "lasso", 1, 0)) %>%
-        parsnip::set_engine("glmnet")
+        {if (model == "lasso") parsnip::set_engine(., "glmnet") else parsnip::set_engine(., "glmnet", path_values = coef_path_values)}
     }
   } 
   
@@ -340,7 +344,7 @@ run_dietML_ridge_lasso <- function(split_from_data_frame, seed, folds, cv_repeat
   return(shap_inputs)
   
 }
-run_null_model <- function(split_from_data_frame, seed, type, output, cv_repeats, feature_of_interest, folds, cor_level, info_gain_n, ncores) {
+run_null_model <- function(split_from_data_frame, seed, type, output, cv_repeats, feature_of_interest, folds, cor_level, info_gain_n, ncores, model) {
   
   ## log start of null model
   logger::log_info("null model started...")
@@ -360,7 +364,7 @@ run_null_model <- function(split_from_data_frame, seed, type, output, cv_repeats
   ## recipe
   diet_ml_recipe <- dietml_recipe(split_from_data_frame = split_from_data_frame, 
                                   cor_level = cor_level, info_gain_n = info_gain_n, 
-                                  type = type, ncores = ncores)
+                                  type = type, ncores = ncores, model = model)
   
   ## specify ML model and engine 
   initial_mod <- null_model() %>% 
@@ -448,15 +452,17 @@ set_cv_strategy <- function(split_from_data_frame, folds, feature_of_interest, c
   return(cv_folds)
 }
 
-dietml_recipe <- function(split_from_data_frame, cor_level, info_gain_n, type, ncores) {
+dietml_recipe <- function(split_from_data_frame, cor_level, info_gain_n, type, ncores, model) {
   
   train <- split_from_data_frame$data[split_from_data_frame$in_id,]
   ## specify recipe (this is like the pre-process work)
   dietML_recipe <- recipes::recipe(feature_of_interest ~ ., data = train) %>% 
     recipes::update_role("subject_id", new_role = "ID") %>% 
-    recipes::step_zv(recipes::all_predictors()) %>%
     recipes::step_novel(recipes::all_nominal_predictors()) %>%
     recipes::step_dummy(recipes::all_nominal_predictors()) %>% 
+    recipes::step_zv(recipes::all_predictors()) %>%
+    {if (model %in% c("ridge", "lasso", "enet")) recipes::step_center(., recipes::all_numeric_predictors()) %>% 
+        recipes::step_scale(., recipes::all_numeric_predictors()) else .} %>%
     {if (cor_level < 1) recipes::step_corr(., recipes::all_numeric_predictors(), threshold = cor_level, use = "everything") else .} %>%
     {if (info_gain_n > 0) colino::step_select_infgain(., recipes::all_predictors(), 
                                                           top_p = info_gain_n,
@@ -503,7 +509,7 @@ dietml_hp_tune <- function(diet_ml_workflow, model, parallel_workers, folds, typ
     dietML_param_set <- 
       dietML_param_set %>% 
       # widen the penalty search space, help prevent MAE from locking into zero variance: 
-      recipes::update(penalty = penalty(range(1e-6,1e3))) %>%
+      recipes::update(penalty = penalty(range(1e-6,1e2))) %>%
       {if (model == "enet") recipes::update(., mixture = mixture(range(0.2, 0.8))) else .}
     
     n_inital_models = 20
@@ -601,6 +607,10 @@ dietml_hp_tune <- function(diet_ml_workflow, model, parallel_workers, folds, typ
   }
   
   ## create the last model based on best parameters: Ridge or Lasso
+  ## specify regularizaton path for pure ridge regression because of theis issue
+  ## https://github.com/tidymodels/parsnip/issues/431#issuecomment-782883848
+  coef_path_values <- c(0, 10^seq(-6, 2, length.out = 100))
+  
   if (model %in% c("ridge", "lasso")) {
     ## create the last model based on best parameters
     if (type == "classification" && model == "lasso") {
