@@ -37,10 +37,11 @@ run_dietML <- function(train, test, model, program, seed,
   ## check if classification was mis-specified
   if (feature_type == "factor") {
     type <- "classification"
-    if(length(levels(as.factor(split_from_data_frame$data$feature_of_interest))) > 9)
+    if (length(levels(as.factor(split_from_data_frame$data$feature_of_interest))) > 9) {
       logger::log_fatal("You are trying to predict 10 or more classes. That is a bit much. Did you mean to do regression?")
-      stop()
-  } else {
+      stop() 
+      } 
+    } else {
     type <- "regression"
   }
   
