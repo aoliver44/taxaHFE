@@ -158,7 +158,7 @@ run_dietML_ranger <- function(split_from_data_frame, seed, folds, cv_repeats,
   }
   
   ## write dietml outputs
-  full_results <- write_dietml_outputs(type = type, best_tidy_workflow = best_tidy_workflow, 
+  shap_inputs <- write_dietml_outputs(type = type, best_tidy_workflow = best_tidy_workflow, 
                                        split_from_data_frame = split_from_data_frame,
                                        seed = seed, null_results = null_results, 
                                        program = program, output = output)
@@ -166,8 +166,7 @@ run_dietML_ranger <- function(split_from_data_frame, seed, folds, cv_repeats,
   ## log end of rf model
   logger::log_info("{model} model finished!")
   
-  ## load up list for shap analysis
-  shap_inputs <- list("split_from_data_frame" = split_from_data_frame, "diet_ml_recipe" = diet_ml_recipe, "best_tidy_workflow" = best_tidy_workflow)
+  ## return outputs
   return(shap_inputs)
   
 }
@@ -243,7 +242,7 @@ run_dietML_enet <- function(split_from_data_frame, seed, folds, cv_repeats,
   }
     
   ## write dietml outputs
-  full_results <- write_dietml_outputs(type = type, best_tidy_workflow = best_tidy_workflow, 
+  shap_inputs <- write_dietml_outputs(type = type, best_tidy_workflow = best_tidy_workflow, 
                                        split_from_data_frame = split_from_data_frame, 
                                        seed = seed, null_results = null_results, 
                                        program = program, output = output)
@@ -251,8 +250,7 @@ run_dietML_enet <- function(split_from_data_frame, seed, folds, cv_repeats,
   ## log end of enet model
   logger::log_info("{model} model finished!")
   
-  ## load up list for shap analysis
-  shap_inputs <- list("split_from_data_frame" = split_from_data_frame, "diet_ml_recipe" = diet_ml_recipe, "best_tidy_workflow" = best_tidy_workflow)
+  ## return outputs
   return(shap_inputs)
   
 }
@@ -332,7 +330,7 @@ run_dietML_ridge_lasso <- function(split_from_data_frame, seed, folds, cv_repeat
   }
   
   ## write dietml outputs
-  full_results <- write_dietml_outputs(type = type, best_tidy_workflow = best_tidy_workflow, 
+  shap_inputs <- write_dietml_outputs(type = type, best_tidy_workflow = best_tidy_workflow, 
                                        split_from_data_frame = split_from_data_frame, 
                                        seed = seed, null_results = null_results, 
                                        program = program, output = output)
@@ -340,8 +338,7 @@ run_dietML_ridge_lasso <- function(split_from_data_frame, seed, folds, cv_repeat
   ## log end of ridge/lasso model
   logger::log_info("{model} model finished!")
   
-  ## load up list for shap analysis
-  shap_inputs <- list("split_from_data_frame" = split_from_data_frame, "diet_ml_recipe" = diet_ml_recipe, "best_tidy_workflow" = best_tidy_workflow)
+  ## return outputs
   return(shap_inputs)
   
 }
@@ -680,6 +677,10 @@ write_dietml_outputs <- function(type,  best_tidy_workflow, split_from_data_fram
   readr::write_csv(x = full_results, file = paste0(output, "/ml_analysis/ml_results.csv"), 
                    append = T, col_names = !file.exists(paste0(output, "/ml_analysis/ml_results.csv")))
   
-  return(full_results)
+  ## return shap inputs list and results. The recipe and workflow are all 
+  ## inside the final_res object. This is important to use because the preprocessing 
+  ## steps were estimated on the training data and the model trained on the training data
+  shap_inputs <- list("split_from_data_frame" = split_from_data_frame, "final_res" = final_res, "full_results" = full_results)
+  return(shap_inputs)
   
 }
