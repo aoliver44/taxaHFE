@@ -42,7 +42,6 @@ shap_analysis <- function(label, output, model, filename, shap_inputs, train, te
       
       preds <- predict(object, new_data = newdata, type = "prob")
       pos_class <- levels(as.factor(split_from_data_frame$data$feature_of_interest))[1]
-      logger::log_info(paste0("Positive class (pfun): ", pos_class))
       return(as.numeric(preds[[paste0(".pred_", pos_class)]]))
       
     } else if (feature_type == "numeric") {
@@ -51,6 +50,9 @@ shap_analysis <- function(label, output, model, filename, shap_inputs, train, te
       as.numeric(preds$.pred)
     }
   }
+  
+  ## log the positive class that pfun sees
+  logger::log_info(paste0("Positive class (pfun): ", levels(as.factor(split_from_data_frame$data$feature_of_interest))[1]))
   
   if (is.null(pfun)) {
     message("Error: Could not define prediction function (pfun). Check model and type inputs.")
@@ -265,7 +267,7 @@ shap_shorten_colnames <- function(shap_sv_obj, splits) {
 log_shap_analysis <- function(sv_object, top_features, data_subset) {
   
   ## Add shap header to log
-  logger::log_info(paste0("Mean absolute SHAP results: ", data_subset, " data (*up to top 10 features)"))
+  logger::log_info(paste0("#### Mean absolute SHAP results: ", data_subset, " data (*up to top 10 features) ####"))
   
   ## get the top n features based on mean abs shap values
   tmp <- data.frame(feature=colnames(sv_object$S), 
