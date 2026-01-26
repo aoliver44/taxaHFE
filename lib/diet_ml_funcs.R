@@ -276,7 +276,7 @@ run_dietML_ridge_lasso <- function(split_from_data_frame, seed, folds, cv_repeat
   ## ML engine
   ## specify regularizaton path for pure ridge regression because of theis issue
   ## https://github.com/tidymodels/parsnip/issues/431#issuecomment-782883848
-  coef_path_values <- c(0, 10^seq(-6, 2, length.out = 100))
+  coef_path_values <- c(0, 10^seq(-8, 3, length.out = 100))
   
   ## specify ML model and engine 
   if (as.numeric(tune_time) == 0) {
