@@ -25,6 +25,9 @@ program <- paste0("taxahfe_ml", ifelse(opts$disable_super_filter, "_no_sf", "_sf
 
 ## Run main ====================================================================
 
+## initiate logger
+initiate_logger(opts_object = opts, program = program)
+
 ## check for inputs and read in read in ========================================
 ## metadata file
 metadata <- read_in_metadata(input = opts$METADATA,

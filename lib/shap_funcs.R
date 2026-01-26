@@ -21,51 +21,34 @@ shap_analysis <- function(label, output, model, filename, shap_inputs, train, te
   
   # --- Load SHAP inputs ---
   split_from_data_frame <- shap_inputs$split_from_data_frame
-  best_tidy_workflow <- shap_inputs$best_tidy_workflow
-  diet_ml_recipe <- shap_inputs$diet_ml_recipe
-  
-  assign(paste0("split_from_data_frame"), split_from_data_frame, envir = shap_plot_env)
-  assign(paste0("best_tidy_workflow"), best_tidy_workflow, envir = shap_plot_env)
-  assign(paste0("diet_ml_recipe"), diet_ml_recipe, envir = shap_plot_env)
-  
-  
+  final_workflow <- shap_inputs$final_res$.workflow[[1]]
+  prepped_recipe <- workflows::extract_recipe(final_workflow)
+
   ## save some initial inputs to env, in case the below 
   ## shap analysis does not finish. Occasionaly it does not finish on
   ## the "test" dataset. Which is fine, i cant think of why that is used.
   ## But if it fails, we still want as much data returned as possible, so 
   ## that is why we return everything prior to returning the test shap data
   assign("split_from_data_frame", split_from_data_frame, envir = shap_plot_env)
+  assign("final_workflow", final_workflow, envir = shap_plot_env)
   assign("label", label, envir = shap_plot_env)
   
   # --- Define prediction wrapper (pfun) ---
   pfun <- NULL
-  if (model == "rf") {
-    if (feature_type == "factor" && length(levels(as.factor(split_from_data_frame$data$feature_of_interest))) == 2) {
-      pfun <- function(object, newdata) {
-        preds <- predict(object, data = newdata)$predictions
-        class_level <- levels(as.factor(split_from_data_frame$data$feature_of_interest))[1]
-        preds[, class_level]
-      }
-    } else {
-      pfun <- function(object, newdata) {
-        preds <- predict(object, data = newdata)$predictions
-        as.numeric(preds)
-      }
-    }
+  pfun <- function(object, newdata) {
     
-  } else if (model %in% c("enet", "ridge", "lasso")) {
+    # Binary classification
     if (feature_type == "factor" && length(levels(as.factor(split_from_data_frame$data$feature_of_interest))) == 2) {
-      pfun <- function(object, newdata) {
-        preds <- predict(object, new_data = newdata, type = "prob")
-        # take the probability of the second level (positive class)
-        pos_class <- names(preds)[2]
-        as.numeric(preds[[pos_class]])
-      }
+      
+      preds <- predict(object, new_data = newdata, type = "prob")
+      pos_class <- levels(as.factor(split_from_data_frame$data$feature_of_interest))[1]
+      logger::log_info(paste0("Positive class (pfun): ", pos_class))
+      return(as.numeric(preds[[paste0(".pred_", pos_class)]]))
+      
     } else if (feature_type == "numeric") {
-      pfun <- function(object, newdata) {
-        preds <- predict(object, new_data = newdata, type = "numeric")
-        as.numeric(preds$.pred)
-      }
+      # Regression
+      preds <- predict(object, new_data = newdata, type = "numeric")
+      as.numeric(preds$.pred)
     }
   }
   
@@ -79,15 +62,17 @@ shap_analysis <- function(label, output, model, filename, shap_inputs, train, te
       shap_data_subsets <- list(list(split_from_data_frame$data, "full"), list(train, "train"), list(test, "test"))
       
       for (i in seq_along(shap_data_subsets)) {
-        # Fit the model
-        best_workflow <- parsnip::fit(best_tidy_workflow, shap_data_subsets[[i]][[1]])
-        best_workflow_mod <- workflows::extract_fit_parsnip(best_workflow)
         
-        # Prepare data
-        shap_data <- recipes::prep(diet_ml_recipe, shap_data_subsets[[i]][[1]]) %>%
+        ## prep the data using the recipe
+        shap_data <- recipes::prep(prepped_recipe, shap_data_subsets[[i]][[1]], fresh = TRUE) %>%
           recipes::juice() %>%
           dplyr::select(-feature_of_interest, -subject_id)
         assign(paste0("shap_data_", shap_data_subsets[[i]][[2]]), shap_data, envir = shap_plot_env)
+        
+        ## fit workflow to new datasets
+        shap_model_object <- parsnip::fit(final_workflow, shap_data_subsets[[i]][[1]])
+        ## extract the model itself
+        shap_model_object <- workflows::extract_fit_parsnip(shap_model_object)
         
         ## shap safety checks!
         n_rows <- nrow(shap_data)
@@ -108,13 +93,6 @@ shap_analysis <- function(label, output, model, filename, shap_inputs, train, te
         cl <- parallel::makeForkCluster(as.numeric(parallel_workers))
         doParallel::registerDoParallel(cl)
         
-        # set the appropriate object for the model
-        if (model == "rf") {
-          shap_model_object <- best_workflow_mod$fit
-        } else if (model %in% c("enet", "ridge", "lasso")) {
-          shap_model_object <- best_workflow_mod
-        }
-        
         # Compute SHAP values
         shap_explanations <- fastshap::explain(
           object = shap_model_object,
@@ -132,6 +110,9 @@ shap_analysis <- function(label, output, model, filename, shap_inputs, train, te
         # SHAP object for plotting
         sv <- shapviz::shapviz(shap_explanations, X = shap_data)
         assign(paste0("sv_", shap_data_subsets[[i]][[2]]), sv, envir = shap_plot_env)
+        
+        ## append scores to logger
+        log_shap_analysis(sv_object = sv, top_features = 10, data_subset = shap_data_subsets[[i]][[2]])
         
         # Generate and save plot
         plot <- shap_plot(
@@ -209,6 +190,10 @@ shap_plot <- function(
   if (length(class_levels) < 2) {
     stop("Insufficient factor levels for feature_of_interest.")
   }
+  ## log shap viz positive class
+  if (feature_type == "factor") {
+    logger::log_info(paste0("Positive class (shap_vis): ", class_levels[1]))
+  }
   
   # Create plot
   ## MODIFY THESE PARAMETERS IF YOU WANT THE PLOT TO LOOK DIFFERENTLY!!
@@ -247,7 +232,7 @@ shap_plot <- function(
 }
 
 ## This is a helper script to shorten the long names of shap plots. It doesnt
-## get used in this codebase, but its too got not to exist somewhere. 
+## get used in this codebase, but its too good not to exist somewhere. 
 ## TODO: If we organize code, this should live with the shap_analysis() code
 shap_shorten_colnames <- function(shap_sv_obj, splits) {
   # Function to extract the last matching split and everything after it
@@ -276,3 +261,22 @@ shap_shorten_colnames <- function(shap_sv_obj, splits) {
   
   return(obj_new)
 }
+
+log_shap_analysis <- function(sv_object, top_features, data_subset) {
+  
+  ## Add shap header to log
+  logger::log_info(paste0("Mean absolute SHAP results: ", data_subset, " data (*up to top 10 features)"))
+  
+  ## get the top n features based on mean abs shap values
+  tmp <- data.frame(feature=colnames(sv_object$S), 
+                    mean_abs_shap=colMeans(abs(sv_object$S))) %>% 
+    tibble::remove_rownames() %>% 
+    dplyr::arrange(., desc(mean_abs_shap)) %>%
+    dplyr::slice_head(., n = top_features)
+  
+  ## add them individually to logger
+  for (n in seq(1:nrow(tmp))) {
+    logger::log_info(paste0(tmp[n,1], " | ", tmp[n,2]))
+  }
+}
+
