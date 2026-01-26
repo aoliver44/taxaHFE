@@ -507,8 +507,8 @@ dietml_hp_tune <- function(diet_ml_workflow, model, parallel_workers, folds, typ
     dietML_param_set <- 
       dietML_param_set %>% 
       # widen the penalty search space, help prevent MAE from locking into zero variance: 
-      recipes::update(penalty = penalty(range(1e-6,1e2))) %>%
-      {if (model == "enet") recipes::update(., mixture = mixture(range(0.2, 0.8))) else .}
+      recipes::update(penalty = penalty(range = c(-8, 3), trans = scales::transform_log10())) %>%
+      {if (model == "enet") recipes::update(., mixture = mixture(range(0.1, 0.9))) else .}
     
     n_inital_models = 20
   }
