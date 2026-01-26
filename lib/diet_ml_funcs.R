@@ -287,14 +287,14 @@ run_dietML_ridge_lasso <- function(split_from_data_frame, seed, folds, cv_repeat
         penalty = double(1),
         mixture = ifelse(model == "lasso", 1, 0)
       ) %>%
-        {if (model == "lasso") parsnip::set_engine("glmnet") else parsnip::set_engine("glmnet", path_values = coef_path_values)}
+        {if (model == "lasso") parsnip::set_engine(., "glmnet") else parsnip::set_engine(., "glmnet", path_values = coef_path_values)}
     } else {
       initial_mod <- parsnip::linear_reg(
         mode = "regression",
         penalty = double(1),
         mixture = ifelse(model == "lasso", 1, 0)
       ) %>%
-        {if (model == "lasso") parsnip::set_engine("glmnet") else parsnip::set_engine("glmnet", path_values = coef_path_values)}
+        {if (model == "lasso") parsnip::set_engine(., "glmnet") else parsnip::set_engine(., "glmnet", path_values = coef_path_values)}
     }
   } else {
     if (type == "classification") {
