@@ -10,12 +10,14 @@ source("lib/tree.R")
 # Example cmd:
 # command <- "example_inputs/bike_share_day.csv -o test_outputs -s instant -l cnt --model ridge -t numeric --metric rsq --tune_time 1 --seed 1234 --shap -n 2"
 # commandArgs <- function(x) { unlist(strsplit(command, split = " ")) }
+
 # these will be used by the argparser
 opts <- load_diet_ml_args()
 program <- paste0("dietml")
 
 ## initiate logger
 initiate_logger(opts_object = opts, program = program)
+logger::log_info("Command seen: {paste(commandArgs(), collapse = ' ')}")
 
 ## read in data
 data <- read_in_metadata(input = opts$DATA,
