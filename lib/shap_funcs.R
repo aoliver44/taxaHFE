@@ -52,7 +52,9 @@ shap_analysis <- function(label, output, model, filename, shap_inputs, train, te
   }
   
   ## log the positive class that pfun sees
-  logger::log_info(paste0("Positive class (pfun): ", levels(as.factor(split_from_data_frame$data$feature_of_interest))[1]))
+  if (feature_type == "factor") {
+    logger::log_info(paste0("Positive class (pfun): ", levels(as.factor(split_from_data_frame$data$feature_of_interest))[1]))
+  }
   
   if (is.null(pfun)) {
     message("Error: Could not define prediction function (pfun). Check model and type inputs.")
