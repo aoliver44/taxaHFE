@@ -677,6 +677,17 @@ write_dietml_outputs <- function(type,  best_tidy_workflow, split_from_data_fram
   readr::write_csv(x = full_results, file = paste0(output, "/ml_analysis/ml_results.csv"), 
                    append = T, col_names = !file.exists(paste0(output, "/ml_analysis/ml_results.csv")))
   
+  ## calculate training scores and log them 
+  all_predictions <- bind_rows(tune::augment(final_res$.workflow[[1]], new_data = split_from_data_frame$data[split_from_data_frame$in_id,]) %>% 
+                                 dplyr::mutate(type = "train"), 
+                               tune::augment(final_res$.workflow[[1]], new_data = split_from_data_frame$data[split_from_data_frame$out_id,]) %>% 
+                                 dplyr::mutate(type = "test"))
+  all_predictions <- all_predictions %>% dplyr::group_by(type) %>% yardstick::metrics(feature_of_interest, .pred)
+  logger::log_info("ML results (assessment on test data recorded in ml_results.csv):")
+  for (n in seq(1:nrow(all_predictions))) {
+    logger::log_info(paste0(all_predictions[n,2], " (", all_predictions[n,1], "): ", all_predictions[n,4]))
+  }
+  
   ## return shap inputs list and results. The recipe and workflow are all 
   ## inside the final_res object. This is important to use because the preprocessing 
   ## steps were estimated on the training data and the model trained on the training data
