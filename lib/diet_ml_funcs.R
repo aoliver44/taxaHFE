@@ -679,10 +679,18 @@ write_dietml_outputs <- function(type,  best_tidy_workflow, split_from_data_fram
   
   ## calculate training scores and log them 
   all_predictions <- bind_rows(tune::augment(final_res$.workflow[[1]], new_data = split_from_data_frame$data[split_from_data_frame$in_id,]) %>% 
-                                 dplyr::mutate(type = "train"), 
+                                 dplyr::mutate(.model_input_type = "train"), 
                                tune::augment(final_res$.workflow[[1]], new_data = split_from_data_frame$data[split_from_data_frame$out_id,]) %>% 
-                                 dplyr::mutate(type = "test"))
-  all_predictions <- all_predictions %>% dplyr::group_by(type) %>% yardstick::metrics(feature_of_interest, .pred)
+                                 dplyr::mutate(.model_input_type = "test"))
+  if (type == "classification") {
+    class_metrics <- yardstick::metric_set(bal_accuracy, accuracy, kap, f_meas)
+    all_predictions <- all_predictions %>% dplyr::group_by(.model_input_type) %>% 
+      dplyr::mutate(feature_of_interest = factor(feature_of_interest), .pred_class = factor(.pred_class)) %>% 
+      class_metrics(truth = feature_of_interest, estimate = .pred_class)
+  } else {
+    all_predictions <- all_predictions %>% dplyr::group_by(.model_input_type) %>% yardstick::metrics(feature_of_interest, .pred)
+  }
+  
   logger::log_info("ML results (assessment on test data recorded in ml_results.csv):")
   for (n in seq(1:nrow(all_predictions))) {
     logger::log_info(paste0(all_predictions[n,2], " (", all_predictions[n,1], "): ", all_predictions[n,4]))
