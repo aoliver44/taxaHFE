@@ -136,7 +136,7 @@ run_dietML_ranger <- function(split_from_data_frame, seed, folds, cv_repeats,
   ## hyperparameters =============================================================
   
   if (as.numeric(tune_time) == 0) {
-    no_tune_model <- parsnip::fit(diet_ml_workflow, split_from_data_frame$data[split_from_data_frame$in_id,])
+    no_tune_model <- parsnip::fit(diet_ml_workflow, rsample::training(split_from_data_frame)])
     ## create the last model based on best parameters
     last_best_mod <- 
       parsnip::rand_forest(mtry = no_tune_model$fit[[2]]$fit$mtry, min_n = no_tune_model$fit[[2]]$fit$min.node.size, trees = no_tune_model$fit[[2]]$fit$num.trees) %>% 
@@ -377,9 +377,9 @@ run_null_model <- function(split_from_data_frame, seed, type, output, cv_repeats
   ## fit model
   
   ## fit to test data
-  final_res <- parsnip::fit(diet_ml_workflow, split_from_data_frame$data[split_from_data_frame$out_id,])
+  final_res <- parsnip::fit(diet_ml_workflow, rsample::testing(split_from_data_frame))
   
-  null_estimates <- data.frame(estimate = final_res$fit$fit$fit$value, truth = split_from_data_frame$data[split_from_data_frame$out_id,]$feature_of_interest)
+  null_estimates <- data.frame(estimate = final_res$fit$fit$fit$value, truth = rsample::testing(split_from_data_frame)$feature_of_interest)
   
   if (type== "classification") {
     ## for yardstick, the estimate must have the same number of levels as
@@ -441,7 +441,7 @@ create_data_split_obj <- function(train, test, random_effects) {
 }
 
 set_cv_strategy <- function(split_from_data_frame, folds, feature_of_interest, cv_repeats) {
-  train <- split_from_data_frame$data[split_from_data_frame$in_id,]
+  train <- rsample::training(split_from_data_frame)
   ## set resampling scheme
   cv_folds <- rsample::vfold_cv(train, v = as.numeric(folds), strata = feature_of_interest, repeats = cv_repeats)
   
@@ -452,7 +452,7 @@ set_cv_strategy <- function(split_from_data_frame, folds, feature_of_interest, c
 
 dietml_recipe <- function(split_from_data_frame, cor_level, info_gain_n, type, ncores, model) {
   
-  train <- split_from_data_frame$data[split_from_data_frame$in_id,]
+  train <- rsample::training(split_from_data_frame)
   ## specify recipe (this is like the pre-process work)
   dietML_recipe <- recipes::recipe(feature_of_interest ~ ., data = train) %>% 
     recipes::update_role("subject_id", new_role = "ID") %>% 
@@ -488,7 +488,7 @@ dietml_hp_tune <- function(diet_ml_workflow, model, parallel_workers, folds, typ
   ## told otherwise
   n_inital_models = 5
   
-  train <- split_from_data_frame$data[split_from_data_frame$in_id,]
+  train <- rsample::training(split_from_data_frame)
   ## define the hyper parameter set
   dietML_param_set <- parsnip::extract_parameter_set_dials(diet_ml_workflow)
   
@@ -678,9 +678,9 @@ write_dietml_outputs <- function(type,  best_tidy_workflow, split_from_data_fram
                    append = T, col_names = !file.exists(paste0(output, "/ml_analysis/ml_results.csv")))
   
   ## calculate training scores and log them 
-  all_predictions <- bind_rows(tune::augment(final_res$.workflow[[1]], new_data = split_from_data_frame$data[split_from_data_frame$in_id,]) %>% 
+  all_predictions <- bind_rows(tune::augment(final_res$.workflow[[1]], new_data = rsample::training(split_from_data_frame)) %>% 
                                  dplyr::mutate(.model_input_type = "train"), 
-                               tune::augment(final_res$.workflow[[1]], new_data = split_from_data_frame$data[split_from_data_frame$out_id,]) %>% 
+                               tune::augment(final_res$.workflow[[1]], new_data = rsample::testing(split_from_data_frame)) %>% 
                                  dplyr::mutate(.model_input_type = "test"))
   if (type == "classification") {
     class_metrics <- yardstick::metric_set(bal_accuracy, accuracy, kap, f_meas)
