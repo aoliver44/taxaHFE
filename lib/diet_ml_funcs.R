@@ -136,7 +136,7 @@ run_dietML_ranger <- function(split_from_data_frame, seed, folds, cv_repeats,
   ## hyperparameters =============================================================
   
   if (as.numeric(tune_time) == 0) {
-    no_tune_model <- parsnip::fit(diet_ml_workflow, rsample::training(split_from_data_frame)])
+    no_tune_model <- parsnip::fit(diet_ml_workflow, rsample::training(split_from_data_frame))
     ## create the last model based on best parameters
     last_best_mod <- 
       parsnip::rand_forest(mtry = no_tune_model$fit[[2]]$fit$mtry, min_n = no_tune_model$fit[[2]]$fit$min.node.size, trees = no_tune_model$fit[[2]]$fit$num.trees) %>% 
