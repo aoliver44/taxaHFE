@@ -84,12 +84,15 @@ read_in_metadata <- function(input, subject_identifier, label, feature_type, ran
   ## log read in
   logger::log_info("Read in {input}, which originally contains {original_row_count} rows and {NCOL(metadata)} columns")
   
+  ## log warning if columns were dropped
   if (original_row_count > new_row_count) {
     logger::log_warn("{(original_row_count - new_row_count)} number of DATA/METADATA rows were dropped because they contained NAs")
-    if ((original_row_count - new_row_count) <= 0) {
-      logger::log_fatal("All rows were dropped in NA removal.")
-      stop()
-    }
+  }
+  
+  ## log fatal if all metadata columns were dropped and hard stop
+  if (nrow(metadata) == 0) {
+    logger::log_fatal("All rows were dropped in NA removal.")
+    stop()
   }
   
   ## check and make sure there are not too many metadata columns
@@ -109,10 +112,15 @@ read_in_metadata <- function(input, subject_identifier, label, feature_type, ran
   
   ## for now, we convert continous response to k levels for a random effects run
   if (random_effects) {
+    ## check for individual and time
     if (FALSE %in% (c("individual", "time") %in% colnames(metadata))) {
       logger::log_fatal("You specified random effects, you must have metadata columns named individual and time")
       stop()
     }
+    
+    ## make sure time col in metadata is numeric
+    metadata$time <- as.numeric(metadata$time)
+  
     if (feature_type == "numeric") {
       ## this is real ugly code, from SO (https://stackoverflow.com/questions/39906180/consistent-cluster-order-with-kmeans-in-r)
       ## basically it calculates the kmeans and sorts the clusters based on the center means
@@ -771,13 +779,15 @@ rf_competition <- function(df, metadata, parent_descendent_competition, feature_
         dplyr::rename(., "importance" = "importance_rank") %>%
         tibble::rownames_to_column(var = "taxa") 
       ranger_result <- merge(ranger_avg_abundance, ranger_slope, by = "taxa", all = T)
-      ranger_result %>% dplyr::mutate(., importance = (importance.x + importance.y)/2) %>% dplyr::select(., -importance.x, -importance.y)
+      ranger_result <- ranger_result %>% dplyr::mutate(., importance = (importance.x + importance.y)/2) %>% dplyr::select(., -importance.x, -importance.y)
+      return(ranger_result)
       
     } else {
-      ranger::ranger(response_formula, data = merged_data, importance = "impurity_corrected", seed = seed, sample.fraction = 1, replace = TRUE, num.threads = ncores)$variable.importance %>%
+      ranger_result <- ranger::ranger(response_formula, data = merged_data, importance = "impurity_corrected", seed = seed, sample.fraction = 1, replace = TRUE, num.threads = ncores)$variable.importance %>%
         as.data.frame() %>%
         dplyr::rename(., "importance" = ".") %>%
         tibble::rownames_to_column(var = "taxa")
+      return(ranger_result)
     }
   }
   
@@ -1087,7 +1097,11 @@ prep_re_data <- function(input, feature_type, abund) {
     ## remove individual and time columns from dataset for RF
     merged_data_avg_abund_rf <- merged_data_avg_abund %>% dplyr::select(., -individual, -time)
     
-    if (abund) {
+  } else {
+    merged_data_avg_abund <- merged_data_hotencode
+  }
+  
+  if (abund) {
       return(merged_data_avg_abund_rf)
     } else {
       ## slope analysis ##
@@ -1117,7 +1131,6 @@ prep_re_data <- function(input, feature_type, abund) {
       
       return(merged_data_slope_rf)
     }
-  } 
 }
 
 unregister_dopar <- function() {
