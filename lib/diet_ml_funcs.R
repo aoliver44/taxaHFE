@@ -190,38 +190,31 @@ run_dietML_enet <- function(split_from_data_frame, seed, folds, cv_repeats,
                                   type = type, ncores = ncores, model = model)
   
   ## ML engine
-  
   ## specify ML model and engine 
-  if (as.numeric(tune_time) == 0) {
+  ## if tune_time = 0, only lightly tune penalty, which is mandatory.
     # Define model with fixed penalty and mixture
-    if (type == "classification") {
+    if (type == "classification" && length(levels(as.factor(split_from_data_frame$data$feature_of_interest))) == 2) {
       initial_mod <- parsnip::logistic_reg(
         mode = "classification",
-        penalty = double(1),
-        mixture = 0.5
+        penalty = tune(),
+        mixture = ifelse(tune_time == 0, 0.5, tune())
       ) %>%
-        parsnip::set_engine("glmnet")
-    } else {
+        parsnip::set_engine("glmnet") 
+    } else if (type == "classification" && length(levels(as.factor(split_from_data_frame$data$feature_of_interest))) > 2) {
+      initial_mod <- parsnip::multinom_reg(
+        mode = "classification",
+        penalty = tune(),
+        mixture = ifelse(tune_time == 0, 0.5, tune())
+      ) %>%
+        parsnip::set_engine("glmnet") 
+    } else if (type == "regression") {
       initial_mod <- parsnip::linear_reg(
         mode = "regression",
-        penalty = double(1),
-        mixture = 0.5
+        penalty = tune(),
+        mixture = ifelse(tune_time == 0, 0.5, tune())
       ) %>%
         parsnip::set_engine("glmnet")
     }
-  } else {
-    if (type == "classification") {
-      initial_mod <- parsnip::logistic_reg(mode = "classification", 
-                                           penalty = tune(),
-                                           mixture = tune()) %>%
-        parsnip::set_engine("glmnet")
-    } else {
-      initial_mod <- parsnip::linear_reg(mode = "regression", 
-                                         penalty = tune(),
-                                         mixture = tune()) %>%
-        parsnip::set_engine("glmnet")
-    }
-  } 
   
   ## workflow ==================================================================
   
@@ -230,7 +223,15 @@ run_dietML_enet <- function(split_from_data_frame, seed, folds, cv_repeats,
   
   ## hyperparameters =============================================================
   if (as.numeric(tune_time) == 0) {
-    best_tidy_workflow <- diet_ml_workflow 
+    logger::log_warn("You specified tune_time = 0, but penalized regression requires selecting a penalty. 
+                     We do a fast, light cross-validation to choose a reasonable value. However, if your 
+                     dataset is large, this may take a little time.")
+    best_tidy_workflow <- dietml_hp_tune(split_from_data_frame = split_from_data_frame, 
+                                         diet_ml_workflow = diet_ml_workflow, model = model, 
+                                         parallel_workers = parallel_workers, 
+                                         folds = folds, type = type, tune_time = 0, 
+                                         seed = seed, tune_stop = tune_stop, metric = metric, 
+                                         ncores = ncores, output = output, tune_length = 10)
   } 
   else {
     best_tidy_workflow <- dietml_hp_tune(split_from_data_frame = split_from_data_frame, 
@@ -274,42 +275,25 @@ run_dietML_ridge_lasso <- function(split_from_data_frame, seed, folds, cv_repeat
                                   type = type, ncores = ncores, model = model)
   
   ## ML engine
-  ## specify regularizaton path for pure ridge regression because of theis issue
-  ## https://github.com/tidymodels/parsnip/issues/431#issuecomment-782883848
-  coef_path_values <- c(0, 10^seq(-8, 3, length.out = 100))
-  
   ## specify ML model and engine 
-  if (as.numeric(tune_time) == 0) {
-    # Define model with fixed penalty and mixture
-    if (type == "classification") {
-      initial_mod <- parsnip::logistic_reg(
-        mode = "classification",
-        penalty = double(1),
-        mixture = ifelse(model == "lasso", 1, 0)
-      ) %>%
-        {if (model == "lasso") parsnip::set_engine(., "glmnet") else parsnip::set_engine(., "glmnet", path_values = coef_path_values)}
-    } else {
-      initial_mod <- parsnip::linear_reg(
-        mode = "regression",
-        penalty = double(1),
-        mixture = ifelse(model == "lasso", 1, 0)
-      ) %>%
-        {if (model == "lasso") parsnip::set_engine(., "glmnet") else parsnip::set_engine(., "glmnet", path_values = coef_path_values)}
-    }
-  } else {
-    if (type == "classification") {
+  if (type == "classification" && length(levels(as.factor(split_from_data_frame$data$feature_of_interest))) == 2) {
       initial_mod <- parsnip::logistic_reg(mode = "classification", 
                                            penalty = tune(),
                                            mixture = ifelse(model == "lasso", 1, 0)) %>%
-        {if (model == "lasso") parsnip::set_engine(., "glmnet") else parsnip::set_engine(., "glmnet", path_values = coef_path_values)}
-        
-    } else {
+        parsnip::set_engine("glmnet", standardize = FALSE)
+    } else if (type == "classification" && length(levels(as.factor(split_from_data_frame$data$feature_of_interest))) > 2) {
+      initial_mod <- parsnip::multinom_reg(
+        mode = "classification",
+        penalty = tune(),
+        mixture = ifelse(model == "lasso", 1, 0)
+      ) %>%
+        parsnip::set_engine("glmnet") 
+    } else if (type == "regression") {
       initial_mod <- parsnip::linear_reg(mode = "regression", 
                                          penalty = tune(),
                                          mixture = ifelse(model == "lasso", 1, 0)) %>%
-        {if (model == "lasso") parsnip::set_engine(., "glmnet") else parsnip::set_engine(., "glmnet", path_values = coef_path_values)}
+        parsnip::set_engine("glmnet", standardize = FALSE)
     }
-  } 
   
   ## workflow ==================================================================
   
@@ -318,7 +302,15 @@ run_dietML_ridge_lasso <- function(split_from_data_frame, seed, folds, cv_repeat
   
   ## hyperparameters =============================================================
   if (as.numeric(tune_time) == 0) {
-    best_tidy_workflow <- diet_ml_workflow 
+    logger::log_warn("You specified tune_time = 0, but penalized regression requires selecting a penalty. 
+                     We do a fast, light cross-validation to choose a reasonable value. However, if your 
+                     dataset is large, this may take a little time.")
+    best_tidy_workflow <- dietml_hp_tune(split_from_data_frame = split_from_data_frame, 
+                                         diet_ml_workflow = diet_ml_workflow, model = model, 
+                                         parallel_workers = parallel_workers, 
+                                         folds = folds, type = type, tune_time = 0, 
+                                         seed = seed, tune_stop = tune_stop, metric = metric, 
+                                         ncores = ncores, output = output, tune_length = 10)
   } 
   else {
     best_tidy_workflow <- dietml_hp_tune(split_from_data_frame = split_from_data_frame, 
@@ -373,47 +365,48 @@ run_null_model <- function(split_from_data_frame, seed, type, output, cv_repeats
   ## workflow ==================================================================
   
   ## define workflow
-  diet_ml_workflow <- dietml_workflow(mode = initial_mod, recipe = diet_ml_recipe)
-  ## fit model
+  diet_ml_workflow <- dietml_workflow(model_obj = initial_mod, recipe = diet_ml_recipe)
   
-  ## fit to test data
-  final_res <- parsnip::fit(diet_ml_workflow, rsample::testing(split_from_data_frame))
+  ## fit to test data using last_fit, same as the other models
+  if (type == "classification") {
+    final_res <- tune::last_fit(diet_ml_workflow, split_from_data_frame,
+                                metrics = yardstick::metric_set(bal_accuracy, 
+                                                                roc_auc, accuracy, 
+                                                                kap, f_meas))
+  } else if (type == "regression") {
+    final_res <- tune::last_fit(diet_ml_workflow, split_from_data_frame,
+                                metrics = yardstick::metric_set(mae, rmse, rsq, 
+                                                                ccc))
+  }
   
-  null_estimates <- data.frame(estimate = final_res$fit$fit$fit$value, truth = rsample::testing(split_from_data_frame)$feature_of_interest)
+  ## extract predictions on test set
+  null_estimates <- workflowsets::collect_predictions(final_res)
   
-  if (type== "classification") {
-    ## for yardstick, the estimate must have the same number of levels as
-    ## the truth, even though the estimate will take on only one value
-    null_estimates$estimate <- factor(x = null_estimates$estimate, levels = levels(as.factor(null_estimates$truth)))
+  if (type == "classification") {
+    null_estimates$feature_of_interest <- factor(null_estimates$feature_of_interest)
+    null_estimates$.pred_class <- factor(null_estimates$.pred_class, levels = levels(null_estimates$feature_of_interest))
     results_df <- results_df %>% 
       tibble::add_row(., bal_accuracy = 
-                        yardstick::bal_accuracy_vec(truth = as.factor(null_estimates$truth), 
-                                                    estimate = as.factor(null_estimates$estimate), 
-                                                    data = null_estimates), 
+                        yardstick::bal_accuracy_vec(truth = null_estimates$feature_of_interest, 
+                                                    estimate = null_estimates$.pred_class), 
                       accuracy = 
-                        yardstick::accuracy_vec(truth = as.factor(null_estimates$truth), 
-                                                estimate = as.factor(null_estimates$estimate), 
-                                                data = null_estimates), 
+                        yardstick::accuracy_vec(truth = null_estimates$feature_of_interest, 
+                                                estimate = null_estimates$.pred_class), 
                       f_meas = 
-                        yardstick::f_meas_vec(truth = as.factor(null_estimates$truth), 
-                                              estimate = as.factor(null_estimates$estimate), 
-                                              data = null_estimates),
+                        yardstick::f_meas_vec(truth = null_estimates$feature_of_interest, 
+                                              estimate = null_estimates$.pred_class),
                       seed = seed)
   } else if (type == "regression") {
     results_df <- results_df %>% 
       tibble::add_row(., mae = 
-                        yardstick::mae_vec(truth = null_estimates$truth, 
-                                           estimate = null_estimates$estimate, 
-                                           data = null_estimates), 
+                        yardstick::mae_vec(truth = null_estimates$feature_of_interest, 
+                                           estimate = null_estimates$.pred), 
                       rmse = 
-                        yardstick::rmse_vec(truth = null_estimates$truth, 
-                                            estimate = null_estimates$estimate, 
-                                            data = null_estimates),
-                      ccc = yardstick::ccc_vec(truth = null_estimates$truth, 
-                                               estimate = null_estimates$estimate, 
-                                               data = null_estimates),
+                        yardstick::rmse_vec(truth = null_estimates$feature_of_interest, 
+                                            estimate = null_estimates$.pred),
+                      ccc = yardstick::ccc_vec(truth = null_estimates$feature_of_interest, 
+                                               estimate = null_estimates$.pred),
                       seed = seed)
-    
   }
   
   ## write table of results to file
@@ -425,7 +418,6 @@ run_null_model <- function(split_from_data_frame, seed, type, output, cv_repeats
   
   ## return results_df because that is what the other models need (ranger, enet)
   return(results_df)
-  
 }
 
 create_data_split_obj <- function(train, test, random_effects) {
@@ -433,7 +425,7 @@ create_data_split_obj <- function(train, test, random_effects) {
   ## remove individual and train if random effects
   if (random_effects) {
     train <- train %>% dplyr::select(., -dplyr::any_of(c("individual", "time")))
-    test <- train %>% dplyr::select(., -dplyr::any_of(c("individual", "time")))
+    test <- test %>% dplyr::select(., -dplyr::any_of(c("individual", "time")))
   }
   
   split_from_data_frame <- rsample::make_splits(x = train, assessment = test)
@@ -497,7 +489,7 @@ dietml_hp_tune <- function(diet_ml_workflow, model, parallel_workers, folds, typ
     dietML_param_set <- 
       dietML_param_set %>% 
       # Pick an upper bound for mtry: 
-      recipes::update(mtry = mtry(range(1, ncol(train %>% dplyr::select(., dplyr::any_of(c("feature_of_interest", "subject_id")))))))
+      recipes::update(mtry = mtry(range(1, ncol(train %>% dplyr::select(., -dplyr::any_of(c("feature_of_interest", "subject_id")))))))
   }
   
   ## make sure the penalty is a wide enough space, else some metrics like MAE
@@ -508,7 +500,7 @@ dietml_hp_tune <- function(diet_ml_workflow, model, parallel_workers, folds, typ
       dietML_param_set %>% 
       # widen the penalty search space, help prevent MAE from locking into zero variance: 
       recipes::update(penalty = penalty(range = c(-8, 3), trans = scales::transform_log10())) %>%
-      {if (model == "enet") recipes::update(., mixture = mixture(range(0.1, 0.9))) else .}
+      {if (model == "enet" && tune_time > 0) recipes::update(., mixture = mixture(range(0.1, 0.9))) else .}
     
     n_inital_models = 20
   }
@@ -540,7 +532,7 @@ dietml_hp_tune <- function(diet_ml_workflow, model, parallel_workers, folds, typ
                                       uncertain = 5,
                                       verbose = FALSE,
                                       parallel_over = "resamples",
-                                      time_limit = as.numeric(tune_time),
+                                      time_limit = ifelse(tune_time == 0 && model %in% c("enet", "ridge", "lasso"), 10e5, as.numeric(tune_time)), # fake super long time to allow 10 iterations to find penalty for tune_time = 0 (penalized regression)
                                       seed = as.numeric(seed),
                                       save_pred = FALSE)
       )
@@ -562,7 +554,7 @@ dietml_hp_tune <- function(diet_ml_workflow, model, parallel_workers, folds, typ
                                       uncertain = 5,
                                       verbose = FALSE,
                                       parallel_over = "resamples",
-                                      time_limit = as.numeric(tune_time),
+                                      time_limit = ifelse(tune_time == 0 && model %in% c("enet", "ridge", "lasso"), 10e5, as.numeric(tune_time)), # fake super long time to allow 10 iterations to find penalty for tune_time = 0 (penalized regression)
                                       seed = as.numeric(seed),
                                       save_pred = FALSE)
       )
@@ -590,42 +582,56 @@ dietml_hp_tune <- function(diet_ml_workflow, model, parallel_workers, folds, typ
   } 
   
   ## create the last model based on best parameters: Elastic Net
+  ## if no tune time, make sure mixture is is set to 0.5
   if (model == "enet") {
-    if (type == "classification") {
+    if (type == "classification" && length(levels(as.factor(split_from_data_frame$data$feature_of_interest))) == 2) {
       last_best_mod <- 
-        parsnip::logistic_reg(mode = "classification", penalty = best_mod$penalty, mixture = best_mod$mixture) %>% 
-        parsnip::set_engine("glmnet") %>% 
+        parsnip::logistic_reg(mode = "classification", penalty = best_mod$penalty, mixture = ifelse(tune_time == 0, 0.5, best_mod$mixture)) %>% 
+        parsnip::set_engine("glmnet", standardize = FALSE) %>% 
         parsnip::set_mode(type)
-    } else {
+    } else if (type == "classification" && length(levels(as.factor(split_from_data_frame$data$feature_of_interest))) > 2) { 
       last_best_mod <- 
-        parsnip::linear_reg(mode = "regression", penalty = best_mod$penalty, mixture = best_mod$mixture) %>% 
-        parsnip::set_engine("glmnet") %>% 
+        parsnip::multinom_reg(mode = "classification", penalty = best_mod$penalty, mixture = ifelse(tune_time == 0, 0.5, best_mod$mixture)) %>% 
+        parsnip::set_engine("glmnet", standardize = FALSE) %>% 
+        parsnip::set_mode(type)
+      } else if(type == "regression") {
+      last_best_mod <- 
+        parsnip::linear_reg(mode = "regression", penalty = best_mod$penalty, mixture = ifelse(tune_time == 0, 0.5, best_mod$mixture)) %>% 
+        parsnip::set_engine("glmnet", standardize = FALSE) %>% 
         parsnip::set_mode(type)
     }
   }
   
   ## create the last model based on best parameters: Ridge or Lasso
-  ## specify regularizaton path for pure ridge regression because of theis issue
-  ## https://github.com/tidymodels/parsnip/issues/431#issuecomment-782883848
-  coef_path_values <- c(0, 10^seq(-6, 2, length.out = 100))
-  
   if (model %in% c("ridge", "lasso")) {
     ## create the last model based on best parameters
     if (type == "classification" && model == "lasso") {
-      last_best_mod <- parsnip::logistic_reg(mode = "classification", penalty = best_mod$penalty, mixture = 1) %>% 
-        parsnip::set_engine("glmnet") %>% 
-        parsnip::set_mode(type)
+      if (length(levels(as.factor(split_from_data_frame$data$feature_of_interest))) == 2) {
+        last_best_mod <- parsnip::logistic_reg(mode = "classification", penalty = best_mod$penalty, mixture = 1) %>% 
+          parsnip::set_engine("glmnet", standardize = FALSE) %>% 
+          parsnip::set_mode(type) 
+      } else if (length(levels(as.factor(split_from_data_frame$data$feature_of_interest))) > 2) {
+        last_best_mod <- parsnip::multinom_reg(mode = "classification", penalty = best_mod$penalty, mixture = 1) %>% 
+          parsnip::set_engine("glmnet", standardize = FALSE) %>% 
+          parsnip::set_mode(type) 
+      }
     } else if (type == "classification" && model == "ridge") {
-      last_best_mod <- parsnip::logistic_reg(mode = "classification", penalty = best_mod$penalty, mixture = 0) %>% 
-        parsnip::set_engine("glmnet") %>% 
-        parsnip::set_mode(type)
+      if (length(levels(as.factor(split_from_data_frame$data$feature_of_interest))) == 2) {
+        last_best_mod <- parsnip::logistic_reg(mode = "classification", penalty = best_mod$penalty, mixture = 0) %>% 
+          parsnip::set_engine("glmnet", standardize = FALSE) %>% 
+          parsnip::set_mode(type) 
+      } else if (length(levels(as.factor(split_from_data_frame$data$feature_of_interest))) > 2) {
+        last_best_mod <- parsnip::multinom_reg(mode = "classification", penalty = best_mod$penalty, mixture = 0) %>% 
+          parsnip::set_engine("glmnet", standardize = FALSE) %>% 
+          parsnip::set_mode(type) 
+      }
     } else if (type == "regression" && model == "lasso") {
       last_best_mod <- parsnip::linear_reg(mode = "regression", penalty = best_mod$penalty, mixture = 1) %>% 
-        parsnip::set_engine("glmnet") %>% 
+        parsnip::set_engine("glmnet", standardize = FALSE) %>% 
         parsnip::set_mode(type)
     } else if (type == "regression" && model == "ridge") {
       last_best_mod <- parsnip::linear_reg(mode = "regression", penalty = best_mod$penalty, mixture = 0) %>% 
-        parsnip::set_engine("glmnet") %>% 
+        parsnip::set_engine("glmnet", standardize = FALSE) %>% 
         parsnip::set_mode(type)
     }
   }
