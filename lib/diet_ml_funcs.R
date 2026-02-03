@@ -438,7 +438,7 @@ set_cv_strategy <- function(split_from_data_frame, folds, feature_of_interest, c
   cv_folds <- rsample::vfold_cv(train, v = as.numeric(folds), strata = feature_of_interest, repeats = cv_repeats)
   
   ## log CV strategy
-  logger::log_info("Stratified (across the response) cross validation strategy set, using {as.numeric(folds)} and repeating {cv_repeats}x time(s).")
+  logger::log_info("Stratified (across the response) cross validation strategy set, using {as.numeric(folds)} folds and repeating {cv_repeats}x time(s).")
   return(cv_folds)
 }
 
@@ -489,7 +489,7 @@ dietml_hp_tune <- function(diet_ml_workflow, model, parallel_workers, folds, typ
     dietML_param_set <- 
       dietML_param_set %>% 
       # Pick an upper bound for mtry: 
-      recipes::update(mtry = mtry(range(1, ncol(train %>% dplyr::select(., -dplyr::any_of(c("feature_of_interest", "subject_id")))))))
+      recipes::update(mtry = mtry(range(1, ncol(train %>% dplyr::select(., -dplyr::any_of(c("feature_of_interest", "subject_id"))))))) 
   }
   
   ## make sure the penalty is a wide enough space, else some metrics like MAE
@@ -572,6 +572,17 @@ dietml_hp_tune <- function(diet_ml_workflow, model, parallel_workers, folds, typ
   best_mod <- 
     search_res %>% 
     tune::select_best(metric = metric)
+  
+  ## can also get a more regularized tree?
+  # best_mod_other <- 
+  #   search_res %>% 
+  #   tune::select_by_one_std_err(metric = metric, desc(min_n), desc(mtry), desc(trees))
+  
+  ## log hyperparameters selected for best
+  logger::log_info("Hyperparameters selected: ")
+  for (n in seq(1:ncol(best_mod))) {
+    logger::log_info(paste0(colnames(best_mod[n]), ": ", best_mod[1,n]))
+  }
   
   ## create the last model based on best parameters: Random Forest
   if (model == "rf") {
