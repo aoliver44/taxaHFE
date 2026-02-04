@@ -573,7 +573,7 @@ dietml_hp_tune <- function(diet_ml_workflow, model, parallel_workers, folds, typ
   #   search_res %>% 
   #   tune::select_best(metric = metric)
   
-  ## can also get a more regularized tree?
+  ## Get the parameters which lead to simpiler, less overfit, model that are 1SE of best model
   if (model == "rf") {
     best_mod <-
       search_res %>%
@@ -584,8 +584,21 @@ dietml_hp_tune <- function(diet_ml_workflow, model, parallel_workers, folds, typ
       tune::select_by_one_std_err(metric = metric, desc(penalty))
   }
   
+  ## log hyperparameters selected for less-complex, best model
+  logger::log_info("Training parameters selected based on simplist model which optimize performance 
+                   (within 1 SE of best model). This helps prevent overfitting. Thus, you may see training performance 
+                   is VERY slightly lower than testing performance in some cases. 
+                   
+                   In order to select a less complex model, for tree based models we select the models
+                   with the highest min_node_size, ntree, and mtry parameters that produce a model within 1 SE
+                   of the best tuned model.
+                   
+                   For penalized regression, we select the model with the
+                   highest penalty that is 1 SE of a model with no constraints. 
+                   
+                   These efforts are all aimed to decrease the overfitting of a trained model, potentially 
+                   decreasing the generalizability gap (that is, the difference between the training and test score).")
   
-  ## log hyperparameters selected for best
   logger::log_info("Hyperparameters selected: ")
   for (n in seq(1:ncol(best_mod))) {
     logger::log_info(paste0(colnames(best_mod[n]), ": ", best_mod[1,n]))
