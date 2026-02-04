@@ -569,14 +569,21 @@ dietml_hp_tune <- function(diet_ml_workflow, model, parallel_workers, folds, typ
   ## fit best model ============================================================
   
   ## get the best parameters from tuning
-  best_mod <- 
-    search_res %>% 
-    tune::select_best(metric = metric)
+  # best_mod <- 
+  #   search_res %>% 
+  #   tune::select_best(metric = metric)
   
   ## can also get a more regularized tree?
-  # best_mod_other <- 
-  #   search_res %>% 
-  #   tune::select_by_one_std_err(metric = metric, desc(min_n), desc(mtry), desc(trees))
+  if (model == "rf") {
+    best_mod <-
+      search_res %>%
+      tune::select_by_one_std_err(metric = metric, desc(min_n), desc(mtry), desc(trees))
+  } else if (model %in% c("ridge", "lasso", "enet")) {
+    best_mod <-
+      search_res %>%
+      tune::select_by_one_std_err(metric = metric, desc(penalty))
+  }
+  
   
   ## log hyperparameters selected for best
   logger::log_info("Hyperparameters selected: ")
