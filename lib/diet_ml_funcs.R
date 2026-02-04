@@ -489,7 +489,8 @@ dietml_hp_tune <- function(diet_ml_workflow, model, parallel_workers, folds, typ
     dietML_param_set <- 
       dietML_param_set %>% 
       # Pick an upper bound for mtry: 
-      recipes::update(mtry = mtry(range(1, ncol(train %>% dplyr::select(., -dplyr::any_of(c("feature_of_interest", "subject_id"))))))) 
+      recipes::update(mtry = mtry(range(1, ncol(train %>% dplyr::select(., -dplyr::any_of(c("feature_of_interest", "subject_id")))))))  %>%
+      recipes::update(trees = trees(range(500,1500))
   }
   
   ## make sure the penalty is a wide enough space, else some metrics like MAE
@@ -577,7 +578,7 @@ dietml_hp_tune <- function(diet_ml_workflow, model, parallel_workers, folds, typ
   if (model == "rf") {
     best_mod <-
       search_res %>%
-      tune::select_by_one_std_err(metric = metric, desc(min_n), desc(mtry), desc(trees))
+      tune::select_by_one_std_err(metric = metric, desc(min_n), mtry)
   } else if (model %in% c("ridge", "lasso", "enet")) {
     best_mod <-
       search_res %>%
@@ -590,8 +591,7 @@ dietml_hp_tune <- function(diet_ml_workflow, model, parallel_workers, folds, typ
                    is VERY slightly lower than testing performance in some cases. 
                    
                    In order to select a less complex model, for tree based models we select the models
-                   with the highest min_node_size, ntree, and mtry parameters that produce a model within 1 SE
-                   of the best tuned model.
+                   with the highest min_node_size and lowest mtry that produce a model within 1 SE of the best tuned model.
                    
                    For penalized regression, we select the model with the highest penalty that is 1 SE of the 
                    best tuned model. 
