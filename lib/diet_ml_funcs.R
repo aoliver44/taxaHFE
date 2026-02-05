@@ -489,8 +489,8 @@ dietml_hp_tune <- function(diet_ml_workflow, model, parallel_workers, folds, typ
     dietML_param_set <- 
       dietML_param_set %>% 
       # Pick an upper bound for mtry: 
-      recipes::update(mtry = mtry(range(1, ncol(train %>% dplyr::select(., -dplyr::any_of(c("feature_of_interest", "subject_id")))))))  %>%
-      recipes::update(trees = trees(range(500,1500))
+      recipes::update(mtry = mtry(range(1, ncol(train %>% dplyr::select(., -dplyr::any_of(c("feature_of_interest", "subject_id"))))))) %>%
+      recipes::update(trees = trees(range(500,1500)))
   }
   
   ## make sure the penalty is a wide enough space, else some metrics like MAE
