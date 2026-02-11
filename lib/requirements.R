@@ -33,4 +33,6 @@ library(testthat, quietly = TRUE, verbose = FALSE, warn.conflicts = FALSE)
 library(covr, quietly = TRUE, verbose = FALSE, warn.conflicts = FALSE)
 library(remotes, quietly = TRUE, verbose = FALSE, warn.conflicts = FALSE)
 library(logger, quietly = TRUE, verbose = FALSE, warn.conflicts = FALSE)
+library(collinear, quietly = TRUE, verbose = FALSE, warn.conflicts = FALSE)
+
 

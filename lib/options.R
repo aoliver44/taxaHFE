@@ -47,6 +47,7 @@ argument_groups <- list(
     args=list(
       train_split=list("--train_split", type="numeric", metavar="<numeric>", default="0.8", help="Percentage of samples to use for training"),
       info_gain_n=list("--info_gain_n", type="numeric", metavar="<numeric>", default = 0, help="Should information gain preprocessing be used? Set n number of features to be selected during preprocessesing. Bypasses info_gain_n if set to 0."),
+      vif_threshold=list("--vif_threshold", type="numeric", metavar="<numeric>", default = 10, help="Calculates variance inflation factor (VIF) scores and removes variables about a user-defined threshold. Bypasses vif_threshold if set to 0."),
       model=list("--model", type="character", metavar="<string>", default="rf", choices=c("rf", "enet", "lasso", "ridge"), help="ML model to use. Options: rf, enet, lasso, ridge."),
       folds=list("--folds", type="numeric", metavar="<numeric>", default="10", help="Number of CV folds for tuning"),
       cv_repeats=list("--cv_repeats", type="numeric", metavar="<numeric>", default="3", help="Number of CV repeats to perform for repeated CV"),
@@ -67,6 +68,7 @@ argument_groups <- list(
       label=list("-l", "--label", type="character", metavar="<string>", default="feature_of_interest", help="Metadata column name of interest for ML"),
       cor_level=list("-c", "--cor_level", type="numeric", metavar="<numeric>", default = 1, help="Initial pearson correlation filter. Bypasses cor_level filter if set to 1"),
       info_gain_n=list("--info_gain_n", type="numeric", metavar="<numeric>", default = 0, help="Should information gain preprocessing be used? Set n number of features to be selected during preprocessesing. Bypasses info_gain_n if set to 0."),
+      vif_threshold=list("--vif_threshold", type="numeric", metavar="<numeric>", default = 10, help="Calculates variance inflation factor (VIF) scores and removes variables about a user-defined threshold. Bypasses vif_threshold if set to 0."),
       train_split=list("--train_split", type="numeric", metavar="<numeric>", default="0.8", help="Percentage of samples to use for training"),
       model=list("--model", type="character", metavar="<string>", default="rf", choices=c("rf", "enet", "lasso", "ridge"), help="ML model to use. Options: rf, enet, lasso, ridge."),
       folds=list("--folds", type="numeric", metavar="<numeric>", default="10", help="Number of CV folds for tuning"),
@@ -112,7 +114,8 @@ validators <- list(
   cv_repeats=validate_numeric(min=1, max_warning=list(5, "a high about of repeats can result in a large amount of model fits, increasing run time")),
   tune_time=validate_numeric(min=0, max_warning=list(480, "spending excessive time tuning hyperparameters my not result in substaintal increases in accuracy")),
   seed=validate_numeric(min = -1 * .Machine$integer.max, max = .Machine$integer.max),
-  info_gain_n=validate_numeric(min=0)
+  info_gain_n=validate_numeric(min=0),
+  vif_threshold=validate_numeric(min=0, max_warning=list(11, "a VIF score above 10 may result in features that are significantly collinear."))
 )
 
 # Function to initialize parser for a program
