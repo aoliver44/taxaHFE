@@ -65,6 +65,7 @@ shap_inputs <- run_dietML(train = as.data.frame(train_data),
                           feature_type = opts$feature_type, 
                           shap = opts$shap, 
                           cor_level = opts$cor_level, 
+                          vif_threshold = opts$vif_threshold,
                           info_gain_n = opts$info_gain_n
 )
 

@@ -28,9 +28,12 @@ suppressPackageStartupMessages(library(argparse, quietly = TRUE, verbose = FALSE
 suppressPackageStartupMessages(library(parallel, quietly = TRUE, verbose = FALSE, warn.conflicts = FALSE))
 suppressPackageStartupMessages(library(parallelly, quietly = TRUE, verbose = FALSE, warn.conflicts = FALSE))
 library(stringr, quietly = TRUE, verbose = FALSE, warn.conflicts = FALSE)
+library(logger, quietly = TRUE, verbose = FALSE, warn.conflicts = FALSE)
+library(collinear, quietly = TRUE, verbose = FALSE, warn.conflicts = FALSE)
 # these are the test dependencies
 library(testthat, quietly = TRUE, verbose = FALSE, warn.conflicts = FALSE)
 library(covr, quietly = TRUE, verbose = FALSE, warn.conflicts = FALSE)
 library(remotes, quietly = TRUE, verbose = FALSE, warn.conflicts = FALSE)
-library(logger, quietly = TRUE, verbose = FALSE, warn.conflicts = FALSE)
+
+
 
