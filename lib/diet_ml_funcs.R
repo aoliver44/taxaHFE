@@ -479,9 +479,10 @@ dietml_recipe <- function(split_from_data_frame, cor_level, vif_threshold, info_
                        zero variance filtering, and information gain are all done inside the recipe.
                        Note, the VIF/Correlation is only done on the training data! Not the entire data.
                        We perform this using the collinear package in R. Their documentation is very good,
-                       please look at the defaults and assumptions they employ. Note the only collinear arguements
-                       we modify, beyond the VIF and correlation thresholds, is the function to rank predictors. 
-                       We use f_categorical_rf() for classification tasks and f_numeric_rf for regression tasks.
+                       please look at the defaults and assumptions they employ (e.g. vars dropped due to low variance). 
+                       Note the only collinear arguements we modify, beyond the VIF and correlation thresholds, is 
+                       the function to rank predictors. We use f_categorical_rf() for classification tasks and 
+                       f_numeric_rf() for regression tasks.
                        ")
       ## log the stats prior to VIF/Correlation
       logger::log_info(paste0("(Pre) Mean VIF, Correlation: ", 
