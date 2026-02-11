@@ -494,7 +494,9 @@ dietml_recipe <- function(split_from_data_frame, cor_level, vif_threshold, info_
           responses = "feature_of_interest",
           f = collinear::f_categorical_rf,
           max_cor = cor_level,
-          max_vif = vif_threshold
+          max_vif = vif_threshold, 
+          cv_training_fraction = 0.5, cv_iterations = 10,
+          quiet = TRUE
         )
       } else {
         filtered_vars <- collinear::collinear(
@@ -504,6 +506,7 @@ dietml_recipe <- function(split_from_data_frame, cor_level, vif_threshold, info_
           f = collinear::f_numeric_rf,
           max_cor = cor_level,
           max_vif = vif_threshold, 
+          cv_training_fraction = 0.5, cv_iterations = 10,
           quiet = TRUE
         )
       }
