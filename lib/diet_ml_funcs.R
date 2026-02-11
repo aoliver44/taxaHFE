@@ -469,7 +469,8 @@ dietml_recipe <- function(split_from_data_frame, cor_level, vif_threshold, info_
       dplyr::select(., -feature_of_interest, -subject_id) %>%
       dplyr::select(where(is.numeric)) %>%
       names()
-    
+    logger::log_info(paste0("# numeric features identified in training data: ", length(numeric_vars)))
+
     if (length(numeric_vars) > 0) {
       ## log mean and median correlation and VIF before removing
       collinear_stats_pre <- collinear_stats(train, predictors = numeric_vars, responses = "feature_of_interest")
@@ -515,7 +516,7 @@ dietml_recipe <- function(split_from_data_frame, cor_level, vif_threshold, info_
       ## keep track of vars kept or dropped
       vars_to_keep <- c("subject_id", "feature_of_interest", filtered_vars$feature_of_interest$selection)
       vif_vars_to_drop <- numeric_vars[numeric_vars %!in% vars_to_keep]
-      
+      logger::log_info(paste0("# numeric features dropped due to VIF/Correlation: ", length(vif_vars_to_drop)))
       train_filtered <- train %>% dplyr::select(-dplyr::all_of(vif_vars_to_drop))
 
       ## log the stats after  VIF/Correlation
