@@ -62,6 +62,7 @@ diet_ml_inputs <- method_taxa_hfe_ml(
   lowest_level = opts$lowest_level,
   max_level = opts$max_level,
   cor_level = opts$cor_level,
+  vif_threshold = opts$vif_threshold,
   ncores = (opts$ncores * opts$parallel_workers),
   feature_type = opts$feature_type,
   nperm = opts$nperm,
