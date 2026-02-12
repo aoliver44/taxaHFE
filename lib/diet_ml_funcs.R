@@ -30,20 +30,27 @@ run_dietML <- function(train, test, model, program, seed,
     stop()
   } 
   
-  ## combine train and test data into a data split object
-  split_from_data_frame <- create_data_split_obj(train = train, test = test, 
-                                                 random_effects = random_effects)
-  
   ## check if classification was mis-specified
   if (feature_type == "factor") {
     type <- "classification"
     if (length(levels(as.factor(split_from_data_frame$data$feature_of_interest))) > 9) {
       logger::log_fatal("You are trying to predict 10 or more classes. That is a bit much. Did you mean to do regression?")
       stop() 
-      } 
-    } else {
+    } 
+  } else {
     type <- "regression"
   }
+  
+  ## perform collinearity checks/engineering
+  train <- reduce_collinearity_train(train = train, vif_threshold = vif_threshold, 
+                                     cor_level = cor_level, type = type)
+  ## cols may have been have been removed from training. Training and test must match
+  test <- test %>% dplyr::select(., dplyr::all_of(colnames(train)))
+  
+  ## combine train and test data into a data split object
+  split_from_data_frame <- create_data_split_obj(train = train, test = test, 
+                                                 random_effects = random_effects)
+
   
   ## run null model first, results_df is needed for the actually runs
   null_results <- run_null_model(split_from_data_frame = split_from_data_frame, seed = seed, 
@@ -459,88 +466,9 @@ dietml_recipe <- function(split_from_data_frame, cor_level, vif_threshold, info_
   ## grab the training data
   train <- rsample::training(split_from_data_frame)
   
-  ## perform VIF and correlation filtering on entire training data, if specifified.
-  ## this is mainly because the collinear::step_collinear() function
-  ## does not work in my hands. 
-  if (cor_level < 1 || vif_threshold > 0) {
-    
-    ## get numeric names
-    numeric_vars <- train %>% 
-      dplyr::select(., -feature_of_interest, -subject_id) %>%
-      dplyr::select(where(is.numeric)) %>%
-      names()
-    logger::log_info(paste0("# numeric features identified in training data: ", length(numeric_vars)))
-
-    if (length(numeric_vars) > 0) {
-      ## log mean and median correlation and VIF before removing
-      collinear_stats_pre <- collinear_stats(train, predictors = numeric_vars, responses = "feature_of_interest")
-      logger::log_info("You selected to perform correlation and/or VIF. We will perform this on the 
-                       entire training data, prior to tidymodels recipe making. Dummy encoding, 
-                       zero variance filtering, and information gain are all done inside the recipe.
-                       Note, the VIF/Correlation is only done on the training data! Not the entire data.
-                       We perform this using the collinear package in R. Their documentation is very good,
-                       please look at the defaults and assumptions they employ (e.g. vars dropped due to low variance). 
-                       Note the only collinear arguements we modify, beyond the VIF and correlation thresholds, is 
-                       the function to rank predictors. We use f_categorical_rf() for classification tasks and 
-                       f_numeric_rf() for regression tasks.
-                       ")
-      ## log the stats prior to VIF/Correlation
-      logger::log_info(paste0("(Pre) Mean VIF, Correlation: ", 
-                              collinear_stats_pre %>% 
-                                dplyr::filter(., method == "vif", statistic == "mean") %>% 
-                                dplyr::pull(value), ", ",
-                              collinear_stats_pre %>% 
-                                dplyr::filter(., method == "correlation", statistic == "mean") %>% 
-                                dplyr::pull(value)))
-      
-      if (type == "classification") {
-        filtered_vars <- collinear::collinear(
-          train,
-          predictors = numeric_vars,
-          responses = "feature_of_interest",
-          f = collinear::f_categorical_rf,
-          max_cor = cor_level,
-          max_vif = vif_threshold, 
-          cv_training_fraction = 0.5, cv_iterations = 10,
-          quiet = TRUE
-        )
-      } else {
-        filtered_vars <- collinear::collinear(
-          train,
-          predictors = numeric_vars,
-          responses = "feature_of_interest",
-          f = collinear::f_numeric_rf,
-          max_cor = cor_level,
-          max_vif = vif_threshold, 
-          cv_training_fraction = 0.5, cv_iterations = 10,
-          quiet = TRUE
-        )
-      }
-      
-      
-      ## keep track of vars kept or dropped
-      vars_to_keep <- c("subject_id", "feature_of_interest", filtered_vars$feature_of_interest$selection)
-      vif_vars_to_drop <- numeric_vars[numeric_vars %!in% vars_to_keep]
-      logger::log_info(paste0("# numeric features dropped due to VIF/Correlation: ", length(vif_vars_to_drop)))
-      train_filtered <- train %>% dplyr::select(-dplyr::all_of(vif_vars_to_drop))
-
-      ## log the stats after  VIF/Correlation
-      collinear_stats_post <- collinear_stats(train_filtered, predictors = numeric_vars, responses = "feature_of_interest")
-      logger::log_info(paste0("(Post) Mean VIF, Correlation: ", 
-                              collinear_stats_post %>% 
-                                dplyr::filter(., method == "vif", statistic == "mean") %>% 
-                                dplyr::pull(value), ", ",
-                              collinear_stats_post %>% 
-                                dplyr::filter(., method == "correlation", statistic == "mean") %>% 
-                                dplyr::pull(value)))
-    }
-  }
-  
   ## specify recipe (this is like the pre-process work)
   dietML_recipe <- recipes::recipe(feature_of_interest ~ ., data = train) %>% 
     recipes::update_role("subject_id", new_role = "ID") %>% 
-    ## remove features from the VIF/COR analysis
-    {if (cor_level < 1 || vif_threshold > 0) recipes::step_rm(., removals = vif_vars_to_drop, id = rand_id("vif_cor_rm")) else .} %>%
     recipes::step_novel(recipes::all_nominal_predictors()) %>%
     recipes::step_dummy(recipes::all_nominal_predictors()) %>% 
     recipes::step_zv(recipes::all_predictors()) %>%
@@ -843,4 +771,87 @@ write_dietml_outputs <- function(type,  best_tidy_workflow, split_from_data_fram
   shap_inputs <- list("split_from_data_frame" = split_from_data_frame, "final_res" = final_res, "full_results" = full_results)
   return(shap_inputs)
   
+}
+
+reduce_collinearity_train <- function(train, vif_threshold, cor_level, type) {
+  
+  ## perform VIF and correlation filtering on entire training data, if specifified.
+  ## this is mainly because the collinear::step_collinear() function
+  ## does not work in my hands. 
+  if (cor_level < 1 || vif_threshold > 0) {
+    
+    ## get numeric names
+    numeric_vars <- train %>% 
+      dplyr::select(., -feature_of_interest, -subject_id) %>%
+      dplyr::select(where(is.numeric)) %>%
+      names()
+    logger::log_info(paste0("# numeric features identified in training data: ", length(numeric_vars)))
+    
+    if (length(numeric_vars) > 0) {
+      ## log mean and median correlation and VIF before removing
+      collinear_stats_pre <- collinear_stats(train, predictors = numeric_vars, responses = "feature_of_interest")
+      logger::log_info("You selected to perform correlation and/or VIF. We will perform this on the 
+                       entire training data, prior to tidymodels recipe making. Dummy encoding, 
+                       zero variance filtering, and information gain are all done inside the recipe.
+                       Note, the VIF/Correlation is only done on the training data! Not the entire data.
+                       We perform this using the collinear package in R. Their documentation is very good,
+                       please look at the defaults and assumptions they employ (e.g. vars dropped due to low variance). 
+                       Note the only collinear arguements we modify, beyond the VIF and correlation thresholds, is 
+                       the function to rank predictors. We use f_categorical_rf() for classification tasks and 
+                       f_numeric_rf() for regression tasks.
+                       ")
+      ## log the stats prior to VIF/Correlation
+      logger::log_info(paste0("(Pre) Mean VIF, Correlation: ", 
+                              collinear_stats_pre %>% 
+                                dplyr::filter(., method == "vif", statistic == "mean") %>% 
+                                dplyr::pull(value), ", ",
+                              collinear_stats_pre %>% 
+                                dplyr::filter(., method == "correlation", statistic == "mean") %>% 
+                                dplyr::pull(value)))
+      
+      if (type == "classification") {
+        filtered_vars <- collinear::collinear(
+          train,
+          predictors = numeric_vars,
+          responses = "feature_of_interest",
+          f = collinear::f_categorical_rf,
+          max_cor = cor_level,
+          max_vif = vif_threshold, 
+          cv_training_fraction = 0.5, cv_iterations = 10,
+          quiet = TRUE
+        )
+      } else {
+        filtered_vars <- collinear::collinear(
+          train,
+          predictors = numeric_vars,
+          responses = "feature_of_interest",
+          f = collinear::f_numeric_rf,
+          max_cor = cor_level,
+          max_vif = vif_threshold, 
+          cv_training_fraction = 0.5, cv_iterations = 10,
+          quiet = TRUE
+        )
+      }
+      
+      
+      ## keep track of vars kept or dropped
+      vars_to_keep <- c("subject_id", "feature_of_interest", filtered_vars$feature_of_interest$selection)
+      vif_vars_to_drop <- numeric_vars[numeric_vars %!in% vars_to_keep]
+      logger::log_info(paste0("# numeric features dropped due to VIF/Correlation: ", length(vif_vars_to_drop)))
+      train_filtered <- train %>% dplyr::select(-dplyr::all_of(vif_vars_to_drop))
+      
+      ## log the stats after  VIF/Correlation
+      collinear_stats_post <- collinear_stats(train_filtered, predictors = numeric_vars, responses = "feature_of_interest")
+      logger::log_info(paste0("(Post) Mean VIF, Correlation: ", 
+                              collinear_stats_post %>% 
+                                dplyr::filter(., method == "vif", statistic == "mean") %>% 
+                                dplyr::pull(value), ", ",
+                              collinear_stats_post %>% 
+                                dplyr::filter(., method == "correlation", statistic == "mean") %>% 
+                                dplyr::pull(value)))
+    }
+    return(train_filtered)
+  } else {
+    return(train)
+  }
 }
