@@ -855,6 +855,7 @@ reduce_collinearity_train <- function(train, vif_threshold, cor_level, type) {
       vars_to_keep <- c("subject_id", "feature_of_interest", filtered_vars$feature_of_interest$selection)
       vif_vars_to_drop <- numeric_vars[numeric_vars %!in% vars_to_keep]
       logger::log_info(paste0("# numeric features dropped due to VIF/Correlation: ", length(vif_vars_to_drop)))
+      logger::log_info(paste0("vars dropped are: ", paste(vif_vars_to_drop, collapse = ",")))
       train_filtered <- train %>% dplyr::select(-dplyr::all_of(vif_vars_to_drop))
       
       ## filtered numeric vars
