@@ -788,8 +788,24 @@ reduce_collinearity_train <- function(train, vif_threshold, cor_level, type) {
     logger::log_info(paste0("# numeric features identified in training data: ", length(numeric_vars)))
     
     if (length(numeric_vars) > 0) {
+      
+      ## alter the identify_zero_variance() in order to make use of the 
+      ## decimals argument that is not passed to the top of collinear functions
+      ## note we are breifly shadowing this function and will unshadow at end of 
+      ## this function
+      
+      original_identify_var_func <- collinear::identify_zero_variance_variables
+      new_identify_zero_var_func <- function(df = NULL, responses = NULL, predictors = NULL, decimals = 4, 
+                                             quiet = FALSE, ...) {
+        return(original_identify_var_func(df = df, responses = responses, predictors = predictors, decimals = 12, 
+                                          quiet = quiet, ...))
+      }
+      logger::log_info(paste0("Overwriting internal collinear function for identifying zero var variables to 
+                               look for variance out to 12 decimal places"))
+      utils::assignInNamespace(x = "identify_zero_variance_variables", value = new_identify_zero_var_func, ns = "collinear")
+      
       ## log mean and median correlation and VIF before removing
-      collinear_stats_pre <- collinear_stats(train, predictors = numeric_vars, responses = "feature_of_interest")
+      collinear_stats_pre <- collinear::collinear_stats(df = train, predictors = numeric_vars)
       logger::log_info("You selected to perform correlation and/or VIF. We will perform this on the 
                        entire training data, prior to tidymodels recipe making. Dummy encoding, 
                        zero variance filtering, and information gain are all done inside the recipe.
@@ -811,18 +827,19 @@ reduce_collinearity_train <- function(train, vif_threshold, cor_level, type) {
       
       if (type == "classification") {
         filtered_vars <- collinear::collinear(
-          train,
+          df = train,
           predictors = numeric_vars,
           responses = "feature_of_interest",
           f = collinear::f_categorical_rf,
           max_cor = cor_level,
           max_vif = vif_threshold, 
+          #options = 
           cv_training_fraction = 0.5, cv_iterations = 10,
           quiet = TRUE
         )
       } else {
         filtered_vars <- collinear::collinear(
-          train,
+          df = train,
           predictors = numeric_vars,
           responses = "feature_of_interest",
           f = collinear::f_numeric_rf,
@@ -840,8 +857,14 @@ reduce_collinearity_train <- function(train, vif_threshold, cor_level, type) {
       logger::log_info(paste0("# numeric features dropped due to VIF/Correlation: ", length(vif_vars_to_drop)))
       train_filtered <- train %>% dplyr::select(-dplyr::all_of(vif_vars_to_drop))
       
+      ## filtered numeric vars
+      filtered_numeric_vars <- train_filtered %>% 
+        dplyr::select(., -feature_of_interest, -subject_id) %>%
+        dplyr::select(where(is.numeric)) %>%
+        names()
+      
       ## log the stats after  VIF/Correlation
-      collinear_stats_post <- collinear_stats(train_filtered, predictors = numeric_vars, responses = "feature_of_interest")
+      collinear_stats_post <- collinear::collinear_stats(df = train_filtered, predictors = filtered_numeric_vars)
       logger::log_info(paste0("(Post) Mean VIF, Correlation: ", 
                               collinear_stats_post %>% 
                                 dplyr::filter(., method == "vif", statistic == "mean") %>% 
@@ -849,6 +872,12 @@ reduce_collinearity_train <- function(train, vif_threshold, cor_level, type) {
                               collinear_stats_post %>% 
                                 dplyr::filter(., method == "correlation", statistic == "mean") %>% 
                                 dplyr::pull(value)))
+      
+      ## revert the custom collinear shadow 
+      logger::log_info(paste0("Reverting modified collinear identify_zero_variance_variables function back to original"))
+      utils::assignInNamespace(x = "identify_zero_variance_variables", value = original_identify_var_func, ns = "collinear")
+      
+      
     }
     return(train_filtered)
   } else {
