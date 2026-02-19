@@ -43,7 +43,7 @@ run_dietML <- function(train, test, model, program, seed,
   
   ## perform collinearity checks/engineering
   train <- reduce_collinearity_train(train = train, vif_threshold = vif_threshold, 
-                                     cor_level = cor_level, type = type)
+                                     cor_level = cor_level, type = type, output = output)
   ## cols may have been have been removed from training. Training and test must match
   test <- test %>% dplyr::select(., dplyr::all_of(colnames(train)))
   
@@ -773,7 +773,7 @@ write_dietml_outputs <- function(type,  best_tidy_workflow, split_from_data_fram
   
 }
 
-reduce_collinearity_train <- function(train, vif_threshold, cor_level, type) {
+reduce_collinearity_train <- function(train, vif_threshold, cor_level, type, output) {
   
   ## perform VIF and correlation filtering on entire training data, if specifified.
   ## this is mainly because the collinear::step_collinear() function
@@ -804,8 +804,11 @@ reduce_collinearity_train <- function(train, vif_threshold, cor_level, type) {
                                look for variance out to 12 decimal places"))
       utils::assignInNamespace(x = "identify_zero_variance_variables", value = new_identify_zero_var_func, ns = "collinear")
       
-      ## log mean and median correlation and VIF before removing
-      collinear_stats_pre <- collinear::collinear_stats(df = train, predictors = numeric_vars)
+      ## log mean and median correlation and VIF before removing, and individual cor and vif results
+      ## note, collinear_stats can take in as input the df from collinear::cor_df()
+      collinear_stats_pre_vifdf <- collinear::vif_df(df = train, predictors = numeric_vars)
+      collinear_stats_pre_cordf <- collinear::cor_df(df = train, predictors = numeric_vars)
+      collinear_stats_pre <- collinear::collinear_stats(df = collinear_stats_pre_cordf, predictors = numeric_vars)
       logger::log_info("You selected to perform correlation and/or VIF. We will perform this on the 
                        entire training data, prior to tidymodels recipe making. Dummy encoding, 
                        zero variance filtering, and information gain are all done inside the recipe.
@@ -878,6 +881,13 @@ reduce_collinearity_train <- function(train, vif_threshold, cor_level, type) {
       logger::log_info(paste0("Reverting modified collinear identify_zero_variance_variables function back to original"))
       utils::assignInNamespace(x = "identify_zero_variance_variables", value = original_identify_var_func, ns = "collinear")
       
+      ## write VIF/cor info to files
+      readr::write_csv(x = collinear_stats_pre_vifdf, file = paste0(output, "/ml_analysis/collinear_stats_pre_vifdf.csv"), 
+                       append = F)
+      readr::write_csv(x = collinear_stats_pre_cordf, file = paste0(output, "/ml_analysis/collinear_stats_pre_cordf.csv"), 
+                       append = F)
+      readr::write_csv(x = filtered_vars$feature_of_interest$preference_order, file = paste0(output, "/ml_analysis/collinear_var_preference.csv"), 
+                       append = F)
       
     }
     return(train_filtered)
