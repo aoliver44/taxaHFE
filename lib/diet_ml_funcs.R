@@ -43,7 +43,9 @@ run_dietML <- function(train, test, model, program, seed,
   
   ## perform collinearity checks/engineering
   train <- reduce_collinearity_train(train = train, vif_threshold = vif_threshold, 
-                                     cor_level = cor_level, type = type, output = output)
+                                     cor_level = cor_level, type = type, output = output, 
+                                     ncores = ncores, parallel_workers = parallel_workers)
+  
   ## cols may have been have been removed from training. Training and test must match
   test <- test %>% dplyr::select(., dplyr::all_of(colnames(train)))
   
@@ -474,6 +476,9 @@ dietml_recipe <- function(split_from_data_frame, cor_level, vif_threshold, info_
     recipes::step_zv(recipes::all_predictors()) %>%
     {if (model %in% c("ridge", "lasso", "enet")) recipes::step_center(., recipes::all_numeric_predictors()) %>% 
         recipes::step_scale(., recipes::all_numeric_predictors()) else .} %>%
+    ## even though correlation filtering is done at the inital step of train (with VIF filtering)
+    ## we correlate here too in case dummy encoding created additional things that should be correlated
+    {if (cor_level < 1) recipes::step_corr(., recipes::all_numeric_predictors(), threshold = cor_level, use = "everything") else .} %>%
     {if (info_gain_n > 0) colino::step_select_infgain(., recipes::all_predictors(), 
                                                           top_p = info_gain_n,
                                                           outcome = "feature_of_interest",
@@ -773,7 +778,7 @@ write_dietml_outputs <- function(type,  best_tidy_workflow, split_from_data_fram
   
 }
 
-reduce_collinearity_train <- function(train, vif_threshold, cor_level, type, output) {
+reduce_collinearity_train <- function(train, vif_threshold, cor_level, type, output, ncores, parallel_workers) {
   
   ## perform VIF and correlation filtering on entire training data, if specifified.
   ## this is mainly because the collinear::step_collinear() function
@@ -882,12 +887,21 @@ reduce_collinearity_train <- function(train, vif_threshold, cor_level, type, out
       utils::assignInNamespace(x = "identify_zero_variance_variables", value = original_identify_var_func, ns = "collinear")
       
       ## write VIF/cor info to files
-      readr::write_csv(x = collinear_stats_pre_vifdf, file = paste0(output, "/ml_analysis/collinear_stats_pre_vifdf.csv"), 
-                       append = F)
-      readr::write_csv(x = collinear_stats_pre_cordf, file = paste0(output, "/ml_analysis/collinear_stats_pre_cordf.csv"), 
-                       append = F)
-      readr::write_csv(x = filtered_vars$feature_of_interest$preference_order, file = paste0(output, "/ml_analysis/collinear_var_preference.csv"), 
-                       append = F)
+      vroom::vroom_write(
+        x = collinear_stats_pre_vifdf,
+        file = pipe(sprintf("pigz -p %d > %s", as.integer(ncores * parallel_workers), paste0(output, "/ml_analysis/collinear_stats_pre_vifdf.csv.gz"))),
+        delim = ","
+      )
+      vroom::vroom_write(
+        x = collinear_stats_pre_cordf,
+        file = pipe(sprintf("pigz -p %d > %s", as.integer(ncores * parallel_workers), paste0(output, "/ml_analysis/collinear_stats_pre_cordf.csv.gz"))),
+        delim = ","
+      )
+      vroom::vroom_write(
+        x = filtered_vars$feature_of_interest$preference_order,
+        file = pipe(sprintf("pigz -p %d > %s", as.integer(ncores * parallel_workers), paste0(output, "/ml_analysis/collinear_var_preference.csv.gz"))),
+        delim = ","
+      )
       
     }
     return(train_filtered)
