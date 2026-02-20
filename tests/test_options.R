@@ -256,7 +256,8 @@ test_flag_values <- list(
     tune_stop=list(flags=list("--tune_stop"), value=9),
     parallel_workers=list(flags=list("--parallel_workers"), value=2, errors=list(-4, 0)),
     shap=list(flags=list("--shap"), value=TRUE),
-    summarized_levels=list(flags=list("--summarized_levels"), value=TRUE)
+    summarized_levels=list(flags=list("--summarized_levels"), value=TRUE),
+    pct_loss=list(flags=list("--pct_loss"), value=3, errors=list(-4, 102))
   ),
   diet_ml_args=list(
     subject_identifier=list(flags=list("-s", "--subject_identifier"), value="sid"),
@@ -275,7 +276,8 @@ test_flag_values <- list(
     tune_stop=list(flags=list("--tune_stop"), value=9),
     shap=list(flags=list("--shap"), value=TRUE),
     ncores=list(flags=list("-n", "--ncores"), value=1, errors=list(-4, 0)),
-    parallel_workers=list(flags=list("--parallel_workers"), value=2, errors=list(-4, 0))
+    parallel_workers=list(flags=list("--parallel_workers"), value=2, errors=list(-4, 0)),
+    pct_loss=list(flags=list("--pct_loss"), value=3, errors=list(-4, 102))
   )
 )
 
