@@ -15,6 +15,7 @@ ENV RENV_VERSION=1.1.5
 
 RUN apt-get update
 RUN apt-get install -y libz-dev libxml2-dev libcurl4-openssl-dev libssl-dev libpng-dev python3
+RUN apt-get install -y pigz
 
 # install RENV the suggested way: https://rstudio.github.io/renv/articles/docker.html#creating-docker-images-with-renv
 RUN R -e "install.packages('renv', repos = c(CRAN = 'https://cloud.r-project.org'))"
@@ -61,6 +62,7 @@ ENV RENV_VERSION=1.1.5
 
 RUN apt-get update
 RUN apt-get install -y libz-dev libxml2-dev python3
+RUN apt-get install -y pigz
 
 # grab packages installed in the base taxaHFE image
 COPY --from=base /usr/local/lib/R/site-library /usr/local/lib/R/site-library
