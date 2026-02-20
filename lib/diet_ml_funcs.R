@@ -17,7 +17,7 @@ run_dietML <- function(train, test, model, program, seed,
                        random_effects, folds, cv_repeats, ncores, 
                        parallel_workers, tune_length, tune_stop, tune_time, 
                        metric, label, output, feature_type, shap, cor_level, 
-                       vif_threshold, info_gain_n) {
+                       vif_threshold, info_gain_n, pct_loss) {
   
   ## check for outdir and make if not there
   if (!dir.exists(paste0(output, "/ml_analysis"))) {
@@ -71,7 +71,7 @@ run_dietML <- function(train, test, model, program, seed,
                                      feature_of_interest = "feature_of_interest",
                                      type = type, null_results = null_results,
                                      cor_level = cor_level, vif_threshold = vif_threshold, 
-                                     info_gain_n = info_gain_n
+                                     info_gain_n = info_gain_n, pct_loss = pct_loss
                                      )
   }
   if (model == "enet") {
@@ -84,7 +84,7 @@ run_dietML <- function(train, test, model, program, seed,
                                    feature_of_interest = "feature_of_interest",
                                    type = type, null_results = null_results,
                                    cor_level = cor_level, vif_threshold = vif_threshold,
-                                   info_gain_n = info_gain_n
+                                   info_gain_n = info_gain_n, pct_loss = pct_loss
     )
   }
   if (model %in% c("ridge", "lasso")) {
@@ -97,7 +97,7 @@ run_dietML <- function(train, test, model, program, seed,
                                    feature_of_interest = "feature_of_interest",
                                    type = type, null_results = null_results,
                                    cor_level = cor_level, vif_threshold = vif_threshold,
-                                   info_gain_n = info_gain_n
+                                   info_gain_n = info_gain_n, pct_loss = pct_loss
     )
   }
   return(shap_inputs)
@@ -107,7 +107,7 @@ run_dietML_ranger <- function(split_from_data_frame, seed, folds, cv_repeats,
                               parallel_workers, ncores, tune_length, tune_stop, 
                               tune_time, metric, feature_of_interest, model, program, 
                               output, type, null_results, cor_level, vif_threshold,
-                              info_gain_n) {
+                              info_gain_n, pct_loss) {
   
   ## log start of RF function
   logger::log_info("{model} model started...")
@@ -131,11 +131,14 @@ run_dietML_ranger <- function(split_from_data_frame, seed, folds, cv_repeats,
       parsnip::set_engine("ranger", 
                           num.threads = as.numeric(ncores),
                           importance = "none")
-    ## else if HP tuning time, set parameters to tune
+    ## else if HP tuning time, set parameters to tune.
+    ## keep trees set to 1000, a good default and were not 
+    ## wasting time tuning something that doesnt really matter
+    ## in terms of the bias-variance tradeoff
   } else {
     initial_mod <- parsnip::rand_forest(mode = type, 
                                         mtry = tune(),
-                                        trees = tune(),
+                                        trees = 1000,
                                         min_n = tune()) %>%
       parsnip::set_engine("ranger", 
                           num.threads = as.numeric(ncores),
@@ -168,7 +171,8 @@ run_dietML_ranger <- function(split_from_data_frame, seed, folds, cv_repeats,
                                          parallel_workers = parallel_workers, 
                                          folds = folds, type = type, tune_time = tune_time, 
                                          seed = seed, tune_stop = tune_stop, metric = metric, 
-                                         ncores = ncores, output = output, tune_length = tune_length)
+                                         ncores = ncores, output = output, tune_length = tune_length, 
+                                         pct_loss = pct_loss)
   }
   
   ## write dietml outputs
@@ -189,7 +193,7 @@ run_dietML_enet <- function(split_from_data_frame, seed, folds, cv_repeats,
                             parallel_workers, ncores, tune_length, tune_stop, 
                             tune_time, metric, feature_of_interest, model, program, 
                             output, type, null_results, cor_level, vif_threshold,
-                            info_gain_n) {
+                            info_gain_n, pct_loss) {
   
   ## log start of ENET function
   logger::log_info("{model} model started...")
@@ -247,7 +251,8 @@ run_dietML_enet <- function(split_from_data_frame, seed, folds, cv_repeats,
                                          parallel_workers = parallel_workers, 
                                          folds = folds, type = type, tune_time = 0, 
                                          seed = seed, tune_stop = tune_stop, metric = metric, 
-                                         ncores = ncores, output = output, tune_length = 10)
+                                         ncores = ncores, output = output, tune_length = 10, 
+                                         pct_loss = pct_loss)
   } 
   else {
     best_tidy_workflow <- dietml_hp_tune(split_from_data_frame = split_from_data_frame, 
@@ -255,7 +260,8 @@ run_dietML_enet <- function(split_from_data_frame, seed, folds, cv_repeats,
                                          parallel_workers = parallel_workers, 
                                          folds = folds, type = type, tune_time = tune_time, 
                                          seed = seed, tune_stop = tune_stop, metric = metric, 
-                                         ncores = ncores, output = output, tune_length = tune_length)
+                                         ncores = ncores, output = output, tune_length = tune_length, 
+                                         pct_loss = pct_loss)
   }
     
   ## write dietml outputs
@@ -276,7 +282,7 @@ run_dietML_ridge_lasso <- function(split_from_data_frame, seed, folds, cv_repeat
                                    parallel_workers, ncores, tune_length, tune_stop, 
                                    tune_time, metric, feature_of_interest, model, program, 
                                    output, type, null_results, cor_level, vif_threshold,
-                                   info_gain_n) {
+                                   info_gain_n, pct_loss) {
   
   ## log start of ridge, lasso function
   logger::log_info("{model} model started...")
@@ -328,7 +334,8 @@ run_dietML_ridge_lasso <- function(split_from_data_frame, seed, folds, cv_repeat
                                          parallel_workers = parallel_workers, 
                                          folds = folds, type = type, tune_time = 0, 
                                          seed = seed, tune_stop = tune_stop, metric = metric, 
-                                         ncores = ncores, output = output, tune_length = 10)
+                                         ncores = ncores, output = output, tune_length = 10, 
+                                         pct_loss = pct_loss)
   } 
   else {
     best_tidy_workflow <- dietml_hp_tune(split_from_data_frame = split_from_data_frame, 
@@ -336,7 +343,8 @@ run_dietML_ridge_lasso <- function(split_from_data_frame, seed, folds, cv_repeat
                                          parallel_workers = parallel_workers, 
                                          folds = folds, type = type, tune_time = tune_time, 
                                          seed = seed, tune_stop = tune_stop, metric = metric, 
-                                         ncores = ncores, output = output, tune_length = tune_length)
+                                         ncores = ncores, output = output, tune_length = tune_length, 
+                                         pct_loss = pct_loss)
   }
   
   ## write dietml outputs
@@ -499,7 +507,7 @@ dietml_workflow <- function(model_obj, recipe) {
   
 }
 
-dietml_hp_tune <- function(diet_ml_workflow, model, parallel_workers, folds, type, tune_time, seed, tune_stop, metric, ncores, output, split_from_data_frame, tune_length) {
+dietml_hp_tune <- function(diet_ml_workflow, model, parallel_workers, folds, type, tune_time, seed, tune_stop, metric, ncores, output, split_from_data_frame, tune_length, pct_loss) {
   
   ## for tuning, initiate the search space with 5 random models unless
   ## told otherwise
@@ -514,8 +522,7 @@ dietml_hp_tune <- function(diet_ml_workflow, model, parallel_workers, folds, typ
     dietML_param_set <- 
       dietML_param_set %>% 
       # Pick an upper bound for mtry: 
-      recipes::update(mtry = mtry(range(1, ncol(train %>% dplyr::select(., -dplyr::any_of(c("feature_of_interest", "subject_id"))))))) %>%
-      recipes::update(trees = trees(range(500,1500)))
+      recipes::update(mtry = mtry(range(1, ncol(train %>% dplyr::select(., -dplyr::any_of(c("feature_of_interest", "subject_id")))))))
   }
   
   ## make sure the penalty is a wide enough space, else some metrics like MAE
@@ -595,34 +602,33 @@ dietml_hp_tune <- function(diet_ml_workflow, model, parallel_workers, folds, typ
   ## fit best model ============================================================
   
   ## get the best parameters from tuning
-  # best_mod <-
-  #   search_res %>%
-  #   tune::select_best(metric = metric)
-  
-  ## Get the parameters which lead to simpiler, less overfit, model that are 1SE of best model
+  ## Get the parameters which lead to simpiler, less overfit, model that are within --pct_loss of best model
   if (model == "rf") {
     best_mod <-
       search_res %>%
-      tune::select_by_one_std_err(metric = metric, desc(min_n), mtry)
+      tune::select_by_pct_loss(metric = metric, limit = pct_loss, desc(min_n), mtry)
   } else if (model %in% c("ridge", "lasso", "enet")) {
     best_mod <-
       search_res %>%
-      tune::select_by_one_std_err(metric = metric, desc(penalty))
+      tune::select_by_pct_loss(metric = metric, limit = pct_loss, desc(penalty))
   }
   
   ## log hyperparameters selected for less-complex, best model
-  logger::log_info("Training parameters selected based on simplist model which optimize performance 
-                   (within 1 SE of best model). This attempts to reduce overfitting. Thus, you may see training performance
-                   is VERY slightly lower than testing performance in some cases. 
+  logger::log_info("Training parameters selected based on simplest model which optimize
+performance (--pct_loss of best model). This attempts to reduce 
+overfitting. Thus, you may see training performance is VERY slightly
+lower than testing performance in some cases. 
+
+In order to select a less complex model, for tree based models we 
+select the models with the highest min_node_size and lowest mtry 
+that produce a model within --pct_loss of the best tuned model.
                    
-                   In order to select a less complex model, for tree based models we select the models
-                   with the highest min_node_size and lowest mtry that produce a model within 1 SE of the best tuned model.
+For penalized regression, we select the model with the highest penalty that
+is within --pct_loss of the best tuned model. 
                    
-                   For penalized regression, we select the model with the highest penalty that is 1 SE of the 
-                   best tuned model. 
-                   
-                   These efforts are all aimed to decrease the overfitting of a trained model, potentially 
-                   decreasing the generalizability gap (that is, the difference between the training and test score).
+These efforts are all aimed to decrease the overfitting of a trained model,
+potentially decreasing the generalizability gap (that is, the difference 
+between the training and test score).
                    
                    ")
   
@@ -644,7 +650,7 @@ dietml_hp_tune <- function(diet_ml_workflow, model, parallel_workers, folds, typ
   ## create the last model based on best parameters: Random Forest
   if (model == "rf") {
     last_best_mod <- 
-      parsnip::rand_forest(mtry = best_mod$mtry, min_n = best_mod$min_n, trees = best_mod$trees) %>% 
+      parsnip::rand_forest(mtry = best_mod$mtry, min_n = best_mod$min_n, trees = 1000) %>% 
       parsnip::set_engine("ranger", num.threads = as.numeric(ncores), importance = "none") %>% 
       parsnip::set_mode(type)
   } 
