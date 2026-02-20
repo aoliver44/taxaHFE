@@ -30,3 +30,4 @@ pictures/taxahfe_outline.afdesign
 /renv
 example_inputs/all_data_impute.csv
 example_inputs/all_data_impute*
+.sh_history
