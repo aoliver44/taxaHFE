@@ -26,36 +26,37 @@ argument_groups <- list(
       subject_identifier=list("-s", "--subject_identifier", type="character", metavar="<string>", default="subject_id", help="Metadata column name containing subject IDs"),
       label=list("-l", "--label", type="character", metavar="<string>", default="feature_of_interest", help="Metadata column name of interest for ML"),
       feature_type=list("-t", "--feature_type", type="character", metavar="<string>", default="factor", help="Is the ML label a factor or numeric"),
-      random_effects=list("-R", "--random_effects", action="store_true", help="Consider repeated measures. Note: columns 'individual' and 'time' must be present. [BETA]"),
-      k_splits=list("-k", "--k_splits", type="numeric", metavar="<numeric>", default="3", help="We use kmeans to factorize a numeric response for repeated measures. How many categories should we create? [BETA]"),
-      abundance=list("-a", "--abundance", type="numeric", metavar="<numeric>", default="0", help="Minimum mean abundance of feature"),
-      prevalence=list("-p", "--prevalence", type="numeric", metavar="<numeric>", default="0.01", help="Minimum prevalence of feature"),
-      lowest_level=list("-L", "--lowest_level", type="integer", metavar="<numeric>", default="3", help="Most general level allowed to compete"),
-      max_level=list("-m", "--max_level", type="integer", metavar="<numeric>", default="15", help="How many hierarchical levels should be allowed to compete"),
-      cor_level=list("-c", "--cor_level", type="numeric", metavar="<numeric>", default="0.95", help="Initial pearson correlation filter"),
+      random_effects=list("-R", "--random_effects", action="store_true", help="Consider repeated measures. Note: columns 'individual' and 'time' must be\npresent. [BETA]"),
+      k_splits=list("-k", "--k_splits", type="numeric", metavar="<numeric>", default = 3, help="We use kmeans to factorize a numeric response for repeated measures. How\nmany categories should we create? [BETA]"),
+      abundance=list("-a", "--abundance", type="numeric", metavar="<numeric>", default = 0, help="Minimum mean abundance of feature"),
+      prevalence=list("-p", "--prevalence", type="numeric", metavar="<numeric>", default = 0.01, help="Minimum prevalence of feature"),
+      lowest_level=list("-L", "--lowest_level", type="integer", metavar="<numeric>", default = 3, help="Most general level allowed to compete"),
+      max_level=list("-m", "--max_level", type="integer", metavar="<numeric>", default = 15, help="How many hierarchical levels should be allowed to compete"),
+      cor_level=list("-c", "--cor_level", type="numeric", metavar="<numeric>", default = 0.95, help="Initial pearson correlation filter"),
       disable_super_filter=list("-d", "--disable_super_filter", action="store_true", help="Disable running of the super filter (final forest competition)"),
       write_old_files=list("-w", "--write_old_files", action="store_true", help="Write individual level files and old HFE files"),
       write_flattened_tree=list("-W", "--write_flattened_tree", action="store_true", help="Write a compressed backup of the entire competed tree"),
-      write_both_outputs=list("-D", "--write_both_outputs", action="store_true", help="Write an output for pre and post super filter results, overridden by --disable_super_filter"),
-      nperm=list("--nperm", type="integer", metavar="<numeric>", default="40", help="Number of taxaHFE RF permutations"),
-      ncores=list("-n", "--ncores", type="integer", metavar="<numeric>", default="2", help="Number of parallel processes to run in certain portions of taxaHFE that support parallel processing. To limit overall resource usage of taxaHFE, limit the amount of resources available to the container (e.g. --cpus=4 for Docker). Note that total resources needed are parallel_workers * ncores.")
+      write_both_outputs=list("-D", "--write_both_outputs", action="store_true", help="Write an output for pre and post super filter results, overridden by\n--disable_super_filter"),
+      nperm=list("--nperm", type="integer", metavar="<numeric>", default = 40, help="Number of taxaHFE RF permutations"),
+      ncores=list("-n", "--ncores", type="integer", metavar="<numeric>", default = 2, help="Number of parallel processes to run in certain portions of taxaHFE that\nsupport parallel processing. To limit overall resource usage of taxaHFE, limit the amount of resources available to the container (e.g. --cpus=4 for Docker). Note that total resources needed are parallel_workers * ncores.")
     )
   ),
   taxa_hfe_ml_args=list(
     name="TaxaHFE-ML specific arguments",
     desc="Options to pass to TaxaHFE-ML for machine learning and SHAP analysis of TaxaHFE features",
     args=list(
-      train_split=list("--train_split", type="numeric", metavar="<numeric>", default="0.8", help="Percentage of samples to use for training"),
-      info_gain_n=list("--info_gain_n", type="numeric", metavar="<numeric>", default = 0, help="Should information gain preprocessing be used? Set n number of features to be selected during preprocessesing. Bypasses info_gain_n if set to 0."),
-      vif_threshold=list("--vif_threshold", type="numeric", metavar="<numeric>", default = 10, help="Calculates variance inflation factor (VIF) scores and removes variables about a user-defined threshold. Bypasses vif_threshold if set to 0."),
+      train_split=list("--train_split", type="numeric", metavar="<numeric>", default = 0.8, help="Percentage of samples to use for training"),
+      info_gain_n=list("--info_gain_n", type="numeric", metavar="<numeric>", default = 0, help="Should information gain preprocessing be used? Set n number of features\nto be selected during preprocessesing. Bypasses info_gain_n if set to 0."),
+      vif_threshold=list("--vif_threshold", type="numeric", metavar="<numeric>", default = 10, help="Calculates variance inflation factor (VIF) scores and removes variables\nabout a user-defined threshold. Bypasses vif_threshold if set to 0."),
       model=list("--model", type="character", metavar="<string>", default="rf", choices=c("rf", "enet", "lasso", "ridge"), help="ML model to use. Options: rf, enet, lasso, ridge."),
-      folds=list("--folds", type="numeric", metavar="<numeric>", default="10", help="Number of CV folds for tuning"),
-      cv_repeats=list("--cv_repeats", type="numeric", metavar="<numeric>", default="3", help="Number of CV repeats to perform for repeated CV"),
+      folds=list("--folds", type="numeric", metavar="<numeric>", default = 10, help="Number of CV folds for tuning"),
+      cv_repeats=list("--cv_repeats", type="numeric", metavar="<numeric>", default = 3, help="Number of CV repeats to perform for repeated CV"),
       metric=list("--metric", type="character", metavar="<string>", default="bal_accuracy", choices=c("roc_auc", "bal_accuracy", "accuracy", "mae", "rmse", "rsq", "kap", "f_meas", "ccc"), help="Metric to optimize"),
-      tune_length=list("--tune_length", type="numeric", metavar="<numeric>", default="80", help="Number of hyperparameter combinations to sample"),
-      tune_time=list("--tune_time", type="numeric", metavar="<numeric>", default="2", help="Time for hyperparameter search (in minutes)"),
-      tune_stop=list("--tune_stop", type="numeric", metavar="<numeric>", default="10", help="Number of HP iterations without improvement before stopping"),
-      parallel_workers=list("--parallel_workers", type="integer", metavar="<numeric>", default="1", help="Number of parallel search processes to run for hyperparameter tuning in dietML. Note that total resources needed are parallel_workers * ncores (e.g. --cpus=4 for Docker)"),
+      tune_length=list("--tune_length", type="numeric", metavar="<numeric>", default = 80, help="Number of hyperparameter combinations to sample"),
+      tune_time=list("--tune_time", type="numeric", metavar="<numeric>", default = 2, help="Time for hyperparameter search (in minutes)"),
+      tune_stop=list("--tune_stop", type="numeric", metavar="<numeric>", default = 10, help="Number of HP iterations without improvement before stopping"),
+      pct_loss=list("--pct_loss", type="numeric", metavar="<numeric>", default = 0, help="Maximum acceptable percent loss performance relative to best HP\ncombination. Used to select a more regularized model (perhaps more\ngeneralizable). Setting to 0% will select the best scoring model. In the\nevent of a tie for best scoring model, the most regularized model is chosen."),
+      parallel_workers=list("--parallel_workers", type="integer", metavar="<numeric>", default = 1, help="Number of parallel search processes to run for hyperparameter tuning in\ndietML. Note that total resources needed are parallel_workers * ncores\n(e.g. --cpus=4 for Docker)"),
       shap=list("--shap", action="store_true", help="Calculate SHAP values"),
       summarized_levels=list("--summarized_levels", action="store_true", help="Include summarized levels in ML competition")
     )
@@ -67,20 +68,21 @@ argument_groups <- list(
       subject_identifier=list("-s", "--subject_identifier", type="character", metavar="<string>", default="subject_id", help="Metadata column name containing subject IDs"),
       label=list("-l", "--label", type="character", metavar="<string>", default="feature_of_interest", help="Metadata column name of interest for ML"),
       cor_level=list("-c", "--cor_level", type="numeric", metavar="<numeric>", default = 1, help="Initial pearson correlation filter. Bypasses cor_level filter if set to 1"),
-      info_gain_n=list("--info_gain_n", type="numeric", metavar="<numeric>", default = 0, help="Should information gain preprocessing be used? Set n number of features to be selected during preprocessesing. Bypasses info_gain_n if set to 0."),
+      info_gain_n=list("--info_gain_n", type="numeric", metavar="<numeric>", default = 0, help="Should information gain preprocessing be used? Set n number of features\nto be selected during preprocessesing. Bypasses info_gain_n if set to 0."),
       vif_threshold=list("--vif_threshold", type="numeric", metavar="<numeric>", default = 10, help="Calculates variance inflation factor (VIF) scores and removes variables about a user-defined threshold. Bypasses vif_threshold if set to 0."),
-      train_split=list("--train_split", type="numeric", metavar="<numeric>", default="0.8", help="Percentage of samples to use for training"),
+      train_split=list("--train_split", type="numeric", metavar="<numeric>", default = 0.8, help="Percentage of samples to use for training"),
       model=list("--model", type="character", metavar="<string>", default="rf", choices=c("rf", "enet", "lasso", "ridge"), help="ML model to use. Options: rf, enet, lasso, ridge."),
-      folds=list("--folds", type="numeric", metavar="<numeric>", default="10", help="Number of CV folds for tuning"),
-      cv_repeats=list("--cv_repeats", type="numeric", metavar="<numeric>", default="3", help="Number of CV repeats to perform for repeated CV"),
+      folds=list("--folds", type="numeric", metavar="<numeric>", default = 10, help="Number of CV folds for tuning"),
+      cv_repeats=list("--cv_repeats", type="numeric", metavar="<numeric>", default = 3, help="Number of CV repeats to perform for repeated CV"),
       metric=list("--metric", type="character", metavar="<string>", default="bal_accuracy", choices=c("roc_auc", "bal_accuracy", "accuracy", "mae", "rmse", "rsq", "kap", "f_meas", "ccc"), help="Metric to optimize"),
       feature_type=list("-t", "--feature_type", type="character", metavar="<string>", default="factor", help="Is the ML label a factor or numeric"),
-      tune_length=list("--tune_length", type="numeric", metavar="<numeric>", default="80", help="Number of hyperparameter combinations to sample"),
-      tune_time=list("--tune_time", type="numeric", metavar="<numeric>", default="2", help="Time for hyperparameter search (in minutes)"),
-      tune_stop=list("--tune_stop", type="numeric", metavar="<numeric>", default="10", help="Number of HP iterations without improvement before stopping"),
+      tune_length=list("--tune_length", type="numeric", metavar="<numeric>", default = 80, help="Number of hyperparameter combinations to sample"),
+      tune_time=list("--tune_time", type="numeric", metavar="<numeric>", default = 2, help="Time for hyperparameter search (in minutes)"),
+      tune_stop=list("--tune_stop", type="numeric", metavar="<numeric>", default = 10, help="Number of HP iterations without improvement before stopping"),
+      pct_loss=list("--pct_loss", type="numeric", metavar="<numeric>", default = 0, help="Maximum acceptable percent loss performance relative to best HP\ncombination. Used to select a more regularized model (perhaps more\ngeneralizable). Setting to 0% will select the best scoring model. In the\nevent of a tie for best scoring model, the most regularized model is chosen."),
       shap=list("--shap", action="store_true", help="Calculate SHAP values"),
-      ncores=list("-n", "--ncores", type="integer", metavar="<numeric>", default="2", help="Number of threads/cores to use in certain functions that can perform parallel processing. To limit overall resource usage of dietML., limit the amount of resources available to the container (e.g. --cpus=4 for Docker). Note that total resources needed are parallel_workers * ncores."),
-      parallel_workers=list("--parallel_workers", type="integer", metavar="<numeric>", default="1", help="Number of parallel search processes to run for hyperparameter tuning in dietML. Note that total resources needed are parallel_workers * ncores (e.g. --cpus=4 for Docker)")
+      ncores=list("-n", "--ncores", type="integer", metavar="<numeric>", default = 2, help="Number of threads/cores to use in certain functions that can perform\nparallel processing. To limit overall resource usage of dietML, limit the\namount of resources available to the container (e.g. --cpus=4 for Docker).\nNote that total resources needed are parallel_workers * ncores."),
+      parallel_workers=list("--parallel_workers", type="integer", metavar="<numeric>", default = 1, help="Number of parallel search processes to run for hyperparameter tuning in\ndietML. Note that total resources needed are parallel_workers * ncores\n(e.g. --cpus=4 for Docker)")
     )
   )
 )
@@ -115,7 +117,9 @@ validators <- list(
   tune_time=validate_numeric(min=0, max_warning=list(480, "spending excessive time tuning hyperparameters my not result in substaintal increases in accuracy")),
   seed=validate_numeric(min = -1 * .Machine$integer.max, max = .Machine$integer.max),
   info_gain_n=validate_numeric(min=0),
-  vif_threshold=validate_numeric(min=0, max_warning=list(11, "a VIF score above 10 may result in features that are significantly collinear."))
+  vif_threshold=validate_numeric(min=0, max_warning=list(11, "a VIF score above 10 may result in features that are significantly collinear.")),
+  pct_loss=validate_numeric(min=0, max=100, max_warning=list(10, "an acceptable pct_loss greater than 10% may include underfit models"))
+  
 )
 
 # Function to initialize parser for a program
