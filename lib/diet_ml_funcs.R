@@ -604,20 +604,25 @@ dietml_hp_tune <- function(diet_ml_workflow, model, parallel_workers, folds, typ
   ## get the best parameters from tuning
   ## Get the parameters which lead to simpiler, less overfit, model that are within --pct_loss of best model
   if (model == "rf") {
-    best_mod <-
-      search_res %>%
-      tune::select_by_pct_loss(metric = metric, limit = pct_loss, desc(min_n), mtry)
+    if (pct_loss == 0) {
+      best_mod <- search_res %>% tune::select_best(metric = metric)
+    } else {
+      best_mod <- search_res %>% tune::select_by_pct_loss(metric = metric, limit = pct_loss, desc(min_n), mtry)
+    }
   } else if (model %in% c("ridge", "lasso", "enet")) {
-    best_mod <-
-      search_res %>%
-      tune::select_by_pct_loss(metric = metric, limit = pct_loss, desc(penalty))
+    if (pct_loss == 0) {
+      best_mod <- search_res %>% tune::select_best(metric = metric)
+    } else {
+      best_mod <- search_res %>% tune::select_by_pct_loss(metric = metric, limit = pct_loss, desc(penalty))
+    }
   }
   
   ## log hyperparameters selected for less-complex, best model
-  logger::log_info("Training parameters selected based on simplest model which optimize
-performance (--pct_loss of best model). This attempts to reduce 
-overfitting. Thus, you may see training performance is VERY slightly
-lower than testing performance in some cases. 
+  logger::log_info("If --pct_loss > 0, training parameters 
+selected based on simplest model which optimize performance 
+(--pct_loss of best model). This attempts to reduce overfitting. Thus, 
+you may see training performance is VERY slightlylower than testing 
+performance in some cases. 
 
 In order to select a less complex model, for tree based models we 
 select the models with the highest min_node_size and lowest mtry 
@@ -764,10 +769,22 @@ write_dietml_outputs <- function(type,  best_tidy_workflow, split_from_data_fram
                                  dplyr::mutate(.model_input_type = "test"))
   if (type == "classification") {
     class_metrics <- yardstick::metric_set(bal_accuracy, accuracy, kap, f_meas)
+    
+    ## write raw predictions to file in case other metrics want to be calculated
+    all_predictions %>% 
+      dplyr::select(., dplyr::starts_with(".pred_"), feature_of_interest, .model_input_type) %>%
+      readr::write_csv(., paste0(output, "/ml_analysis/raw_predictions.csv"))
+    
     all_predictions <- all_predictions %>% dplyr::group_by(.model_input_type) %>% 
       dplyr::mutate(feature_of_interest = factor(feature_of_interest), .pred_class = factor(.pred_class)) %>% 
       class_metrics(truth = feature_of_interest, estimate = .pred_class)
   } else {
+    
+    ## write raw predictions to file in case other metrics want to be calculated
+    all_predictions %>% 
+      dplyr::select(., feature_of_interest, .pred, .model_input_type) %>%
+      readr::write_csv(., paste0(output, "/ml_analysis/raw_predictions.csv"))
+    
     all_predictions <- all_predictions %>% dplyr::group_by(.model_input_type) %>% yardstick::metrics(feature_of_interest, .pred)
   }
   
