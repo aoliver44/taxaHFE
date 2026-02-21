@@ -55,7 +55,7 @@ argument_groups <- list(
       tune_length=list("--tune_length", type="numeric", metavar="<numeric>", default = 80, help="Number of hyperparameter combinations to sample"),
       tune_time=list("--tune_time", type="numeric", metavar="<numeric>", default = 2, help="Time for hyperparameter search (in minutes)"),
       tune_stop=list("--tune_stop", type="numeric", metavar="<numeric>", default = 10, help="Number of HP iterations without improvement before stopping"),
-      pct_loss=list("--pct_loss", type="numeric", metavar="<numeric>", default = 0, help="Maximum acceptable percent loss performance relative to best HP\ncombination. Used to select a more regularized model (perhaps more\ngeneralizable). Setting to 0% will select the best scoring model. In the\nevent of a tie for best scoring model, the most regularized model is chosen."),
+      pct_loss=list("--pct_loss", type="numeric", metavar="<numeric>", default = 0, help="Maximum acceptable percent loss performance relative to best HP\ncombination. Used to select a more regularized model (perhaps more\ngeneralizable). Setting to 0% will select the best scoring model."),
       parallel_workers=list("--parallel_workers", type="integer", metavar="<numeric>", default = 1, help="Number of parallel search processes to run for hyperparameter tuning in\ndietML. Note that total resources needed are parallel_workers * ncores\n(e.g. --cpus=4 for Docker)"),
       shap=list("--shap", action="store_true", help="Calculate SHAP values"),
       summarized_levels=list("--summarized_levels", action="store_true", help="Include summarized levels in ML competition")
@@ -79,7 +79,7 @@ argument_groups <- list(
       tune_length=list("--tune_length", type="numeric", metavar="<numeric>", default = 80, help="Number of hyperparameter combinations to sample"),
       tune_time=list("--tune_time", type="numeric", metavar="<numeric>", default = 2, help="Time for hyperparameter search (in minutes)"),
       tune_stop=list("--tune_stop", type="numeric", metavar="<numeric>", default = 10, help="Number of HP iterations without improvement before stopping"),
-      pct_loss=list("--pct_loss", type="numeric", metavar="<numeric>", default = 0, help="Maximum acceptable percent loss performance relative to best HP\ncombination. Used to select a more regularized model (perhaps more\ngeneralizable). Setting to 0% will select the best scoring model. In the\nevent of a tie for best scoring model, the most regularized model is chosen."),
+      pct_loss=list("--pct_loss", type="numeric", metavar="<numeric>", default = 0, help="Maximum acceptable percent loss performance relative to best HP\ncombination. Used to select a more regularized model (perhaps more\ngeneralizable). Setting to 0% will select the best scoring model."),
       shap=list("--shap", action="store_true", help="Calculate SHAP values"),
       ncores=list("-n", "--ncores", type="integer", metavar="<numeric>", default = 2, help="Number of threads/cores to use in certain functions that can perform\nparallel processing. To limit overall resource usage of dietML, limit the\namount of resources available to the container (e.g. --cpus=4 for Docker).\nNote that total resources needed are parallel_workers * ncores."),
       parallel_workers=list("--parallel_workers", type="integer", metavar="<numeric>", default = 1, help="Number of parallel search processes to run for hyperparameter tuning in\ndietML. Note that total resources needed are parallel_workers * ncores\n(e.g. --cpus=4 for Docker)")
