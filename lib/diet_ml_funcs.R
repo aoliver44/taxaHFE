@@ -644,7 +644,6 @@ between the training and test score).
   
   ## log mean validation scores
   val_scores <- workflowsets::collect_metrics(search_res) %>% 
-    dplyr::filter(., .iter > 0) %>%
     dplyr::group_by(., .metric) %>% 
     dplyr::summarise(., mean_validation = mean(mean), mean_std_err = mean(std_err))
   logger::log_info("Mean validation scores: ")
