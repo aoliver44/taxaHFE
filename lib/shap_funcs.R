@@ -70,7 +70,7 @@ shap_analysis <- function(label, output, model, filename, shap_inputs, train, te
         ## prep the data using the recipe
         shap_data <- recipes::prep(prepped_recipe, shap_data_subsets[[i]][[1]], fresh = TRUE) %>%
           recipes::juice() %>%
-          dplyr::select(-feature_of_interest, -subject_id)
+          dplyr::select(-feature_of_interest, -subject_id, -mid)
         assign(paste0("shap_data_", shap_data_subsets[[i]][[2]]), shap_data, envir = shap_plot_env)
         
         ## fit workflow to new datasets
@@ -94,8 +94,11 @@ shap_analysis <- function(label, output, model, filename, shap_inputs, train, te
         message(glue::glue("Running SHAP with nsim = {safe_nsim}"))
         
         ## start a parallel process
-        cl <- parallel::makeForkCluster(as.numeric(parallel_workers))
-        doParallel::registerDoParallel(cl)
+        ## xgboost does not like parallel shap
+        if (model != "xgboost") {
+          cl <- parallel::makeForkCluster(as.numeric(parallel_workers))
+          doParallel::registerDoParallel(cl)
+        }
         
         # Compute SHAP values
         shap_explanations <- fastshap::explain(
@@ -104,10 +107,12 @@ shap_analysis <- function(label, output, model, filename, shap_inputs, train, te
           pred_wrapper = pfun,
           nsim = safe_nsim,
           adjust = TRUE,
-          parallel = TRUE
+          parallel = ifelse(model != "xgboost", TRUE, FALSE)
         )
         
-        parallel::stopCluster(cl)
+        if (model != "xgboost") {
+          parallel::stopCluster(cl)
+        }
         
         assign(paste0("shap_explanations_", shap_data_subsets[[i]][[2]]), shap_explanations, envir = shap_plot_env)
         
@@ -206,7 +211,7 @@ shap_plot <- function(
     kind = "bee",
     show_numbers = TRUE,
     bee_width = 0.2,
-    max_display = 10
+    max_display = 20
   ) +
     ggtitle(label = paste0("SHAP: ", label, " (", data_subset_label, ")")) +
     labs(x = ifelse(feature_type == "factor", paste0(

@@ -8,7 +8,7 @@ source("lib/tree.R")
 # load flags
 # to use this code line-by-line in the Rstudio context, commandArgs can be overloaded to specify the desired flags
 # Example cmd:
-# command <- "example_inputs/bike_share_day.csv -o test_outputs -s instant -l cnt --model ridge -t numeric --metric rsq --tune_time 1 --seed 1234 --shap -n 2"
+# command <- "example_inputs/all_data_impute_ALL_crp.csv -o test_outputs_crp -s subject_id -l milk_vol --model xgboost -t numeric --metric rsq --tune_time 5 --tune_length 80 --tune_stop 20 --seed 1234 --shap -n 2 --parallel_workers 4 --pct_loss 0 --vif_threshold 5 -c 0.8"
 # commandArgs <- function(x) { unlist(strsplit(command, split = " ")) }
 
 # these will be used by the argparser
@@ -30,7 +30,7 @@ data <- read_in_metadata(input = opts$DATA,
                              cores = (opts$ncores * opts$parallel_workers))
 
 ## split data
-tr_te_split <- rsample::initial_split(data, prop = as.numeric(opts$train_split), strata = feature_of_interest)
+tr_te_split <- rsample::group_initial_split(data, prop = as.numeric(opts$train_split), group = "mid")
 train_data <- rsample::training(tr_te_split)
 test_data  <- rsample::testing(tr_te_split)
 

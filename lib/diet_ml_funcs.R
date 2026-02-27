@@ -518,7 +518,7 @@ create_data_split_obj <- function(train, test, random_effects) {
 set_cv_strategy <- function(split_from_data_frame, nfolds, feature_of_interest, cv_repeats) {
   train <- rsample::training(split_from_data_frame)
   ## set resampling scheme
-  cv_folds <- rsample::vfold_cv(train, v = as.numeric(nfolds), strata = feature_of_interest, repeats = cv_repeats)
+  cv_folds <- rsample::group_vfold_cv(train, v = as.numeric(nfolds), group = "mid", repeats = cv_repeats)
   
   ## log CV strategy
   logger::log_info("Stratified (across the response) cross validation strategy set, using {as.numeric(nfolds)} folds and repeating {cv_repeats}x time(s).")
@@ -533,6 +533,7 @@ dietml_recipe <- function(split_from_data_frame, cor_level, vif_threshold, info_
   ## specify recipe (this is like the pre-process work)
   dietML_recipe <- recipes::recipe(feature_of_interest ~ ., data = train) %>% 
     recipes::update_role("subject_id", new_role = "ID") %>% 
+    recipes::update_role("mid", new_role = "grouping_id") %>% 
     recipes::step_novel(recipes::all_nominal_predictors()) %>%
     recipes::step_dummy(recipes::all_nominal_predictors()) %>% 
     recipes::step_zv(recipes::all_predictors()) %>%
