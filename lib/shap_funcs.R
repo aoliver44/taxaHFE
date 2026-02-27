@@ -94,8 +94,11 @@ shap_analysis <- function(label, output, model, filename, shap_inputs, train, te
         message(glue::glue("Running SHAP with nsim = {safe_nsim}"))
         
         ## start a parallel process
-        cl <- parallel::makeForkCluster(as.numeric(parallel_workers))
-        doParallel::registerDoParallel(cl)
+        ## xgboost does not like parallel shap
+        if (model != "xgboost") {
+          cl <- parallel::makeForkCluster(as.numeric(parallel_workers))
+          doParallel::registerDoParallel(cl)
+        }
         
         # Compute SHAP values
         shap_explanations <- fastshap::explain(
@@ -104,10 +107,12 @@ shap_analysis <- function(label, output, model, filename, shap_inputs, train, te
           pred_wrapper = pfun,
           nsim = safe_nsim,
           adjust = TRUE,
-          parallel = TRUE
+          parallel = ifelse(model != "xgboost", TRUE, FALSE)
         )
         
-        parallel::stopCluster(cl)
+        if (model != "xgboost") {
+          parallel::stopCluster(cl)
+        }
         
         assign(paste0("shap_explanations_", shap_data_subsets[[i]][[2]]), shap_explanations, envir = shap_plot_env)
         
