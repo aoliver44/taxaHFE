@@ -14,7 +14,7 @@ options(warn = -1)
 ## run dietML  ========================================
 
 run_dietML <- function(train, test, model, program, seed, 
-                       random_effects, folds, cv_repeats, ncores, 
+                       random_effects, nfolds, cv_repeats, ncores, 
                        parallel_workers, tune_length, tune_stop, tune_time, 
                        metric, label, output, feature_type, shap, cor_level, 
                        vif_threshold, info_gain_n, pct_loss) {
@@ -52,82 +52,75 @@ run_dietML <- function(train, test, model, program, seed,
   ## combine train and test data into a data split object
   split_from_data_frame <- create_data_split_obj(train = train, test = test, 
                                                  random_effects = random_effects)
+  
+  ## set resampling scheme
+  folds <- set_cv_strategy(split_from_data_frame = split_from_data_frame, 
+                           nfolds = nfolds, feature_of_interest = feature_of_interest, 
+                           cv_repeats = cv_repeats)
+  
+  ## recipe
+  diet_ml_recipe <- dietml_recipe(split_from_data_frame = split_from_data_frame, 
+                                  cor_level = cor_level, vif_threshold = vif_threshold,
+                                  info_gain_n = info_gain_n,
+                                  type = type, ncores = ncores, model = model)
 
   
   ## run null model first, results_df is needed for the actually runs
   null_results <- run_null_model(split_from_data_frame = split_from_data_frame, seed = seed, 
                                  type = type, output = output, cv_repeats = cv_repeats, 
-                                 feature_of_interest = "feature_of_interest", folds = folds, cor_level = cor_level, 
-                                 vif_threshold = vif_threshold, info_gain_n = info_gain_n, ncores = ncores, model = model)
+                                 feature_of_interest = "feature_of_interest", cor_level = cor_level, 
+                                 vif_threshold = vif_threshold, info_gain_n = info_gain_n, ncores = ncores, model = model,
+                                 diet_ml_recipe = diet_ml_recipe, folds = folds)
   
-  ## if specified, run random forest
-  if (model == "rf") {
-    shap_inputs <- run_dietML_ranger(split_from_data_frame = split_from_data_frame, 
-                                     seed = seed, folds = folds, cv_repeats = cv_repeats, 
-                                     parallel_workers = parallel_workers, ncores = ncores, 
-                                     tune_length = tune_length, tune_stop = tune_stop, 
-                                     tune_time = tune_time, metric = metric, 
-                                     model = model, program = program, output = output, 
-                                     feature_of_interest = "feature_of_interest",
-                                     type = type, null_results = null_results,
-                                     cor_level = cor_level, vif_threshold = vif_threshold, 
-                                     info_gain_n = info_gain_n, pct_loss = pct_loss
-                                     )
-  }
-  if (model == "enet") {
-    shap_inputs <- run_dietML_enet(split_from_data_frame = split_from_data_frame, 
-                                   seed = seed, folds = folds, cv_repeats = cv_repeats, 
-                                   parallel_workers = parallel_workers, ncores = ncores, 
-                                   tune_length = tune_length, tune_stop = tune_stop, 
-                                   tune_time = tune_time, metric = metric, 
-                                   model = model, program = program, output = output, 
-                                   feature_of_interest = "feature_of_interest",
-                                   type = type, null_results = null_results,
-                                   cor_level = cor_level, vif_threshold = vif_threshold,
-                                   info_gain_n = info_gain_n, pct_loss = pct_loss
-    )
-  }
-  if (model %in% c("ridge", "lasso")) {
-    shap_inputs <- run_dietML_ridge_lasso(split_from_data_frame = split_from_data_frame, 
-                                   seed = seed, folds = folds, cv_repeats = cv_repeats, 
-                                   parallel_workers = parallel_workers, ncores = ncores, 
-                                   tune_length = tune_length, tune_stop = tune_stop, 
-                                   tune_time = tune_time, metric = metric, 
-                                   model = model, program = program, output = output, 
-                                   feature_of_interest = "feature_of_interest",
-                                   type = type, null_results = null_results,
-                                   cor_level = cor_level, vif_threshold = vif_threshold,
-                                   info_gain_n = info_gain_n, pct_loss = pct_loss
-    )
-  }
+  ## run model specified
+  common_args <- list(
+    split_from_data_frame = split_from_data_frame,
+    seed = seed, cv_repeats = cv_repeats,
+    parallel_workers = parallel_workers, ncores = ncores,
+    tune_length = tune_length, tune_stop = tune_stop,
+    tune_time = tune_time, metric = metric,
+    model = model, program = program, output = output,
+    feature_of_interest = "feature_of_interest",
+    type = type, null_results = null_results,
+    cor_level = cor_level, vif_threshold = vif_threshold,
+    info_gain_n = info_gain_n, pct_loss = pct_loss,
+    diet_ml_recipe = diet_ml_recipe,
+    folds = folds
+  )
+  
+  model_fn <- list(
+    rf            = run_dietML_ranger,
+    enet          = run_dietML_enet,
+    ridge         = run_dietML_ridge_lasso,
+    lasso         = run_dietML_ridge_lasso,
+    xgboost       = run_dietML_xgboost
+  )
+  
+  if (is.null(model_fn[[model]])) stop("Unknown model: ", model)
+  shap_inputs <- do.call(model_fn[[model]], common_args)
+  
   return(shap_inputs)
+  
 }
 
 run_dietML_ranger <- function(split_from_data_frame, seed, folds, cv_repeats, 
                               parallel_workers, ncores, tune_length, tune_stop, 
                               tune_time, metric, feature_of_interest, model, program, 
                               output, type, null_results, cor_level, vif_threshold,
-                              info_gain_n, pct_loss) {
+                              info_gain_n, pct_loss, diet_ml_recipe) {
   
   ## log start of RF function
   logger::log_info("{model} model started...")
   
-  ## set resampling scheme
-  folds <- set_cv_strategy(split_from_data_frame = split_from_data_frame, 
-                           folds = folds, feature_of_interest = feature_of_interest, 
-                           cv_repeats = cv_repeats)
-    
-  ## recipe
-  diet_ml_recipe <- dietml_recipe(split_from_data_frame = split_from_data_frame, 
-                                  cor_level = cor_level, vif_threshold = vif_threshold,
-                                  info_gain_n = info_gain_n,
-                                  type = type, ncores = ncores, model = model)
-  
   ## Random Forest ML engine
   ## specify ML model and engine 
-  ## if no HP tuning, set initial RF model, which will take defaults
+  ## if no HP tuning, set initial RF model, which will take defaults, found here:
+  ## https://parsnip.tidymodels.org/reference/details_rand_forest_ranger.html#tuning-parameters
   if (as.numeric(tune_time) == 0) {
-    initial_mod <- parsnip::rand_forest(mode = type) %>%
+    initial_mod <- parsnip::rand_forest(mode = type, 
+                                        mtry = floor(sqrt(ncol(rsample::training(split_from_data_frame)))),
+                                        min_n = ifelse(type == "classification", 10, 5),
+                                        trees = 500) %>%
       parsnip::set_engine("ranger", 
                           num.threads = as.numeric(ncores),
                           importance = "none")
@@ -153,17 +146,17 @@ run_dietML_ranger <- function(split_from_data_frame, seed, folds, cv_repeats,
   ## hyperparameters =============================================================
   
   if (as.numeric(tune_time) == 0) {
-    no_tune_model <- parsnip::fit(diet_ml_workflow, rsample::training(split_from_data_frame))
     ## create the last model based on best parameters
-    last_best_mod <- 
-      parsnip::rand_forest(mtry = no_tune_model$fit[[2]]$fit$mtry, min_n = no_tune_model$fit[[2]]$fit$min.node.size, trees = no_tune_model$fit[[2]]$fit$num.trees) %>% 
-      parsnip::set_engine("ranger", num.threads = as.numeric(ncores), importance = "none") %>% 
-      parsnip::set_mode(type)
-    
+    last_best_mod <- initial_mod
     ## update workflow with best model
     best_tidy_workflow <- 
       diet_ml_workflow %>% 
       workflows::update_model(last_best_mod)
+    
+    logger::log_info("Hyperparameters selected: ")
+    logger::log_info(paste0("mtry: ", floor(sqrt(ncol(rsample::training(split_from_data_frame))))))
+    logger::log_info(paste0("trees: 500"))
+    logger::log_info(paste0("min_n: ", ifelse(type == "classification", 10, 5)))
     
   } else {
     best_tidy_workflow <- dietml_hp_tune(split_from_data_frame = split_from_data_frame, 
@@ -193,21 +186,10 @@ run_dietML_enet <- function(split_from_data_frame, seed, folds, cv_repeats,
                             parallel_workers, ncores, tune_length, tune_stop, 
                             tune_time, metric, feature_of_interest, model, program, 
                             output, type, null_results, cor_level, vif_threshold,
-                            info_gain_n, pct_loss) {
+                            info_gain_n, pct_loss, diet_ml_recipe) {
   
   ## log start of ENET function
   logger::log_info("{model} model started...")
-  
-  ## set resampling scheme
-  folds <- set_cv_strategy(split_from_data_frame = split_from_data_frame, 
-                           folds = folds, feature_of_interest = feature_of_interest, 
-                           cv_repeats = cv_repeats)
-  
-  ## recipe
-  diet_ml_recipe <- dietml_recipe(split_from_data_frame = split_from_data_frame, 
-                                  cor_level = cor_level, vif_threshold = vif_threshold,
-                                  info_gain_n = info_gain_n,
-                                  type = type, ncores = ncores, model = model)
   
   ## ML engine
   ## specify ML model and engine 
@@ -282,21 +264,10 @@ run_dietML_ridge_lasso <- function(split_from_data_frame, seed, folds, cv_repeat
                                    parallel_workers, ncores, tune_length, tune_stop, 
                                    tune_time, metric, feature_of_interest, model, program, 
                                    output, type, null_results, cor_level, vif_threshold,
-                                   info_gain_n, pct_loss) {
+                                   info_gain_n, pct_loss, diet_ml_recipe) {
   
   ## log start of ridge, lasso function
   logger::log_info("{model} model started...")
-  
-  ## set resampling scheme
-  folds <- set_cv_strategy(split_from_data_frame = split_from_data_frame, 
-                           folds = folds, feature_of_interest = feature_of_interest, 
-                           cv_repeats = cv_repeats)
-  
-  ## recipe
-  diet_ml_recipe <- dietml_recipe(split_from_data_frame = split_from_data_frame, 
-                                  cor_level = cor_level, vif_threshold = vif_threshold,
-                                  info_gain_n = info_gain_n, 
-                                  type = type, ncores = ncores, model = model)
   
   ## ML engine
   ## specify ML model and engine 
@@ -360,9 +331,10 @@ run_dietML_ridge_lasso <- function(split_from_data_frame, seed, folds, cv_repeat
   return(shap_inputs)
   
 }
+
 run_null_model <- function(split_from_data_frame, seed, type, output, cv_repeats, 
                            feature_of_interest, folds, cor_level, vif_threshold, 
-                           info_gain_n, ncores, model) {
+                           info_gain_n, ncores, model, diet_ml_recipe) {
   
   ## log start of null model
   logger::log_info("null model started...")
@@ -374,16 +346,6 @@ run_null_model <- function(split_from_data_frame, seed, type, output, cv_repeats
     results_df <- data.frame(seed = numeric(), mae = numeric(), rmse = numeric(), ccc = numeric(), stringsAsFactors = F)
   }
   
-  ## set resampling scheme
-  folds <- set_cv_strategy(split_from_data_frame = split_from_data_frame, 
-                           folds = folds, feature_of_interest = feature_of_interest, 
-                           cv_repeats = cv_repeats)
-  
-  ## recipe
-  diet_ml_recipe <- dietml_recipe(split_from_data_frame = split_from_data_frame, 
-                                  cor_level = cor_level, vif_threshold = vif_threshold,
-                                  info_gain_n = info_gain_n, 
-                                  type = type, ncores = ncores, model = model)
   
   ## specify ML model and engine 
   initial_mod <- null_model() %>% 
@@ -449,6 +411,98 @@ run_null_model <- function(split_from_data_frame, seed, type, output, cv_repeats
   return(results_df)
 }
 
+run_dietML_xgboost <- function(split_from_data_frame, seed, folds, cv_repeats, 
+                               parallel_workers, ncores, tune_length, tune_stop, 
+                               tune_time, metric, feature_of_interest, model, program, 
+                               output, type, null_results, cor_level, vif_threshold,
+                               info_gain_n, pct_loss, diet_ml_recipe) {
+  
+  ## log start of RF function
+  logger::log_info("{model} model started...")
+  
+  ## xgboost ML engine
+  ## specify ML model and engine 
+  ## if no HP tuning, set initial xgboost model, which will take defaults,
+  ## defaults determined by tidymodels defaults:
+  ## https://parsnip.tidymodels.org/reference/details_boost_tree_xgboost.html#tuning-parameters
+  
+  if (as.numeric(tune_time) == 0) {
+    
+    initial_mod <- parsnip::boost_tree(tree_depth = 6, 
+                                       trees = 500,
+                                       learn_rate = 0.3,
+                                       mtry = 1,
+                                       loss_reduction = 0,
+                                       sample_size = 1,
+                                       min_n = 1
+                                       ) %>%
+      set_engine("xgboost", nthread = as.numeric(ncores), counts = FALSE) %>%
+      set_mode(mode = type) 
+      
+    ## else if HP tuning time, set parameters to tune.
+    ## keep trees set to 1000, a good default and were not 
+    ## wasting time tuning something that doesnt really matter
+    ## in terms of the bias-variance tradeoff
+  } else {
+    initial_mod <- parsnip::boost_tree(trees = tune(), 
+                                       tree_depth = tune(), 
+                                       min_n = tune(),
+                                       loss_reduction = tune(),  
+                                       sample_size = tune(), 
+                                       mtry = tune(),        
+                                       learn_rate = tune()) %>%
+      set_engine("xgboost", nthread = as.numeric(ncores)) %>%
+      set_mode(mode = type)
+  }
+  
+  ## workflow ====================================================================
+  
+  ## define workflow
+  diet_ml_workflow <- dietml_workflow(model_obj = initial_mod, recipe = diet_ml_recipe)
+  
+  ## hyperparameters =============================================================
+  
+  if (as.numeric(tune_time) == 0) {
+    ## create the last model based on best parameters
+    last_best_mod <- initial_mod
+    ## update workflow with best model
+    best_tidy_workflow <- 
+      diet_ml_workflow %>% 
+      workflows::update_model(last_best_mod)
+
+    logger::log_info("Hyperparameters selected: ")
+    logger::log_info("tree_depth: 6")
+    logger::log_info("trees: 500")
+    logger::log_info("learn_rate: 0.3")
+    logger::log_info("mtry: 100% of columns/features")
+    logger::log_info("loss_reduction: 0")
+    logger::log_info("sample_size: 100% of training samples")
+    logger::log_info("min_n: 1")
+    
+  } else {
+    best_tidy_workflow <- dietml_hp_tune(split_from_data_frame = split_from_data_frame, 
+                                         diet_ml_workflow = diet_ml_workflow, model = model, 
+                                         parallel_workers = parallel_workers, 
+                                         folds = folds, type = type, tune_time = tune_time, 
+                                         seed = seed, tune_stop = tune_stop, metric = metric, 
+                                         ncores = ncores, output = output, tune_length = tune_length, 
+                                         pct_loss = pct_loss)
+  }
+  
+  ## write dietml outputs
+  shap_inputs <- write_dietml_outputs(type = type, best_tidy_workflow = best_tidy_workflow, 
+                                      split_from_data_frame = split_from_data_frame,
+                                      seed = seed, null_results = null_results, 
+                                      program = program, output = output)
+  
+  ## log end of rf model
+  logger::log_info("{model} model finished!")
+  
+  ## return outputs
+  return(shap_inputs)
+  
+}
+
 create_data_split_obj <- function(train, test, random_effects) {
 
   ## remove individual and train if random effects
@@ -461,13 +515,13 @@ create_data_split_obj <- function(train, test, random_effects) {
   return(split_from_data_frame)
 }
 
-set_cv_strategy <- function(split_from_data_frame, folds, feature_of_interest, cv_repeats) {
+set_cv_strategy <- function(split_from_data_frame, nfolds, feature_of_interest, cv_repeats) {
   train <- rsample::training(split_from_data_frame)
   ## set resampling scheme
-  cv_folds <- rsample::vfold_cv(train, v = as.numeric(folds), strata = feature_of_interest, repeats = cv_repeats)
+  cv_folds <- rsample::vfold_cv(train, v = as.numeric(nfolds), strata = feature_of_interest, repeats = cv_repeats)
   
   ## log CV strategy
-  logger::log_info("Stratified (across the response) cross validation strategy set, using {as.numeric(folds)} folds and repeating {cv_repeats}x time(s).")
+  logger::log_info("Stratified (across the response) cross validation strategy set, using {as.numeric(nfolds)} folds and repeating {cv_repeats}x time(s).")
   return(cv_folds)
 }
 
@@ -518,11 +572,22 @@ dietml_hp_tune <- function(diet_ml_workflow, model, parallel_workers, folds, typ
   dietML_param_set <- parsnip::extract_parameter_set_dials(diet_ml_workflow)
   
   ## make sure mtry is not ever more than the predictors we have
-  if (model == "rf") {
+  if (model %in% c("rf", "xgboost")) {
     dietML_param_set <- 
       dietML_param_set %>% 
       # Pick an upper bound for mtry: 
       recipes::update(mtry = mtry(range(1, ncol(train %>% dplyr::select(., -dplyr::any_of(c("feature_of_interest", "subject_id")))))))
+  }
+  
+  ## set range for trees and also increase inital models because 
+  ## there are so many hyperparameters to tune
+  if (model == "xgboost") {
+    dietML_param_set <- 
+      dietML_param_set %>% 
+      # Pick an upper bound for mtry: 
+      recipes::update(trees = trees(range(500, 1500)))
+    
+    n_inital_models = 15
   }
   
   ## make sure the penalty is a wide enough space, else some metrics like MAE
@@ -548,50 +613,30 @@ dietml_hp_tune <- function(diet_ml_workflow, model, parallel_workers, folds, typ
   doParallel::registerDoParallel(cl)
   
   ## set up hyper parameter search
-  if (type == "classification") {
-    
-    search_res <-
-      diet_ml_workflow %>% 
-      tune::tune_bayes(
-        resamples = folds,
-        # To use non-default parameter ranges
-        param_info = dietML_param_set,
-        # Generate five at semi-random to start
-        initial = n_inital_models,
-        iter = tune_length,
-        # How to measure performance?
-        metrics = yardstick::metric_set(bal_accuracy, roc_auc, accuracy, kap, f_meas),
-        control = tune::control_bayes(no_improve = as.numeric(tune_stop),
-                                      uncertain = 5,
-                                      verbose = FALSE,
-                                      parallel_over = "resamples",
-                                      time_limit = ifelse(tune_time == 0 && model %in% c("enet", "ridge", "lasso"), 10e5, as.numeric(tune_time)), # fake super long time to allow 10 iterations to find penalty for tune_time = 0 (penalized regression)
-                                      seed = as.numeric(seed),
-                                      save_pred = FALSE)
-      )
-    
-  } else if (type == "regression") {
-    
-    search_res <-
-      diet_ml_workflow %>% 
-      tune::tune_bayes(
-        resamples = folds,
-        # To use non-default parameter ranges
-        param_info = dietML_param_set,
-        # Generate five at semi-random to start
-        initial = n_inital_models,
-        iter = tune_length,
-        # How to measure performance?
-        metrics = yardstick::metric_set(mae, rmse, rsq, ccc),
-        control = tune::control_bayes(no_improve = as.numeric(tune_stop),
-                                      uncertain = 5,
-                                      verbose = FALSE,
-                                      parallel_over = "resamples",
-                                      time_limit = ifelse(tune_time == 0 && model %in% c("enet", "ridge", "lasso"), 10e5, as.numeric(tune_time)), # fake super long time to allow 10 iterations to find penalty for tune_time = 0 (penalized regression)
-                                      seed = as.numeric(seed),
-                                      save_pred = FALSE)
-      )
+  metrics <- if (type == "classification") {
+    yardstick::metric_set(bal_accuracy, roc_auc, accuracy, kap, f_meas)
+  } else {
+    yardstick::metric_set(mae, rmse, rsq, ccc)
   }
+  
+  search_res <-
+    diet_ml_workflow %>%
+    tune::tune_bayes(
+      resamples = folds,
+      param_info = dietML_param_set,
+      initial = n_inital_models,
+      iter = tune_length,
+      metrics = metrics,
+      control = tune::control_bayes(
+        no_improve = as.numeric(tune_stop),
+        uncertain = 5,
+        verbose = FALSE,
+        parallel_over = "resamples",
+        time_limit = ifelse(tune_time == 0 && model %in% c("enet", "ridge", "lasso"), 10e5, as.numeric(tune_time)),
+        seed = as.numeric(seed),
+        save_pred = FALSE
+      )
+    )
   
   ## stop parallel jobs
   parallel::stopCluster(cl)
@@ -603,17 +648,17 @@ dietml_hp_tune <- function(diet_ml_workflow, model, parallel_workers, folds, typ
   
   ## get the best parameters from tuning
   ## Get the parameters which lead to simpiler, less overfit, model that are within --pct_loss of best model
-  if (model == "rf") {
-    if (pct_loss == 0) {
-      best_mod <- search_res %>% tune::select_best(metric = metric)
-    } else {
-      best_mod <- search_res %>% tune::select_by_pct_loss(metric = metric, limit = pct_loss, desc(min_n), mtry)
-    }
-  } else if (model %in% c("ridge", "lasso", "enet")) {
-    if (pct_loss == 0) {
-      best_mod <- search_res %>% tune::select_best(metric = metric)
-    } else {
-      best_mod <- search_res %>% tune::select_by_pct_loss(metric = metric, limit = pct_loss, desc(penalty))
+  if (pct_loss == 0) {
+    best_mod <- search_res %>% tune::select_best(metric = metric)
+  } else {
+    best_mod <- search_res %>% {
+      if (model == "rf") {
+        tune::select_by_pct_loss(., metric = metric, limit = pct_loss, desc(min_n), mtry)
+      } else if (model %in% c("ridge", "lasso", "enet")) {
+        tune::select_by_pct_loss(., metric = metric, limit = pct_loss, desc(penalty))
+      } else if (model == "xgboost") {
+        tune::select_by_pct_loss(., metric = metric, limit = pct_loss, desc(min_n), desc(loss_reduction), tree_depth, mtry, learn_rate)
+      }
     }
   }
   
@@ -624,12 +669,16 @@ selected based on simplest model which optimize performance
 you may see training performance is VERY slightlylower than testing 
 performance in some cases. 
 
-In order to select a less complex model, for tree based models we 
+In order to select a less complex model, for random forest based models we 
 select the models with the highest min_node_size and lowest mtry 
 that produce a model within --pct_loss of the best tuned model.
                    
 For penalized regression, we select the model with the highest penalty that
 is within --pct_loss of the best tuned model. 
+
+For xgboost based models we select the models with the highest min_node_size 
+and loss reduction and lowest mtry, tree depth, and learn rate that produce 
+a model within --pct_loss of the best tuned model.
                    
 These efforts are all aimed to decrease the overfitting of a trained model,
 potentially decreasing the generalizability gap (that is, the difference 
@@ -659,59 +708,40 @@ between the training and test score).
       parsnip::set_mode(type)
   } 
   
-  ## create the last model based on best parameters: Elastic Net
-  ## if no tune time, make sure mixture is is set to 0.5
-  if (model == "enet") {
-    if (type == "classification" && length(levels(as.factor(split_from_data_frame$data$feature_of_interest))) == 2) {
-      last_best_mod <- 
-        parsnip::logistic_reg(mode = "classification", penalty = best_mod$penalty, mixture = ifelse(tune_time == 0, 0.5, best_mod$mixture)) %>% 
-        parsnip::set_engine("glmnet", standardize = FALSE) %>% 
-        parsnip::set_mode(type)
-    } else if (type == "classification" && length(levels(as.factor(split_from_data_frame$data$feature_of_interest))) > 2) { 
-      last_best_mod <- 
-        parsnip::multinom_reg(mode = "classification", penalty = best_mod$penalty, mixture = ifelse(tune_time == 0, 0.5, best_mod$mixture)) %>% 
-        parsnip::set_engine("glmnet", standardize = FALSE) %>% 
-        parsnip::set_mode(type)
-      } else if(type == "regression") {
-      last_best_mod <- 
-        parsnip::linear_reg(mode = "regression", penalty = best_mod$penalty, mixture = ifelse(tune_time == 0, 0.5, best_mod$mixture)) %>% 
-        parsnip::set_engine("glmnet", standardize = FALSE) %>% 
-        parsnip::set_mode(type)
-    }
-  }
+  ## create the last model based on best parameters: xgboost
+  if (model == "xgboost") {
+    last_best_mod <- 
+      parsnip::boost_tree(trees = best_mod$trees, 
+                          tree_depth = best_mod$tree_depth, 
+                          min_n = best_mod$min_n,
+                          loss_reduction = best_mod$loss_reduction,  
+                          sample_size = best_mod$sample_size, 
+                          mtry = best_mod$mtry,        
+                          learn_rate = best_mod$learn_rate) %>%
+      parsnip::set_engine("xgboost", nthread = as.numeric(ncores)) %>%
+      parsnip::set_mode(mode = type)
+  } 
   
-  ## create the last model based on best parameters: Ridge or Lasso
-  if (model %in% c("ridge", "lasso")) {
-    ## create the last model based on best parameters
-    if (type == "classification" && model == "lasso") {
-      if (length(levels(as.factor(split_from_data_frame$data$feature_of_interest))) == 2) {
-        last_best_mod <- parsnip::logistic_reg(mode = "classification", penalty = best_mod$penalty, mixture = 1) %>% 
-          parsnip::set_engine("glmnet", standardize = FALSE) %>% 
-          parsnip::set_mode(type) 
-      } else if (length(levels(as.factor(split_from_data_frame$data$feature_of_interest))) > 2) {
-        last_best_mod <- parsnip::multinom_reg(mode = "classification", penalty = best_mod$penalty, mixture = 1) %>% 
-          parsnip::set_engine("glmnet", standardize = FALSE) %>% 
-          parsnip::set_mode(type) 
-      }
-    } else if (type == "classification" && model == "ridge") {
-      if (length(levels(as.factor(split_from_data_frame$data$feature_of_interest))) == 2) {
-        last_best_mod <- parsnip::logistic_reg(mode = "classification", penalty = best_mod$penalty, mixture = 0) %>% 
-          parsnip::set_engine("glmnet", standardize = FALSE) %>% 
-          parsnip::set_mode(type) 
-      } else if (length(levels(as.factor(split_from_data_frame$data$feature_of_interest))) > 2) {
-        last_best_mod <- parsnip::multinom_reg(mode = "classification", penalty = best_mod$penalty, mixture = 0) %>% 
-          parsnip::set_engine("glmnet", standardize = FALSE) %>% 
-          parsnip::set_mode(type) 
-      }
-    } else if (type == "regression" && model == "lasso") {
-      last_best_mod <- parsnip::linear_reg(mode = "regression", penalty = best_mod$penalty, mixture = 1) %>% 
-        parsnip::set_engine("glmnet", standardize = FALSE) %>% 
-        parsnip::set_mode(type)
-    } else if (type == "regression" && model == "ridge") {
-      last_best_mod <- parsnip::linear_reg(mode = "regression", penalty = best_mod$penalty, mixture = 0) %>% 
-        parsnip::set_engine("glmnet", standardize = FALSE) %>% 
-        parsnip::set_mode(type)
+  ## create the last model based on best parameters for the glmnet models
+  ## if no tune time, make sure mixture is is set to 0.5
+  if (model %in% c("ridge", "lasso", "enet")) {
+    mixture <- if (model == "lasso") 1
+    else if (model == "ridge") 0
+    else ifelse(tune_time == 0, 0.5, best_mod$mixture)
+    
+    n_levels <- length(levels(as.factor(split_from_data_frame$data$feature_of_interest)))
+    
+    parsnip_fn <- if (type == "regression") {
+      parsnip::linear_reg
+    } else if (n_levels == 2) {
+      parsnip::logistic_reg
+    } else {
+      parsnip::multinom_reg
     }
+    
+    last_best_mod <- parsnip_fn(mode = type, penalty = best_mod$penalty, mixture = mixture) %>%
+      parsnip::set_engine("glmnet", standardize = FALSE) %>%
+      parsnip::set_mode(type)
   }
   
   ## update workflow with best model
