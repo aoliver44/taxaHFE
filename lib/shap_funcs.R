@@ -23,7 +23,7 @@ shap_analysis <- function(label, output, model, filename, shap_inputs, train, te
   split_from_data_frame <- shap_inputs$split_from_data_frame
   final_workflow <- shap_inputs$final_res$.workflow[[1]]
   prepped_recipe <- workflows::extract_recipe(final_workflow)
-
+  
   ## save some initial inputs to env, in case the below 
   ## shap analysis does not finish. Occasionaly it does not finish on
   ## the "test" dataset. Which is fine, i cant think of why that is used.
@@ -95,7 +95,7 @@ shap_analysis <- function(label, output, model, filename, shap_inputs, train, te
         
         ## start a parallel process
         ## xgboost does not like parallel shap
-        if (model != "xgboost") {
+        if (model %!in% c("xgboost", "mars")) {
           cl <- parallel::makeForkCluster(as.numeric(parallel_workers))
           doParallel::registerDoParallel(cl)
         }
@@ -107,10 +107,10 @@ shap_analysis <- function(label, output, model, filename, shap_inputs, train, te
           pred_wrapper = pfun,
           nsim = safe_nsim,
           adjust = TRUE,
-          parallel = ifelse(model != "xgboost", TRUE, FALSE)
+          parallel = ifelse(model %!in% c("xgboost", "mars"), TRUE, FALSE)
         )
         
-        if (model != "xgboost") {
+        if (model %!in% c("xgboost", "mars")) {
           parallel::stopCluster(cl)
         }
         
@@ -211,7 +211,7 @@ shap_plot <- function(
     kind = "bee",
     show_numbers = TRUE,
     bee_width = 0.2,
-    max_display = 10
+    max_display = 20
   ) +
     ggtitle(label = paste0("SHAP: ", label, " (", data_subset_label, ")")) +
     labs(x = ifelse(feature_type == "factor", paste0(
@@ -230,7 +230,7 @@ shap_plot <- function(
   ggplot2::ggsave(
     plot = plot,
     filename = filename_out,
-    width = pmax(0.1 * max(nchar(colnames(sv$X))), 6),
+    width = pmax(0.15 * max(nchar(colnames(sv$X))), 6),
     height = 4.5,
     units = "in"
   )
@@ -288,4 +288,3 @@ log_shap_analysis <- function(sv_object, top_features, data_subset) {
     logger::log_info(paste0(tmp[n,1], " | ", tmp[n,2]))
   }
 }
-
