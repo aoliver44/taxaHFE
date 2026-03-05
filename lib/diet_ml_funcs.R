@@ -687,18 +687,19 @@ dietml_recipe <- function(split_from_data_frame, cor_level, vif_threshold, info_
   ## specify recipe (this is like the pre-process work)
   dietML_recipe <- recipes::recipe(feature_of_interest ~ ., data = train) %>% 
     recipes::update_role("subject_id", new_role = "ID") %>% 
+    recipes::update_role("mid", new_role = "grouping_id") %>% 
     recipes::step_novel(recipes::all_nominal_predictors()) %>%
     recipes::step_dummy(recipes::all_nominal_predictors()) %>% 
     recipes::step_zv(recipes::all_predictors()) %>%
-    {if (model %in% c("ridge", "lasso", "enet")) recipes::step_center(., recipes::all_numeric_predictors()) %>% 
+    {if (model %in% c("ridge", "lasso", "enet", "mars")) recipes::step_center(., recipes::all_numeric_predictors()) %>% 
         recipes::step_scale(., recipes::all_numeric_predictors()) else .} %>%
     ## even though correlation filtering is done at the inital step of train (with VIF filtering)
     ## we correlate here too in case dummy encoding created additional things that should be correlated
     {if (cor_level < 1) recipes::step_corr(., recipes::all_numeric_predictors(), threshold = cor_level, use = "everything") else .} %>%
     {if (info_gain_n > 0) colino::step_select_infgain(., recipes::all_predictors(), 
-                                                          top_p = info_gain_n,
-                                                          outcome = "feature_of_interest",
-                                                          threads = ncores, scores = "tmp_scores") else .}
+                                                      top_p = info_gain_n,
+                                                      outcome = "feature_of_interest",
+                                                      threads = ncores, scores = "tmp_scores") else .}
   
   ## idea - log intermediate file of what these steps do to the data
   
@@ -742,6 +743,15 @@ dietml_hp_tune <- function(diet_ml_workflow, model, parallel_workers, folds, typ
       recipes::update(trees = trees(range(500, 1500)))
     
     n_inital_models = 15
+  }
+  
+  ## remove cv, none, and exhaustive from mars model prune_method
+  if (model == "mars") {
+    dietML_param_set <- 
+      dietML_param_set %>% 
+      # Pick an upper bound for mtry: 
+      recipes::update(prune_method = prune_method(values = c("backward", "forward", "seqrep"))) %>%
+      recipes::update(num_terms = num_terms(range(2, round(nrow(train) / 25)))) # set num_terms, which is nprune in earth, to a range that tops out at 25 samples per feature.
   }
   
   ## make sure the penalty is a wide enough space, else some metrics like MAE
@@ -812,6 +822,10 @@ dietml_hp_tune <- function(diet_ml_workflow, model, parallel_workers, folds, typ
         tune::select_by_pct_loss(., metric = metric, limit = pct_loss, desc(penalty))
       } else if (model == "xgboost") {
         tune::select_by_pct_loss(., metric = metric, limit = pct_loss, desc(min_n), desc(loss_reduction), tree_depth, mtry, learn_rate)
+      } else if (model == "mars") {
+        tune::select_by_pct_loss(., metric = metric, limit = pct_loss, num_terms)
+      } else if (model == "svm") {
+        tune::select_by_pct_loss(., metric = metric, limit = pct_loss, cost, rbf_sigma)
       }
     }
   }
@@ -833,7 +847,13 @@ is within --pct_loss of the best tuned model.
 For xgboost based models we select the models with the highest min_node_size 
 and loss reduction and lowest mtry, tree depth, and learn rate that produce 
 a model within --pct_loss of the best tuned model.
-                   
+
+For mars based models we select the models with the lowest num_terms 
+that produce a model within --pct_loss of the best tuned model.
+
+For svm (radial) based models we select the models with the lowest cost 
+and rbf_sigma that produce a model within --pct_loss of the best tuned model.
+
 These efforts are all aimed to decrease the overfitting of a trained model,
 potentially decreasing the generalizability gap (that is, the difference 
 between the training and test score).
@@ -897,6 +917,25 @@ between the training and test score).
       parsnip::set_engine("glmnet", standardize = FALSE) %>%
       parsnip::set_mode(type)
   }
+  
+  ## create the last model based on best parameters for the mars models
+  if (model == "mars") {
+    last_best_mod <- 
+      parsnip::bag_mars(prod_degree = best_mod$prod_degree,
+                        prune_method = best_mod$prune_method,
+                        num_terms = best_mod$num_terms) %>% 
+      parsnip::set_engine("earth") %>% 
+      parsnip::set_mode(type)
+  } 
+  
+  ## create the last model based on best parameters for the svm models
+  if (model == "svm") {
+    last_best_mod <- 
+      parsnip::svm_rbf(cost = best_mod$cost,
+                       rbf_sigma = best_mod$rbf_sigma) %>% 
+      parsnip::set_engine("kernlab") %>% 
+      parsnip::set_mode(type)
+  } 
   
   ## update workflow with best model
   best_tidy_workflow <- 
