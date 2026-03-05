@@ -95,7 +95,7 @@ shap_analysis <- function(label, output, model, filename, shap_inputs, train, te
         
         ## start a parallel process
         ## xgboost does not like parallel shap
-        if (model != "xgboost") {
+        if (model %!in% c("xgboost", "mars")) {
           cl <- parallel::makeForkCluster(as.numeric(parallel_workers))
           doParallel::registerDoParallel(cl)
         }
@@ -107,10 +107,10 @@ shap_analysis <- function(label, output, model, filename, shap_inputs, train, te
           pred_wrapper = pfun,
           nsim = safe_nsim,
           adjust = TRUE,
-          parallel = ifelse(model != "xgboost", TRUE, FALSE)
+          parallel = ifelse(model %!in% c("xgboost", "mars"), TRUE, FALSE)
         )
         
-        if (model != "xgboost") {
+        if (model %!in% c("xgboost", "mars")) {
           parallel::stopCluster(cl)
         }
         

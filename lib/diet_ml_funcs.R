@@ -93,7 +93,9 @@ run_dietML <- function(train, test, model, program, seed,
     enet          = run_dietML_enet,
     ridge         = run_dietML_ridge_lasso,
     lasso         = run_dietML_ridge_lasso,
-    xgboost       = run_dietML_xgboost
+    xgboost       = run_dietML_xgboost,
+    mars          = run_dietML_mars,
+    svm           = run_dietML_svm
   )
   
   if (is.null(model_fn[[model]])) stop("Unknown model: ", model)
@@ -440,9 +442,6 @@ run_dietML_xgboost <- function(split_from_data_frame, seed, folds, cv_repeats,
       set_mode(mode = type) 
       
     ## else if HP tuning time, set parameters to tune.
-    ## keep trees set to 1000, a good default and were not 
-    ## wasting time tuning something that doesnt really matter
-    ## in terms of the bias-variance tradeoff
   } else {
     initial_mod <- parsnip::boost_tree(trees = tune(), 
                                        tree_depth = tune(), 
@@ -503,6 +502,158 @@ run_dietML_xgboost <- function(split_from_data_frame, seed, folds, cv_repeats,
   
 }
 
+run_dietML_mars <- function(split_from_data_frame, seed, folds, cv_repeats, 
+                               parallel_workers, ncores, tune_length, tune_stop, 
+                               tune_time, metric, feature_of_interest, model, program, 
+                               output, type, null_results, cor_level, vif_threshold,
+                               info_gain_n, pct_loss, diet_ml_recipe) {
+  
+  ## log start of RF function
+  logger::log_info("{model} model started...")
+  
+  ## Mars ML engine
+  ## specify ML model and engine 
+  ## if no HP tuning, set initial mars model, which will take defaults,
+  ## based on the defaults from the earth::earth() function
+
+  if (as.numeric(tune_time) == 0) {
+    
+    initial_mod <- parsnip::bag_mars(prod_degree = 1,
+                                 prune_method = "backward",
+                                 num_terms = (min(200, max(20, 2 * ncol(rsample::training(split_from_data_frame)))) + 1) # default from https://parsnip.tidymodels.org/reference/details_bag_mars_earth.html#tuning-parameters
+    ) %>%
+      set_engine("earth") %>%
+      set_mode(mode = type) 
+    
+    ## else if HP tuning time, set parameters to tune.
+  } else {
+    initial_mod <- parsnip::bag_mars(prod_degree = tune(),
+                                 prune_method = tune(),
+                                 num_terms = tune() 
+    ) %>%
+      set_engine("earth") %>%
+      set_mode(mode = type) 
+  }
+  
+  ## workflow ====================================================================
+  
+  ## define workflow
+  diet_ml_workflow <- dietml_workflow(model_obj = initial_mod, recipe = diet_ml_recipe)
+  
+  ## hyperparameters =============================================================
+  
+  if (as.numeric(tune_time) == 0) {
+    ## create the last model based on best parameters
+    last_best_mod <- initial_mod
+    ## update workflow with best model
+    best_tidy_workflow <- 
+      diet_ml_workflow %>% 
+      workflows::update_model(last_best_mod)
+    
+    logger::log_info("Hyperparameters selected: ")
+    logger::log_info("select_features: FALSE")
+    logger::log_info("adjust_deg_free: NULL")
+    
+  } else {
+    best_tidy_workflow <- dietml_hp_tune(split_from_data_frame = split_from_data_frame, 
+                                         diet_ml_workflow = diet_ml_workflow, model = model, 
+                                         parallel_workers = parallel_workers, 
+                                         folds = folds, type = type, tune_time = tune_time, 
+                                         seed = seed, tune_stop = tune_stop, metric = metric, 
+                                         ncores = ncores, output = output, tune_length = tune_length, 
+                                         pct_loss = pct_loss)
+  }
+  
+  ## write dietml outputs
+  shap_inputs <- write_dietml_outputs(type = type, best_tidy_workflow = best_tidy_workflow, 
+                                      split_from_data_frame = split_from_data_frame,
+                                      seed = seed, null_results = null_results, 
+                                      program = program, output = output)
+  
+  ## log end of rf model
+  logger::log_info("{model} model finished!")
+  
+  ## return outputs
+  return(shap_inputs)
+  
+}
+
+run_dietML_svm <- function(split_from_data_frame, seed, folds, cv_repeats, 
+                            parallel_workers, ncores, tune_length, tune_stop, 
+                            tune_time, metric, feature_of_interest, model, program, 
+                            output, type, null_results, cor_level, vif_threshold,
+                            info_gain_n, pct_loss, diet_ml_recipe) {
+  
+  ## log start of RF function
+  logger::log_info("{model} model started...")
+  
+  ## SVM ML engine
+  ## specify ML model and engine 
+  ## if no HP tuning, set initial svm model, which will take defaults,
+  ## based on the defaults from the kernlab::ksvm() function
+  
+  if (as.numeric(tune_time) == 0) {
+    
+    initial_mod <- parsnip::svm_rbf(cost = 1
+    ) %>%
+      set_engine("kernlab") %>%
+      set_mode(mode = type) 
+    
+    ## else if HP tuning time, set parameters to tune.
+    ## keep trees set to 1000, a good default and were not 
+    ## wasting time tuning something that doesnt really matter
+    ## in terms of the bias-variance tradeoff
+  } else {
+    initial_mod <- parsnip::svm_rbf(rbf_sigma = tune(),
+                                    cost = tune()
+    ) %>%
+      set_engine("kernlab") %>%
+      set_mode(mode = type) 
+  }
+  
+  ## workflow ====================================================================
+  
+  ## define workflow
+  diet_ml_workflow <- dietml_workflow(model_obj = initial_mod, recipe = diet_ml_recipe)
+  
+  ## hyperparameters =============================================================
+  
+  if (as.numeric(tune_time) == 0) {
+    ## create the last model based on best parameters
+    last_best_mod <- initial_mod
+    ## update workflow with best model
+    best_tidy_workflow <- 
+      diet_ml_workflow %>% 
+      workflows::update_model(last_best_mod)
+    
+    logger::log_info("Hyperparameters selected: ")
+    logger::log_info("cost: 1")
+    logger::log_info("rbf_sigma: not specified")
+    
+  } else {
+    best_tidy_workflow <- dietml_hp_tune(split_from_data_frame = split_from_data_frame, 
+                                         diet_ml_workflow = diet_ml_workflow, model = model, 
+                                         parallel_workers = parallel_workers, 
+                                         folds = folds, type = type, tune_time = tune_time, 
+                                         seed = seed, tune_stop = tune_stop, metric = metric, 
+                                         ncores = ncores, output = output, tune_length = tune_length, 
+                                         pct_loss = pct_loss)
+  }
+  
+  ## write dietml outputs
+  shap_inputs <- write_dietml_outputs(type = type, best_tidy_workflow = best_tidy_workflow, 
+                                      split_from_data_frame = split_from_data_frame,
+                                      seed = seed, null_results = null_results, 
+                                      program = program, output = output)
+  
+  ## log end of rf model
+  logger::log_info("{model} model finished!")
+  
+  ## return outputs
+  return(shap_inputs)
+  
+}
+
 create_data_split_obj <- function(train, test, random_effects) {
 
   ## remove individual and train if random effects
@@ -537,7 +688,7 @@ dietml_recipe <- function(split_from_data_frame, cor_level, vif_threshold, info_
     recipes::step_novel(recipes::all_nominal_predictors()) %>%
     recipes::step_dummy(recipes::all_nominal_predictors()) %>% 
     recipes::step_zv(recipes::all_predictors()) %>%
-    {if (model %in% c("ridge", "lasso", "enet")) recipes::step_center(., recipes::all_numeric_predictors()) %>% 
+    {if (model %in% c("ridge", "lasso", "enet", "mars")) recipes::step_center(., recipes::all_numeric_predictors()) %>% 
         recipes::step_scale(., recipes::all_numeric_predictors()) else .} %>%
     ## even though correlation filtering is done at the inital step of train (with VIF filtering)
     ## we correlate here too in case dummy encoding created additional things that should be correlated
@@ -591,6 +742,15 @@ dietml_hp_tune <- function(diet_ml_workflow, model, parallel_workers, folds, typ
     n_inital_models = 15
   }
   
+  ## remove cv, none, and exhaustive from mars model prune_method
+  if (model == "mars") {
+    dietML_param_set <- 
+      dietML_param_set %>% 
+      # Pick an upper bound for mtry: 
+      recipes::update(prune_method = prune_method(values = c("backward", "forward", "seqrep"))) %>%
+      recipes::update(num_terms = num_terms(range(2, round(nrow(train) / 25)))) # set num_terms, which is nprune in earth, to a range that tops out at 25 samples per feature.
+  }
+  
   ## make sure the penalty is a wide enough space, else some metrics like MAE
   ## can be the same, resulting in an error. Also we'll ask the tuner to 
   ## intialize more models to help prevent this.
@@ -635,7 +795,8 @@ dietml_hp_tune <- function(diet_ml_workflow, model, parallel_workers, folds, typ
         parallel_over = "resamples",
         time_limit = ifelse(tune_time == 0 && model %in% c("enet", "ridge", "lasso"), 10e5, as.numeric(tune_time)),
         seed = as.numeric(seed),
-        save_pred = FALSE
+        save_pred = TRUE,
+        save_workflow = TRUE
       )
     )
   
@@ -644,6 +805,11 @@ dietml_hp_tune <- function(diet_ml_workflow, model, parallel_workers, folds, typ
   ## remove any doParallel job setups that may have
   ## unneccessarily hung around
   unregister_dopar()
+  
+  ## temp test
+  model_name <- paste0(model, "_tune_res")
+  assign(x = model_name, value = search_res, envir = stacks_env)
+  attr(stacks_env[[model_name]], "workflow") <- diet_ml_workflow
   
   ## fit best model ============================================================
   
@@ -659,6 +825,10 @@ dietml_hp_tune <- function(diet_ml_workflow, model, parallel_workers, folds, typ
         tune::select_by_pct_loss(., metric = metric, limit = pct_loss, desc(penalty))
       } else if (model == "xgboost") {
         tune::select_by_pct_loss(., metric = metric, limit = pct_loss, desc(min_n), desc(loss_reduction), tree_depth, mtry, learn_rate)
+      } else if (model == "mars") {
+        tune::select_by_pct_loss(., metric = metric, limit = pct_loss, num_terms)
+      } else if (model == "svm") {
+        tune::select_by_pct_loss(., metric = metric, limit = pct_loss, cost, rbf_sigma)
       }
     }
   }
@@ -680,7 +850,13 @@ is within --pct_loss of the best tuned model.
 For xgboost based models we select the models with the highest min_node_size 
 and loss reduction and lowest mtry, tree depth, and learn rate that produce 
 a model within --pct_loss of the best tuned model.
-                   
+
+For mars based models we select the models with the lowest num_terms 
+that produce a model within --pct_loss of the best tuned model.
+
+For svm (radial) based models we select the models with the lowest cost 
+and rbf_sigma that produce a model within --pct_loss of the best tuned model.
+
 These efforts are all aimed to decrease the overfitting of a trained model,
 potentially decreasing the generalizability gap (that is, the difference 
 between the training and test score).
@@ -744,6 +920,25 @@ between the training and test score).
       parsnip::set_engine("glmnet", standardize = FALSE) %>%
       parsnip::set_mode(type)
   }
+  
+  ## create the last model based on best parameters for the mars models
+  if (model == "mars") {
+    last_best_mod <- 
+      parsnip::bag_mars(prod_degree = best_mod$prod_degree,
+                    prune_method = best_mod$prune_method,
+                    num_terms = best_mod$num_terms) %>% 
+      parsnip::set_engine("earth") %>% 
+      parsnip::set_mode(type)
+  } 
+  
+  ## create the last model based on best parameters for the svm models
+  if (model == "svm") {
+    last_best_mod <- 
+      parsnip::svm_rbf(cost = best_mod$cost,
+                       rbf_sigma = best_mod$rbf_sigma) %>% 
+      parsnip::set_engine("kernlab") %>% 
+      parsnip::set_mode(type)
+  } 
   
   ## update workflow with best model
   best_tidy_workflow <- 
