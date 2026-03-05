@@ -93,8 +93,11 @@ run_dietML <- function(train, test, model, program, seed,
     enet          = run_dietML_enet,
     ridge         = run_dietML_ridge_lasso,
     lasso         = run_dietML_ridge_lasso,
-    xgboost       = run_dietML_xgboost
+    xgboost       = run_dietML_xgboost,
+    mars          = run_dietML_mars,
+    svm           = run_dietML_svm
   )
+  
   
   if (is.null(model_fn[[model]])) stop("Unknown model: ", model)
   shap_inputs <- do.call(model_fn[[model]], common_args)
@@ -170,9 +173,9 @@ run_dietML_ranger <- function(split_from_data_frame, seed, folds, cv_repeats,
   
   ## write dietml outputs
   shap_inputs <- write_dietml_outputs(type = type, best_tidy_workflow = best_tidy_workflow, 
-                                       split_from_data_frame = split_from_data_frame,
-                                       seed = seed, null_results = null_results, 
-                                       program = program, output = output)
+                                      split_from_data_frame = split_from_data_frame,
+                                      seed = seed, null_results = null_results, 
+                                      program = program, output = output)
   
   ## log end of rf model
   logger::log_info("{model} model finished!")
@@ -194,29 +197,29 @@ run_dietML_enet <- function(split_from_data_frame, seed, folds, cv_repeats,
   ## ML engine
   ## specify ML model and engine 
   ## if tune_time = 0, only lightly tune penalty, which is mandatory.
-    # Define model with fixed penalty and mixture
-    if (type == "classification" && length(levels(as.factor(split_from_data_frame$data$feature_of_interest))) == 2) {
-      initial_mod <- parsnip::logistic_reg(
-        mode = "classification",
-        penalty = tune(),
-        mixture = ifelse(tune_time == 0, 0.5, tune())
-      ) %>%
-        parsnip::set_engine("glmnet") 
-    } else if (type == "classification" && length(levels(as.factor(split_from_data_frame$data$feature_of_interest))) > 2) {
-      initial_mod <- parsnip::multinom_reg(
-        mode = "classification",
-        penalty = tune(),
-        mixture = ifelse(tune_time == 0, 0.5, tune())
-      ) %>%
-        parsnip::set_engine("glmnet") 
-    } else if (type == "regression") {
-      initial_mod <- parsnip::linear_reg(
-        mode = "regression",
-        penalty = tune(),
-        mixture = ifelse(tune_time == 0, 0.5, tune())
-      ) %>%
-        parsnip::set_engine("glmnet")
-    }
+  # Define model with fixed penalty and mixture
+  if (type == "classification" && length(levels(as.factor(split_from_data_frame$data$feature_of_interest))) == 2) {
+    initial_mod <- parsnip::logistic_reg(
+      mode = "classification",
+      penalty = tune(),
+      mixture = ifelse(tune_time == 0, 0.5, tune())
+    ) %>%
+      parsnip::set_engine("glmnet") 
+  } else if (type == "classification" && length(levels(as.factor(split_from_data_frame$data$feature_of_interest))) > 2) {
+    initial_mod <- parsnip::multinom_reg(
+      mode = "classification",
+      penalty = tune(),
+      mixture = ifelse(tune_time == 0, 0.5, tune())
+    ) %>%
+      parsnip::set_engine("glmnet") 
+  } else if (type == "regression") {
+    initial_mod <- parsnip::linear_reg(
+      mode = "regression",
+      penalty = tune(),
+      mixture = ifelse(tune_time == 0, 0.5, tune())
+    ) %>%
+      parsnip::set_engine("glmnet")
+  }
   
   ## workflow ==================================================================
   
@@ -245,12 +248,12 @@ run_dietML_enet <- function(split_from_data_frame, seed, folds, cv_repeats,
                                          ncores = ncores, output = output, tune_length = tune_length, 
                                          pct_loss = pct_loss)
   }
-    
+  
   ## write dietml outputs
   shap_inputs <- write_dietml_outputs(type = type, best_tidy_workflow = best_tidy_workflow, 
-                                       split_from_data_frame = split_from_data_frame, 
-                                       seed = seed, null_results = null_results, 
-                                       program = program, output = output)
+                                      split_from_data_frame = split_from_data_frame, 
+                                      seed = seed, null_results = null_results, 
+                                      program = program, output = output)
   
   ## log end of enet model
   logger::log_info("{model} model finished!")
@@ -272,23 +275,23 @@ run_dietML_ridge_lasso <- function(split_from_data_frame, seed, folds, cv_repeat
   ## ML engine
   ## specify ML model and engine 
   if (type == "classification" && length(levels(as.factor(split_from_data_frame$data$feature_of_interest))) == 2) {
-      initial_mod <- parsnip::logistic_reg(mode = "classification", 
-                                           penalty = tune(),
-                                           mixture = ifelse(model == "lasso", 1, 0)) %>%
-        parsnip::set_engine("glmnet", standardize = FALSE)
-    } else if (type == "classification" && length(levels(as.factor(split_from_data_frame$data$feature_of_interest))) > 2) {
-      initial_mod <- parsnip::multinom_reg(
-        mode = "classification",
-        penalty = tune(),
-        mixture = ifelse(model == "lasso", 1, 0)
-      ) %>%
-        parsnip::set_engine("glmnet") 
-    } else if (type == "regression") {
-      initial_mod <- parsnip::linear_reg(mode = "regression", 
+    initial_mod <- parsnip::logistic_reg(mode = "classification", 
                                          penalty = tune(),
                                          mixture = ifelse(model == "lasso", 1, 0)) %>%
-        parsnip::set_engine("glmnet", standardize = FALSE)
-    }
+      parsnip::set_engine("glmnet", standardize = FALSE)
+  } else if (type == "classification" && length(levels(as.factor(split_from_data_frame$data$feature_of_interest))) > 2) {
+    initial_mod <- parsnip::multinom_reg(
+      mode = "classification",
+      penalty = tune(),
+      mixture = ifelse(model == "lasso", 1, 0)
+    ) %>%
+      parsnip::set_engine("glmnet") 
+  } else if (type == "regression") {
+    initial_mod <- parsnip::linear_reg(mode = "regression", 
+                                       penalty = tune(),
+                                       mixture = ifelse(model == "lasso", 1, 0)) %>%
+      parsnip::set_engine("glmnet", standardize = FALSE)
+  }
   
   ## workflow ==================================================================
   
@@ -320,9 +323,9 @@ run_dietML_ridge_lasso <- function(split_from_data_frame, seed, folds, cv_repeat
   
   ## write dietml outputs
   shap_inputs <- write_dietml_outputs(type = type, best_tidy_workflow = best_tidy_workflow, 
-                                       split_from_data_frame = split_from_data_frame, 
-                                       seed = seed, null_results = null_results, 
-                                       program = program, output = output)
+                                      split_from_data_frame = split_from_data_frame, 
+                                      seed = seed, null_results = null_results, 
+                                      program = program, output = output)
   
   ## log end of ridge/lasso model
   logger::log_info("{model} model finished!")
@@ -435,14 +438,11 @@ run_dietML_xgboost <- function(split_from_data_frame, seed, folds, cv_repeats,
                                        loss_reduction = 0,
                                        sample_size = 1,
                                        min_n = 1
-                                       ) %>%
+    ) %>%
       set_engine("xgboost", nthread = as.numeric(ncores), counts = FALSE) %>%
       set_mode(mode = type) 
-      
+    
     ## else if HP tuning time, set parameters to tune.
-    ## keep trees set to 1000, a good default and were not 
-    ## wasting time tuning something that doesnt really matter
-    ## in terms of the bias-variance tradeoff
   } else {
     initial_mod <- parsnip::boost_tree(trees = tune(), 
                                        tree_depth = tune(), 
@@ -469,7 +469,7 @@ run_dietML_xgboost <- function(split_from_data_frame, seed, folds, cv_repeats,
     best_tidy_workflow <- 
       diet_ml_workflow %>% 
       workflows::update_model(last_best_mod)
-
+    
     logger::log_info("Hyperparameters selected: ")
     logger::log_info("tree_depth: 6")
     logger::log_info("trees: 500")
@@ -502,6 +502,160 @@ run_dietML_xgboost <- function(split_from_data_frame, seed, folds, cv_repeats,
   return(shap_inputs)
   
 }
+
+run_dietML_mars <- function(split_from_data_frame, seed, folds, cv_repeats, 
+                            parallel_workers, ncores, tune_length, tune_stop, 
+                            tune_time, metric, feature_of_interest, model, program, 
+                            output, type, null_results, cor_level, vif_threshold,
+                            info_gain_n, pct_loss, diet_ml_recipe) {
+  
+  ## log start of RF function
+  logger::log_info("{model} model started...")
+  
+  ## Mars ML engine
+  ## specify ML model and engine 
+  ## if no HP tuning, set initial mars model, which will take defaults,
+  ## based on the defaults from the earth::earth() function
+  
+  if (as.numeric(tune_time) == 0) {
+    
+    initial_mod <- parsnip::bag_mars(prod_degree = 1,
+                                     prune_method = "backward",
+                                     num_terms = NULL
+    ) %>%
+      set_engine("earth") %>%
+      set_mode(mode = type) 
+    
+    ## else if HP tuning time, set parameters to tune.
+  } else {
+    initial_mod <- parsnip::bag_mars(prod_degree = tune(),
+                                     prune_method = tune(),
+                                     num_terms = tune() 
+    ) %>%
+      set_engine("earth") %>%
+      set_mode(mode = type) 
+  }
+  
+  ## workflow ====================================================================
+  
+  ## define workflow
+  diet_ml_workflow <- dietml_workflow(model_obj = initial_mod, recipe = diet_ml_recipe)
+  
+  ## hyperparameters =============================================================
+  
+  if (as.numeric(tune_time) == 0) {
+    ## create the last model based on best parameters
+    last_best_mod <- initial_mod
+    ## update workflow with best model
+    best_tidy_workflow <- 
+      diet_ml_workflow %>% 
+      workflows::update_model(last_best_mod)
+    
+    logger::log_info("Hyperparameters selected: ")
+    logger::log_info("prune_method: backward")
+    logger::log_info("prod_degree: 1")
+    logger::log_info("num_terms: NULL (all)")
+    
+  } else {
+    best_tidy_workflow <- dietml_hp_tune(split_from_data_frame = split_from_data_frame, 
+                                         diet_ml_workflow = diet_ml_workflow, model = model, 
+                                         parallel_workers = parallel_workers, 
+                                         folds = folds, type = type, tune_time = tune_time, 
+                                         seed = seed, tune_stop = tune_stop, metric = metric, 
+                                         ncores = ncores, output = output, tune_length = tune_length, 
+                                         pct_loss = pct_loss)
+  }
+  
+  ## write dietml outputs
+  shap_inputs <- write_dietml_outputs(type = type, best_tidy_workflow = best_tidy_workflow, 
+                                      split_from_data_frame = split_from_data_frame,
+                                      seed = seed, null_results = null_results, 
+                                      program = program, output = output)
+  
+  ## log end of rf model
+  logger::log_info("{model} model finished!")
+  
+  ## return outputs
+  return(shap_inputs)
+  
+}
+
+run_dietML_svm <- function(split_from_data_frame, seed, folds, cv_repeats, 
+                           parallel_workers, ncores, tune_length, tune_stop, 
+                           tune_time, metric, feature_of_interest, model, program, 
+                           output, type, null_results, cor_level, vif_threshold,
+                           info_gain_n, pct_loss, diet_ml_recipe) {
+  
+  ## log start of RF function
+  logger::log_info("{model} model started...")
+  
+  ## SVM ML engine
+  ## specify ML model and engine 
+  ## if no HP tuning, set initial svm model, which will take defaults,
+  ## based on the defaults from the kernlab::ksvm() function
+  
+  if (as.numeric(tune_time) == 0) {
+    
+    initial_mod <- parsnip::svm_rbf(cost = 1
+    ) %>%
+      set_engine("kernlab") %>%
+      set_mode(mode = type) 
+    
+    ## else if HP tuning time, set parameters to tune.
+    ## keep trees set to 1000, a good default and were not 
+    ## wasting time tuning something that doesnt really matter
+    ## in terms of the bias-variance tradeoff
+  } else {
+    initial_mod <- parsnip::svm_rbf(rbf_sigma = tune(),
+                                    cost = tune()
+    ) %>%
+      set_engine("kernlab") %>%
+      set_mode(mode = type) 
+  }
+  
+  ## workflow ====================================================================
+  
+  ## define workflow
+  diet_ml_workflow <- dietml_workflow(model_obj = initial_mod, recipe = diet_ml_recipe)
+  
+  ## hyperparameters =============================================================
+  
+  if (as.numeric(tune_time) == 0) {
+    ## create the last model based on best parameters
+    last_best_mod <- initial_mod
+    ## update workflow with best model
+    best_tidy_workflow <- 
+      diet_ml_workflow %>% 
+      workflows::update_model(last_best_mod)
+    
+    logger::log_info("Hyperparameters selected: ")
+    logger::log_info("cost: 1")
+    logger::log_info("rbf_sigma: not specified")
+    
+  } else {
+    best_tidy_workflow <- dietml_hp_tune(split_from_data_frame = split_from_data_frame, 
+                                         diet_ml_workflow = diet_ml_workflow, model = model, 
+                                         parallel_workers = parallel_workers, 
+                                         folds = folds, type = type, tune_time = tune_time, 
+                                         seed = seed, tune_stop = tune_stop, metric = metric, 
+                                         ncores = ncores, output = output, tune_length = tune_length, 
+                                         pct_loss = pct_loss)
+  }
+  
+  ## write dietml outputs
+  shap_inputs <- write_dietml_outputs(type = type, best_tidy_workflow = best_tidy_workflow, 
+                                      split_from_data_frame = split_from_data_frame,
+                                      seed = seed, null_results = null_results, 
+                                      program = program, output = output)
+  
+  ## log end of rf model
+  logger::log_info("{model} model finished!")
+  
+  ## return outputs
+  return(shap_inputs)
+  
+}
+
 
 create_data_split_obj <- function(train, test, random_effects) {
 
