@@ -30,10 +30,13 @@ suppressPackageStartupMessages(library(parallelly, quietly = TRUE, verbose = FAL
 library(stringr, quietly = TRUE, verbose = FALSE, warn.conflicts = FALSE)
 library(logger, quietly = TRUE, verbose = FALSE, warn.conflicts = FALSE)
 library(collinear, quietly = TRUE, verbose = FALSE, warn.conflicts = FALSE)
+library(earth, quietly = TRUE, verbose = FALSE, warn.conflicts = FALSE)
+library(kernlab, quietly = TRUE, verbose = FALSE, warn.conflicts = FALSE)
+library(stacks, quietly = TRUE, verbose = FALSE, warn.conflicts = FALSE)
+library(baguette, quietly = TRUE, verbose = FALSE, warn.conflicts = FALSE)
 # these are the test dependencies
 library(testthat, quietly = TRUE, verbose = FALSE, warn.conflicts = FALSE)
 library(covr, quietly = TRUE, verbose = FALSE, warn.conflicts = FALSE)
 library(remotes, quietly = TRUE, verbose = FALSE, warn.conflicts = FALSE)
-
 
 
