@@ -8,8 +8,8 @@ source("lib/tree.R")
 # load flags
 # to use this code line-by-line in the Rstudio context, commandArgs can be overloaded to specify the desired flags
 # Example cmd:
-# command <- "example_inputs/all_data_impute_ALL_prot.csv -o test_outputs_mars_bag -s subject_id -l milk_vol --model mars -t numeric --metric rsq --tune_time 5 --tune_length 40 --tune_stop 20 --seed 1234 -n 2 --parallel_workers 4 --pct_loss 0 --vif_threshold 10 -c 0.8"
-# commandArgs <- function(x) { unlist(strsplit(command, split = " ")) }
+command <- "example_inputs/all_data_impute_ALL_prot.csv -o test_outputs_svm -s subject_id -l milk_vol --model svm -t numeric --metric rsq --tune_time 2 --tune_length 40 --tune_stop 20 --seed 1234 -n 2 --parallel_workers 4 --pct_loss 0 --vif_threshold 10 -c 0.8"
+commandArgs <- function(x) { unlist(strsplit(command, split = " ")) }
 
 # these will be used by the argparser
 opts <- load_diet_ml_args()
