@@ -48,7 +48,7 @@ argument_groups <- list(
       train_split=list("--train_split", type="numeric", metavar="<numeric>", default = 0.8, help="Percentage of samples to use for training"),
       info_gain_n=list("--info_gain_n", type="numeric", metavar="<numeric>", default = 0, help="Should information gain preprocessing be used? Set n number of features\nto be selected during preprocessesing. Bypasses info_gain_n if set to 0."),
       vif_threshold=list("--vif_threshold", type="numeric", metavar="<numeric>", default = 10, help="Calculates variance inflation factor (VIF) scores and removes variables\nabout a user-defined threshold. Bypasses vif_threshold if set to 0."),
-      model=list("--model", type="character", metavar="<string>", default="rf", choices=c("rf", "enet", "lasso", "ridge", "xgboost"), help="ML model to use. Options: rf, enet, lasso, ridge, xgboost."),
+      model=list("--model", type="character", metavar="<string>", default="rf", choices=c("rf", "enet", "lasso", "ridge", "xgboost", "mars", "svm"), help="ML model to use. Options: rf, enet, lasso, ridge, xgboost."),
       folds=list("--folds", type="numeric", metavar="<numeric>", default = 10, help="Number of CV folds for tuning"),
       cv_repeats=list("--cv_repeats", type="numeric", metavar="<numeric>", default = 3, help="Number of CV repeats to perform for repeated CV"),
       metric=list("--metric", type="character", metavar="<string>", default="bal_accuracy", choices=c("roc_auc", "bal_accuracy", "accuracy", "mae", "rmse", "rsq", "kap", "f_meas", "ccc"), help="Metric to optimize"),
@@ -71,7 +71,7 @@ argument_groups <- list(
       info_gain_n=list("--info_gain_n", type="numeric", metavar="<numeric>", default = 0, help="Should information gain preprocessing be used? Set n number of features\nto be selected during preprocessesing. Bypasses info_gain_n if set to 0."),
       vif_threshold=list("--vif_threshold", type="numeric", metavar="<numeric>", default = 10, help="Calculates variance inflation factor (VIF) scores and removes variables about a user-defined threshold. Bypasses vif_threshold if set to 0."),
       train_split=list("--train_split", type="numeric", metavar="<numeric>", default = 0.8, help="Percentage of samples to use for training"),
-      model=list("--model", type="character", metavar="<string>", default="rf", choices=c("rf", "enet", "lasso", "ridge", "xgboost"), help="ML model to use. Options: rf, enet, lasso, ridge, xgboost."),
+      model=list("--model", type="character", metavar="<string>", default="rf", choices=c("rf", "enet", "lasso", "ridge", "xgboost", "mars", "svm"), help="ML model to use. Options: rf, enet, lasso, ridge, xgboost."),
       folds=list("--folds", type="numeric", metavar="<numeric>", default = 10, help="Number of CV folds for tuning"),
       cv_repeats=list("--cv_repeats", type="numeric", metavar="<numeric>", default = 3, help="Number of CV repeats to perform for repeated CV"),
       metric=list("--metric", type="character", metavar="<string>", default="bal_accuracy", choices=c("roc_auc", "bal_accuracy", "accuracy", "mae", "rmse", "rsq", "kap", "f_meas", "ccc"), help="Metric to optimize"),
@@ -127,25 +127,25 @@ validators <- list(
 initialize_parser <- function(version, program_name, description, argument_groups, include_metadata_input=TRUE) {
   # only include the METADATA string if it needs to be included
   usage <- sprintf("[options] %sDATA", if (include_metadata_input) "METADATA " else "")
-
+  
   parser <- argparse::ArgumentParser(
     description=description,
     usage=paste(program_name, usage),
     formatter_class="type('CustomFormatter', (argparse.ArgumentDefaultsHelpFormatter, argparse.MetavarTypeHelpFormatter, argparse.RawTextHelpFormatter), {})"
   )
-
+  
   # positional input args
   if (include_metadata_input) {
     parser$add_argument("METADATA", metavar="METADATA", type="character", help="path to metadata input (txt | tsv | csv)")
   }
   parser$add_argument("DATA", metavar="DATA", type="character", help="path to input file from hierarchical data (i.e. hData data) (txt | tsv | csv)")
-
+  
   # common flags
   parser$add_argument("-o", "--output_dir", type="character", metavar="<string>", default="outputs", help="Directory for the output files to be written. Defaults to a directory called 'outputs'")
   parser$add_argument("-v", "--version", action="version", version=version)
   parser$add_argument("--data_dir", type="character", metavar="<string>", default=".", help="Directory for MEATDATA, DATA, and output_dir, ignored if using absolute paths. Defaults to the current directory")
   parser$add_argument("--seed", type="numeric", metavar="<numeric>", default=default_seed(), help="Set the seed, if no value is provided, uses a random number from the range (-1 * 2^31, 2^31 - 1)")
-
+  
   # add the arguments from the passed in argument_groups
   for (arg_group in argument_groups) {
     parser_group <- parser$add_argument_group(arg_group$name, arg_group$desc)
@@ -153,7 +153,7 @@ initialize_parser <- function(version, program_name, description, argument_group
       do.call(parser_group$add_argument, arg)
     }
   }
-
+  
   return(parser)
 }
 
@@ -163,7 +163,7 @@ validate_options <- function(opts) {
   for (flag_to_validate in names(validators)) {
     # skip any validators not matching a flag
     if (is.null(opts[[flag_to_validate]])) next
-
+    
     tryCatch({
       validators[[flag_to_validate]](flag_to_validate, opts[[flag_to_validate]], opts)
     }, error = function(e) {
@@ -171,7 +171,7 @@ validate_options <- function(opts) {
       quit(status = 1)
     })
   }
-
+  
   # additional validators that involve more than one flag here
   tryCatch({
     validate_total_cores(opts)
@@ -191,19 +191,19 @@ load_args <- function(program_name, description, argument_groups, include_metada
   if (version == "") {
     version <- "0"
   }
-
+  
   # load the parser, including any arguments groups
   parser <- initialize_parser(version, program_name, description, argument_groups, include_metadata_input)
-
+  
   # Parse the command-line arguments and return them
   opts <- parser$parse_args(commandArgs(TRUE))
-
+  
   # run the validators against the parsed flags
   validate_options(opts)
-
+  
   # extra handling for seed and files
   # because the validator has been run, it can be assumed that all options are safe for use
-
+  
   # also normalize all input paths to the data_dir
   # will ignore the data_dir if the path links to valid file based on where the script is being run
   for (f in list("METADATA", "DATA", "output_dir")) {
@@ -216,20 +216,20 @@ load_args <- function(program_name, description, argument_groups, include_metada
       opts[[f]] <- file.path(opts$data_dir, opts[[f]])
     }
   }
-
+  
   # ensure the output directory does not have a trailing slash, and create it if it doesn't exist
   opts$output_dir <- gsub("/$", "", x = opts$output_dir)
   dir.create(opts$output_dir, showWarnings = FALSE)
-
+  
   # set the seed from the flags
   set.seed(opts$seed)
-
+  
   return(opts)
 }
 
 load_taxa_hfe_args <- function() {
   arg_groups <- list(argument_groups$taxa_hfe_base_args)
-
+  
   return(load_args("taxa_hfe", "Hierarchical feature engineering (HFE) for feature reduction", arg_groups))
 }
 
@@ -238,12 +238,12 @@ load_taxa_hfe_ml_args <- function() {
     argument_groups$taxa_hfe_base_args,
     argument_groups$taxa_hfe_ml_args
   )
-
+  
   return(load_args("taxa_hfe_ml", "Hierarchical feature engineering (HFE) with ML", arg_groups))
 }
 
 load_diet_ml_args <- function() {
   arg_groups <- list(argument_groups$diet_ml_args)
-
+  
   return(load_args("diet_ml", "Another ML pipeline wrapper", arg_groups, include_metadata_input=FALSE))
 }
