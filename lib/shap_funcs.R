@@ -230,7 +230,7 @@ shap_plot <- function(
   ggplot2::ggsave(
     plot = plot,
     filename = filename_out,
-    width = pmax(0.1 * max(nchar(colnames(sv$X))), 6),
+    width = pmax(0.15 * max(nchar(colnames(sv$X))), 6),
     height = 4.5,
     units = "in"
   )
