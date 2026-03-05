@@ -691,7 +691,7 @@ dietml_recipe <- function(split_from_data_frame, cor_level, vif_threshold, info_
     recipes::step_novel(recipes::all_nominal_predictors()) %>%
     recipes::step_dummy(recipes::all_nominal_predictors()) %>% 
     recipes::step_zv(recipes::all_predictors()) %>%
-    {if (model %in% c("ridge", "lasso", "enet", "mars")) recipes::step_center(., recipes::all_numeric_predictors()) %>% 
+    {if (model %in% c("ridge", "lasso", "enet", "svm")) recipes::step_center(., recipes::all_numeric_predictors()) %>% 
         recipes::step_scale(., recipes::all_numeric_predictors()) else .} %>%
     ## even though correlation filtering is done at the inital step of train (with VIF filtering)
     ## we correlate here too in case dummy encoding created additional things that should be correlated
