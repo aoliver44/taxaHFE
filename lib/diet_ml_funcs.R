@@ -1058,15 +1058,19 @@ reduce_collinearity_train <- function(train, vif_threshold, cor_level, type, out
       collinear_stats_pre_vifdf <- collinear::vif_df(df = train, predictors = numeric_vars)
       collinear_stats_pre_cordf <- collinear::cor_df(df = train, predictors = numeric_vars)
       collinear_stats_pre <- collinear::collinear_stats(df = collinear_stats_pre_cordf, predictors = numeric_vars)
-      logger::log_info("You selected to perform correlation and/or VIF. We will perform this on the 
-                       entire training data, prior to tidymodels recipe making. Dummy encoding, 
-                       zero variance filtering, and information gain are all done inside the recipe.
-                       Note, the VIF/Correlation is only done on the training data! Not the entire data.
-                       We perform this using the collinear package in R. Their documentation is very good,
-                       please look at the defaults and assumptions they employ (e.g. vars dropped due to low variance). 
+      logger::log_info("You selected to perform correlation and/or VIF. Note, the VIF/Correlation is only d
+                        one on the training data! Not the entire data. We perform this using the collinear package in R. 
+                        Their documentation is very good, please look at the defaults and assumptions they employ.
                        Note the only collinear arguements we modify, beyond the VIF and correlation thresholds, is 
                        the function to rank predictors. We use f_categorical_rf() for classification tasks and 
                        f_numeric_rf() for regression tasks.
+
+                       Pairwise correlation filtering is applied twice, both times on training data only. First 
+                       pass: raw numeric features, pre-recipe, on the full training set. Second pass: 
+                       post-dummy-encoding, estimated within each CV fold on that fold's training portion only. VIF 
+                       filtering only occurs in the first pass. Both passes use the same cor_level threshold. The 
+                       second pass can catch correlations introduced by dummy encoding that the first pass would miss.
+
                        ")
       ## log the stats prior to VIF/Correlation
       logger::log_info(paste0("(Pre) Mean VIF, Correlation: ", 
