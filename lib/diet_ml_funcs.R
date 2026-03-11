@@ -806,6 +806,14 @@ dietml_hp_tune <- function(diet_ml_workflow, model, parallel_workers, folds, typ
   ## unneccessarily hung around
   unregister_dopar()
   
+  ## save data object for stacks
+  stacks_env <- new.env()
+  model_name <- paste0(model, "_tune_res")
+  assign(x = model_name, value = search_res, envir = stacks_env)
+  attr(stacks_env[[model_name]], "workflow") <- diet_ml_workflow
+  saveRDS(stacks_env, file = paste0(output, "/ml_analysis/stacks_env.rds"))
+  rm(stacks_env)
+  
   ## fit best model ============================================================
   
   ## get the best parameters from tuning
