@@ -32,3 +32,4 @@ example_inputs/all_data_impute.csv
 example_inputs/all_data_impute*
 .sh_history
 /test_output*
+example_inputs/baseline_data_micronutrients_grs_1295.csv
