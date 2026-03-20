@@ -8,7 +8,7 @@ source("lib/tree.R")
 # load flags
 # to use this code line-by-line in the Rstudio context, commandArgs can be overloaded to specify the desired flags
 # Example cmd:
-# command <- "example_inputs/all_data_impute_ALL_prot.csv -o test_outputs_svm -s subject_id -l milk_vol --model svm -t numeric --metric rsq --tune_time 2 --tune_length 40 --tune_stop 20 --seed 1234 -n 2 --parallel_workers 4 --pct_loss 0 --vif_threshold 10 -c 0.8"
+# command <- "example_inputs/baseline_data_micronutrients_grs_1295.csv -o test_outputs_rf_1295_D_tmp -s subject_id -t numeric --parallel_workers 5 --model rf -l milk_vol -n 2 --metric rsq -c 0.95 --vif_threshold 10 --info_gain_n 0 --train_split 0.80 --tune_time 5 --tune_length 80 --tune_stop 30 --folds 10 --cv_repeats 1 --country D --seed 5231514"
 # commandArgs <- function(x) { unlist(strsplit(command, split = " ")) }
 
 # these will be used by the argparser
@@ -30,7 +30,13 @@ data <- read_in_metadata(input = opts$DATA,
                              cores = (opts$ncores * opts$parallel_workers))
 
 ## split data
-tr_te_split <- rsample::group_initial_split(data, prop = as.numeric(opts$train_split), group = "mid")
+if (is.null(opts$country)) {
+  stop("Need to supply a country for the test.")
+} else {
+  train_tmp <- data %>% dplyr::filter(., country != opts$country)
+  test_tmp <- data %>% dplyr::filter(., country == opts$country)
+}
+tr_te_split <- rsample::make_splits(x = train_tmp, assessment = test_tmp)
 train_data <- rsample::training(tr_te_split)
 test_data  <- rsample::testing(tr_te_split)
 

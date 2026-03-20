@@ -82,7 +82,8 @@ argument_groups <- list(
       pct_loss=list("--pct_loss", type="numeric", metavar="<numeric>", default = 0, help="Maximum acceptable percent loss performance relative to best HP\ncombination. Used to select a more regularized model (perhaps more\ngeneralizable). Setting to 0% will select the best scoring model."),
       shap=list("--shap", action="store_true", help="Calculate SHAP values"),
       ncores=list("-n", "--ncores", type="integer", metavar="<numeric>", default = 2, help="Number of threads/cores to use in certain functions that can perform\nparallel processing. To limit overall resource usage of dietML, limit the\namount of resources available to the container (e.g. --cpus=4 for Docker).\nNote that total resources needed are parallel_workers * ncores."),
-      parallel_workers=list("--parallel_workers", type="integer", metavar="<numeric>", default = 1, help="Number of parallel search processes to run for hyperparameter tuning in\ndietML. Note that total resources needed are parallel_workers * ncores\n(e.g. --cpus=4 for Docker)")
+      parallel_workers=list("--parallel_workers", type="integer", metavar="<numeric>", default = 1, help="Number of parallel search processes to run for hyperparameter tuning in\ndietML. Note that total resources needed are parallel_workers * ncores\n(e.g. --cpus=4 for Docker)"),
+      country=list("--country", type="character", metavar="<string>", help="Country to leave out as test.")
     )
   )
 )

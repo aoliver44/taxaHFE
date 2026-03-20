@@ -262,6 +262,7 @@ test_flag_values <- list(
   diet_ml_args=list(
     subject_identifier=list(flags=list("-s", "--subject_identifier"), value="sid"),
     label=list(flags=list("-l", "--label"), value="label_factor"),
+    label=list(flags=list("--country"), value="imaginary_country"),
     cor_level=list(flags=list("-c", "--cor_level"), value=.99, errors=list(-1, 2), warnings=list(.4)),
     info_gain_n=list(flags=list("--info_gain_n"), value=4, errors=list(-1, -10)),
     vif_threshold=list(flags=list("--vif_threshold"), value=4, errors=list(-1, -10), warnings=list(15)),
