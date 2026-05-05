@@ -127,9 +127,10 @@ method_taxa_hfe_ml <- function(
   ## (if working well, should be TRUE. Below it is asking if it is the inverse
   ## of it is TRUE...basically a problem)
   if (!all(colnames(train_data)==colnames(test_data))) {
-    stop("The training colnames and testing colnames do not match. This is unusual -
+    logger::log_fatal("The training colnames and testing colnames do not match. This is unusual -
          take note of the command and your data and raise an issue on our GitHub
          (https://github.com/aoliver44/taxaHFE/issues)")
+    stop()
   }
 
   ## store data in list of data for dietML
