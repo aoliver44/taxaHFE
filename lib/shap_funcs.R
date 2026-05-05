@@ -22,7 +22,7 @@ shap_analysis <- function(label, output, model, filename, shap_inputs, train, te
   # --- Load SHAP inputs ---
   split_from_data_frame <- shap_inputs$split_from_data_frame
   final_workflow <- shap_inputs$final_res$.workflow[[1]]
-  prepped_recipe <- workflows::extract_recipe(final_workflow)
+  raw_recipe <- workflows::extract_preprocessor(final_workflow)
   
   ## save some initial inputs to env, in case the below 
   ## shap analysis does not finish. Occasionaly it does not finish on
@@ -68,7 +68,7 @@ shap_analysis <- function(label, output, model, filename, shap_inputs, train, te
       for (i in seq_along(shap_data_subsets)) {
         
         ## prep the data using the recipe
-        shap_data <- recipes::prep(prepped_recipe, shap_data_subsets[[i]][[1]], fresh = TRUE) %>%
+        shap_data <- recipes::prep(raw_recipe, training = shap_data_subsets[[i]][[1]], fresh = TRUE) %>%
           recipes::juice() %>%
           dplyr::select(-feature_of_interest, -subject_id)
         assign(paste0("shap_data_", shap_data_subsets[[i]][[2]]), shap_data, envir = shap_plot_env)
@@ -88,10 +88,10 @@ shap_analysis <- function(label, output, model, filename, shap_inputs, train, te
         
         ## warning if shap analysis looks like its going to take a long time
         if ((n_cols * n_rows) > 500000) {
-          warning("This input dataset is pretty large for a SHAP analysis. This may take a long time, potentially exceeding walltime limits for shared resources (e.g., HPCs)", immediate. = T)
+          logger::log_warn("This input dataset is pretty large for a SHAP analysis. This may take a long time, potentially exceeding walltime limits for shared resources (e.g., HPCs)", immediate. = T)
         }
         
-        message(glue::glue("Running SHAP with nsim = {safe_nsim}"))
+        logger::log_info(glue::glue("Running SHAP with nsim = {safe_nsim}"))
         
         ## start a parallel process
         ## xgboost does not like parallel shap
@@ -147,7 +147,7 @@ shap_analysis <- function(label, output, model, filename, shap_inputs, train, te
   
   # --- Save and return results ---
   if (shap.error.occured) {
-    message(paste("SHAP analysis encountered an issue and all output files may not have been generated:", error_message))
+    logger::log_warn(paste("SHAP analysis encountered an issue and all output files may not have been generated:", error_message))
     if (!is.null(error_message)) { 
       ## attempt to still return what was written to shap_plot_env
       save(list = ls(envir = shap_plot_env), 
@@ -156,10 +156,10 @@ shap_analysis <- function(label, output, model, filename, shap_inputs, train, te
            compress = "gzip"
       )
       ## return error message
-      message("Error: ", error_message)
+      logger::log_fatal("Error: ", error_message)
     }
   } else {
-    message("✅ SHAP analysis completed successfully.")
+    logger::log_info("✅ SHAP analysis completed successfully.")
     save(list = ls(envir = shap_plot_env), 
          envir = shap_plot_env,
          file = file.path(paste0(output_dir, "/shap_inputs_", filename, ".RData")),
@@ -197,7 +197,8 @@ shap_plot <- function(
   # Determine class labels (assumes binary classification)
   class_levels <- levels(as.factor(split_from_data_frame$data$feature_of_interest))
   if (length(class_levels) < 2) {
-    stop("Insufficient factor levels for feature_of_interest.")
+    logger::log_fatal("Insufficient factor levels for feature_of_interest.")
+    stop()
   }
   ## log shap viz positive class
   if (feature_type == "factor") {
@@ -235,7 +236,7 @@ shap_plot <- function(
     units = "in"
   )
   
-  message("SHAP plot saved to: ", filename_out)
+  logger::log_info(paste0("SHAP plot saved to: ", filename_out))
   
   return(plot)
 }
