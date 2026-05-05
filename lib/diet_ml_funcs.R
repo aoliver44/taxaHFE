@@ -99,7 +99,11 @@ run_dietML <- function(train, test, model, program, seed,
   )
   
   
-  if (is.null(model_fn[[model]])) stop("Unknown model: ", model)
+  if (is.null(model_fn[[model]])) {
+    logger::log_fatal(paste0("Unknown model, not in model_fn list: ", model))
+    stop()
+  } 
+  
   shap_inputs <- do.call(model_fn[[model]], common_args)
   
   return(shap_inputs)
@@ -698,7 +702,7 @@ dietml_recipe <- function(split_from_data_frame, cor_level, vif_threshold, info_
     {if (info_gain_n > 0) colino::step_select_infgain(., recipes::all_predictors(), 
                                                       top_p = info_gain_n,
                                                       outcome = "feature_of_interest",
-                                                      threads = ncores, scores = "tmp_scores") else .}
+                                                      threads = ncores) else .}
   
   ## idea - log intermediate file of what these steps do to the data
   
