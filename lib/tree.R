@@ -398,7 +398,6 @@ build_tree <- function(df, filter_prevalence, filter_mean_abundance) {
   taxa_tree <- data.tree::Node$new("taxaTree", id = 0)
 
   ## progress bar
-  logger::log_info("Building tree...")
   pb <- progress::progress_bar$new(format = " Adding nodes to tree [:bar] :percent in :elapsed", total = nrow(df), clear = FALSE, width = 60)
 
   for (row in seq_len(nrow(df))) {
