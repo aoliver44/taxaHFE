@@ -16,8 +16,7 @@ method_taxa_hfe <- function(
   col_names, output, random_effects
 ) {
   ## Build tree ================================================================
-  cat("\n\n", "###########################\n", "Building Tree...\n", "###########################\n\n")
-  cat("This may take a few minutes depending on how many features you have.\n")
+  logger::log_info("Building tree...")
   h_tree <- build_tree(
     h_data,
     filter_prevalence = prevalence,
@@ -65,6 +64,7 @@ method_taxa_hfe_ml <- function(
   ## subset h_data for training samples
   training_h_data_split <- h_data %>% dplyr::select(., clade_name, dplyr::any_of(train_metadata$subject_id))
   ## build training tree
+  logger::log_info("Building tree for training data...")
   h_tree_train <- build_tree(training_h_data_split, filter_prevalence = prevalence, filter_mean_abundance = abundance)
   ## compete training tree
   competed_tree <- compete_tree(
@@ -96,6 +96,7 @@ method_taxa_hfe_ml <- function(
   ## subset h_data for testing samples 
   testing_h_data_split <- h_data %>% dplyr::select(., clade_name, dplyr::any_of(test_metadata$subject_id))
   ## build testing tree - no filters get run! ALL testing features make it through
+  logger::log_info("Building tree for test data. Tree will not compete, this \nis just to generate the taxonomy from the input data.")
   h_tree_test <- build_tree(testing_h_data_split, filter_prevalence = 0, filter_mean_abundance = 0)
   ## Extract information from tree 
   test_data <- prepare_flattened_df(
