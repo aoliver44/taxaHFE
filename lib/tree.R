@@ -142,12 +142,11 @@ read_in_metadata <- function(input, subject_identifier, label, feature_type, ran
 ## read in data, should be in tab or comma separated format
 read_in_hierarchical_data <- function(input, metadata, cores) {
   
-  cat("\n", "Checking for DATA...", "\n")
   if (file.exists(input) == FALSE) {
-    stop("DATA input not found.")
+    logger::log_fatal("DATA input not found.")
+    stop()
   }
-  cat("\n", paste0("Using ", input, " as DATA"), "\n") 
-  
+
   ## read extension to determine file delim
   if (strsplit(basename(input), split = "\\.")[[1]][2] %in% c("tsv","txt")) {
     delim = "\t"
@@ -166,6 +165,9 @@ read_in_hierarchical_data <- function(input, metadata, cores) {
                               # symbols.
                               janitor::clean_names(use_make_names = F))
   
+  ## log read in
+  logger::log_info("Read in {input}, which originally contains {NROW(hData)} rows and {NCOL(hData)} columns")
+  
   ## only select columns that are in metadata file, reduce computation if
   ## you have a lot more data than metadata
   
@@ -180,7 +182,8 @@ read_in_hierarchical_data <- function(input, metadata, cores) {
   
   ## check and make sure clade_name is the first column in hData
   if ("clade_name" %!in% colnames(hData)) {
-    stop("column clade_name not found in input data")
+    logger::log_fatal("Column clade_name not found in input data")
+    stop()
   }
   if (colnames(hData)[1] != "clade_name") {
     hData <- hData %>% dplyr::relocate(., "clade_name")
@@ -188,7 +191,8 @@ read_in_hierarchical_data <- function(input, metadata, cores) {
   
   ## check and make sure there are no NAs in hData
   if (anyNA(hData)) {
-    stop("Please remove NAs from your hierarchical data input.")
+    logger::log_fatal("Please remove NAs from your hierarchical data input.")
+    stop()
   }
   
   ## write input to file
@@ -394,6 +398,7 @@ build_tree <- function(df, filter_prevalence, filter_mean_abundance) {
   taxa_tree <- data.tree::Node$new("taxaTree", id = 0)
 
   ## progress bar
+  logger::log_info("Building tree...")
   pb <- progress::progress_bar$new(format = " Adding nodes to tree [:bar] :percent in :elapsed", total = nrow(df), clear = FALSE, width = 60)
 
   for (row in seq_len(nrow(df))) {
@@ -427,6 +432,7 @@ build_tree <- function(df, filter_prevalence, filter_mean_abundance) {
   # start the unique id counter at 1 greater than the original df size
   next_row_id <- nrow(df) + 1
 
+  logger::log_info("Fixing unpopulated nodes...")
   pb2 <- progress::progress_bar$new(format = " Fixing unpopulated nodes [:bar] :percent in :elapsed", total = taxa_tree$totalCount, clear = FALSE, width = 60)
 
   # traverse the tree and fix the unpopulated nodes
@@ -439,6 +445,7 @@ build_tree <- function(df, filter_prevalence, filter_mean_abundance) {
     next_row_id <<- next_row_id + 1
   }, traversal = "post-order")
 
+  logger::log_info("Tree built!")
   return(taxa_tree)
 }
 
@@ -668,6 +675,7 @@ compete_tree <- function(tree, modify_tree = TRUE, col_names, lowest_level = 2, 
   # if not modifying the input tree, create a copy of the tree to perform the competition
   if (!modify_tree) tree <- data.tree::Clone(tree)
 
+  logger::log_info("Competing tree...")
   pb <- progress::progress_bar$new(format = " Competing tree [:bar] :percent in :elapsed", total = tree$totalCount, clear = FALSE, width = 60)
 
   # perform the competition, modifying the tree (which may or may not be a clone of the input)
@@ -688,9 +696,11 @@ compete_tree <- function(tree, modify_tree = TRUE, col_names, lowest_level = 2, 
     random_effects = random_effects
   )
 
+  logger::log_info("Inital tree competition done!")
   # compete all winners
   # increasing nperm by a factor of 10 to further reduce the variability in the final rf importance scores
   if (disable_super_filter == FALSE) {
+    logger::log_info("Competing final winners...")
     compete_all_winners(
       tree,
       metadata,
@@ -701,8 +711,9 @@ compete_tree <- function(tree, modify_tree = TRUE, col_names, lowest_level = 2, 
       random_effects,
       max_level
     )
+    logger::log_info("Competing final winners finished!")
   } else {
-    cat(" Skipping super filter\n")
+    logger::log_info("Skipping super filter!")
   }
 
   # return the tree
@@ -967,16 +978,16 @@ generate_outputs <- function(tree, metadata, col_names, output_location, disable
   if (write_both_outputs == TRUE && disable_super_filter == FALSE) {
     write_output_file(flattened_winners, metadata, output_location, "taxahfe_no_sf.csv")
   }
-
-  cat(" Features (no super filter): ", nrow(flattened_winners), "\n")
+  
+  logger::log_info(paste0("Features (no super filter): ", nrow(flattened_winners)))
+  
   if (disable_super_filter != TRUE) {
-    cat("\n Features (super filter): ", nrow(flattened_sf_winners), "\n")
+    logger::log_info(paste0("Features (super filter): ", nrow(flattened_sf_winners)))
   }
 
   ## write old files
   if (write_old_files == TRUE) {
-    cat("\n", "###########################\n", "Writing old files...\n", "###########################\n\n")
-
+    logger::log_info("Writing old files...")
     write_summary_files(input = flattened_df, metadata = metadata, output = output_location)
     write_oudah_input(input = flattened_df, output = output_location, metadata = metadata)
   }
