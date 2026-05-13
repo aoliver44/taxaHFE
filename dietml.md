@@ -41,7 +41,8 @@ Note, ```dietML``` is not a "specialized" solution for ML. For example, when you
 ```dietML``` is a containerized application and can be run in the following ways:
 
 <details>
-<summary> <b>Option 1:</b> The easiest way to get started is by pulling the Docker image. This is a good option if you are on your own machine and have permission to install software.
+<summary> <b>Option 1:</b> The easiest way to get started is by pulling the Docker image. This is a good option if you are on your own machine and have permission to install software. We build and push images for both Apple M processors (arm64) and Intel processors (amd64). Docker should automatically detect your platform, but you can always set the --platform flag. See Docker documentation for more details.
+
 </summary>
 
 Please [install docker](https://www.docker.com/) if you choose this route. Pulling these containers for the first time may take a few minutes to run, so please be patient. 
@@ -116,7 +117,7 @@ git clone https://github.com/aoliver44/taxaHFE.git && cd taxaHFE/
 docker run --cpus=2 --memory=4g --rm -it -v `pwd`:/data aoliver44/diet_ml:latest example_inputs/bike_share_day.csv -o test_outputs -s instant -l cnt --model ridge -t numeric --metric rsq --tune_time 1 --seed 1234 --shap -n 2
 ```
 
-Using the default of 2 cores on a MacBook Pro with an M3 chip, the above command took approximately 8 minutes and 21 seconds to complete. RAM usage peaked at around 1.4 GB. Increasing resources to 8 cpus (```--cups=8``` *and* ```--ncores 8```), and ```--memory=8g``` cut that runtime significantly (runtime = 3 minutes and 12 seconds). The input data included 288 samples and 1,187 MetaPhlAn-generated taxonomic features. We put in some effort to provide progress bars so you know something is happening. In some situations—especially certain computer or HPC environments—these progress bars may not show up. Bummer.
+Using the default of 2 cores on a MacBook Pro with an M4 chip, the above command took approximately 1 minutes and 26 seconds to complete. Increasing resources to 2 ncores and 4 parallel workers (8 cores requested from docker) cut that runtime to 57 seconds. If you are curious if things are happening, look at the time-stamps in the log file! 
 
 **Step 3:** Examine the outputs. Several outputs get generated from the command run in the previous step:
 
@@ -133,6 +134,12 @@ Using the default of 2 cores on a MacBook Pro with an M3 chip, the above command
 │       ├── shap_dietml_1234_train.pdf
 │       ├── shap_inputs_dietml_1234.RData
 │       └── training_performance.pdf
+│       ├── raw_predictions.csv
+│       ├── collinear_var_preference.csv.gz
+│       ├── collinear_stats_pre_cordf.csv.gz
+│       └── collinear_stats_pre_vifdf.csv.gz
+│   └── diet_ml_1234.log
+
 ```
 
 The train and test data that fed the machine learning models are written to files (dietml_test_seed.csv and dietml_train_seed.csv). The results of the machine learning model (the performance of the model on the test data, along with the perforamnce of the null model). With the ```--shap``` command run, the shap_* files are written. Probably the most important one to view is shap_dietml_1234_full.pdf, which is a beeswarm SHAP plot on the full input dataset.
@@ -234,6 +241,10 @@ Below are some some additional details about certain flags.
 ```--cor_level```: A number between 0-1, which defines a Pearson correlation threshold at which features are combined. The underlying function can be found [here](https://recipes.tidymodels.org/reference/step_corr.html). Note that if set to 1--its defualt value--this correlation filter is entirely bypassed.
 
 ```--info_gain_n```: The number of features that should be selected during feature engineering, based on information gain. For example, if set to 5, the resulting training models will only see the top 5 features by information gain. This step is conducted at the end, meaning all other feature engineering steps come before it. Finally, if you set this too high, as in more features than are present, the program will still run. Setting the value to 0 (the default) will bypass this step entirely. You can read more about the underlying code [here](https://stevenpawley.github.io/colino/reference/step_select_infgain.html).
+
+```--vif_threshold```: For ```dietML```, collinear features can impact the performance of machine learning. One way to address collinearity is through pairwise correlation. We perform pairwise correlation. Sometimes, multiple features (> 2) can work together to add collinearity to the data. To address this, we use variance inflation factors from the R package ```colinearity```. Setting ```vif_threshold``` to 0 will bypass this filter (default). Common thresholds are 5 or 10, with higher numbers allowing greater collinearity. Please see their documentation for more information. We also add some info in the log file and save intermediate files from using ```collinearity```.
+
+- Minor detail: For downstream ML, most pre-processing of the ```dietML``` outputs will occur as part of a ```Tidymodels``` receipe. We could not seem to get the VIF analysis to run inside of the receipe. So we perform VIF on the entire training data. All other downstream preprocessing steps (such as pairwise correlation and information gain) happen as part of the receipe (inside the the cross validation folds).
 
 ```--parallel_workers```: During hyperparameter tuning and the SHAPley analysis, parallel workers can be utilized. This is done using makePSOCKcluster(), which spawns new R sessions for parallel work. Note that the resources you will need will be ncores * parallel workers. Note, this may increase RAM needs.
 

@@ -41,10 +41,16 @@ Finally, an optional filter step considers all remaining features and applies an
 ```taxaHFE``` is a containerized application and can be run in the following ways:
 
 <details>
-<summary> <b>Option 1:</b> The easiest way to get started is by pulling the Docker image. This is a good option if you are on your own machine and have permission to install software.
+
+<summary> <b>Option 1:</b> The easiest way to get started is by pulling the Docker image. This is a good option if you are on your own machine and have permission to install software. We build and push images for both Apple M processors (arm64) and Intel processors (amd64). Docker should automatically detect your platform, but you can always set the --platform flag. See Docker documentation for more details.
+
 </summary>
 
+</br>
+
 Please [install docker](https://www.docker.com/) if you choose this route. Pulling these containers for the first time may take a few minutes to run, so please be patient. 
+
+</br>
 
 *Additionally, if this is your first time using Docker, you may need to configure the program to allow it to use the appropriate compute resources (i.e., ram, CPUs, etc.).*
 ```
@@ -63,10 +69,10 @@ Note that currently running the below commands using Apptainer will still work, 
 
 ```
 ## pull taxaHFE
-singularity pull taxaHFE.sif docker://aoliver44/taxa_hfe:latest
+singularity pull taxa_hfe.sif docker://aoliver44/taxa_hfe:latest
 
 ## pull taxaHFE-ML
-singularity pull taxaHFE_ML.sif docker://aoliver44/taxa_hfe_ml:latest
+singularity pull taxa_hfe_ml.sif docker://aoliver44/taxa_hfe_ml:latest
 ```
 </details>
 </br>
@@ -116,13 +122,13 @@ git clone https://github.com/aoliver44/taxaHFE.git && cd taxaHFE/
 **Step 2:**  Run ```taxaHFE-ML``` using the example files and default parameters. This command will work with the example data. If it doesn't, check out our troubleshooting tips below (do you have Docker running?), or consider opening an issue on GitHub. 
 
 > [!CAUTION] 
-> Setting container-level resources is by far the most reliable way (in our experience) to ensure that ```taxaHFE``` uses the appropriate system resources. If you set ```--ncores 2``` without also specifying ```--cpus=2``` in the Docker command (or the equivalent flag in Apptainer), some processes within ```taxaHFE``` and ```taxaHFE-ML``` may exceed the intended resource limits. </br> </br> Setting ```--ncores 1``` will instruct ```taxaHFE``` to limit resource usage as best it can, but this is not foolproof. The main situation where excessive core usage becomes an issue is when the ```--shap``` flag is used. To avoid this, we strongly recommend setting CPU and memory limits directly in the ```docker run``` command. Adjust the values to suit the capabilities of your machine.
+> Setting container-level resources is by far the most reliable way (in our experience) to ensure that ```taxaHFE``` uses the appropriate system resources. If you set ```--ncores 2``` without also specifying ```--cpus=2``` in the Docker command (or the equivalent flag in Apptainer), some processes within ```taxaHFE``` and ```taxaHFE-ML``` may exceed the intended resource limits. We have definitely passed your resource arguments to ```taxaHFE``` dependencies, but we cannot guarentee the dependencys' behavior. </br> </br> Setting ```--ncores 1``` will instruct ```taxaHFE``` to limit resource usage as best it can, but this is not foolproof. The main situation where excessive core usage becomes an issue is when the ```--shap``` flag is used. To avoid this, we strongly recommend setting CPU and memory limits directly in the ```docker run``` command. Adjust the values to suit the capabilities of your machine.
 
 ```
 docker run --cpus=2 --memory=4g --rm -it -v `pwd`:/data aoliver44/taxa_hfe_ml:latest example_inputs/metadata.txt example_inputs/microbiome_data.txt -o test_outputs -s Sample -l Category --seed 1234 --shap -n 2
 ```
 
-Using the default of 2 cores on a MacBook Pro with an M3 chip, the above command took approximately 8 minutes and 21 seconds to complete. RAM usage peaked at around 1.4 GB. Increasing resources to 8 cpus (```--cups=8``` *and* ```--ncores 8```), and ```--memory=8g``` cut that runtime significantly (runtime = 3 minutes and 12 seconds). The input data included 288 samples and 1,187 MetaPhlAn-generated taxonomic features. We put in some effort to provide progress bars so you know something is happening. In some situations—especially certain computer or HPC environments—these progress bars may not show up. Bummer.
+Using the default of 2 cores on a MacBook Pro with an M4 chip, the above command took approximately 4 minutes and 54 seconds to complete. RAM usage peaked at around 3 GB. Increasing resources to 8 cpus (```--cups=8``` *and* ```--ncores 8```), and ```--memory=8g``` cut that runtime to 3 minutes and 10 seconds. The input data included 288 samples and 1,187 MetaPhlAn-generated taxonomic features. If you are curious if things are happening, look at the time-stamps in the log file! 
 
 **Step 3:** Examine the outputs. Several outputs get generated from the command run in the previous step:
 
@@ -137,13 +143,18 @@ Using the default of 2 cores on a MacBook Pro with an M3 chip, the above command
 │   │   ├── shap_taxahfe_ml_sf_1234_test.pdf
 │   │   ├── shap_taxahfe_ml_sf_1234_train.pdf
 │   │   └── training_performance.pdf
+│   │   └── raw_predictions.csv
+│   │   └── collinear_var_preference.csv.gz
+│   │   └── collinear_stats_pre_cordf.csv.gz
+│   │   └── collinear_stats_pre_vifdf.csv.gz
 │   ├── taxahfe_ml_sf_test_1234.csv
 │   └── taxahfe_ml_sf_train_1234.csv
+│   └── taxahfe_ml_sf_1234.log
 ```
 
 The file names are written to be somewhat informative. For example, ```taxa_hfe_ml_sf_train_NA.csv``` is the post-HFE, feature-reduced training set that was input to the downstream ML pipeline. The "sf" in the filename indicates that the "super filter" was applied (see default flag arguments for more details).
 
-After the run is complete, a directory called ```ml_analysis/``` is created, where the machine learning results for both the trained and dummy models are stored. Additionally, SHAP plots are generated to illustrate the top features driving the ML model. The "1234" in the SHAP plot filenames refers to the random seed used for that run.
+After the run is complete, a directory called ```ml_analysis/``` is created, where the machine learning results for both the trained and dummy models are stored. The raw predicitons from the ML model are also stored (raw_predicitons.csv). Information about collinearity pre-processesing (performed after ```taxaHFE```, as part of the downstream ```dietML```) is stored in the collinear_stats_* files. Finally, SHAP plots are generated to illustrate the top features driving the ML model. The "1234" in the SHAP plot filenames refers to the random seed used for that run. 
 
 For a great overview of SHAP analyses and how to interpret these plots, check out [this guide](https://www.aidancooper.co.uk/a-non-technical-guide-to-interpreting-shap-analyses/).
 
@@ -200,6 +211,22 @@ Don't forget to set docker resources (```--cpus``` and ```--memory```), and to b
 </summary>
 
 ```
+usage: taxa_hfe [options] METADATA DATA
+
+Hierarchical feature engineering (HFE) for feature reduction
+
+positional arguments:
+  METADATA              path to metadata input (txt | tsv | csv)
+  DATA                  path to input file from hierarchical data (i.e. hData data) (txt | tsv | csv)
+
+options:
+  -h, --help            show this help message and exit
+  -o <string>, --output_dir <string>
+                        Directory for the output files to be written. Defaults to a directory called 'outputs' (default: outputs)
+  -v, --version         show program's version number and exit
+  --data_dir <string>   Directory for MEATDATA, DATA, and output_dir, ignored if using absolute paths. Defaults to the current directory (default: .)
+  --seed <numeric>      Set the seed, if no value is provided, uses a random number from the range (-1 * 2^31, 2^31 - 1) (default: 341232468)
+
 TaxaHFE arguments:
   Options to pass to TaxaHFE
 
@@ -209,9 +236,11 @@ TaxaHFE arguments:
                         Metadata column name of interest for ML (default: feature_of_interest)
   -t <string>, --feature_type <string>
                         Is the ML label a factor or numeric (default: factor)
-  -R, --random_effects  Consider repeated measures. Note: columns 'individual' and 'time' must be present. [BETA] (default: False)
+  -R, --random_effects  Consider repeated measures. Note: columns 'individual' and 'time' must be
+                        present. [BETA] (default: False)
   -k <numeric>, --k_splits <numeric>
-                        We use kmeans to factorize a numeric response for repeated measures. How many categories should we create? [BETA] (default: 3)
+                        We use kmeans to factorize a numeric response for repeated measures. How
+                        many categories should we create? [BETA] (default: 3)
   -a <numeric>, --abundance <numeric>
                         Minimum mean abundance of feature (default: 0)
   -p <numeric>, --prevalence <numeric>
@@ -229,10 +258,12 @@ TaxaHFE arguments:
   -W, --write_flattened_tree
                         Write a compressed backup of the entire competed tree (default: False)
   -D, --write_both_outputs
-                        Write an output for pre and post super filter results, overridden by --disable_super_filter (default: False)
+                        Write an output for pre and post super filter results, overridden by
+                        --disable_super_filter (default: False)
   --nperm <numeric>     Number of taxaHFE RF permutations (default: 40)
   -n <numeric>, --ncores <numeric>
-                        Number of parallel processes to run in certain portions of taxaHFE that support parallel processing. To limit overall resource usage of taxaHFE, limit the amount of resources available to the container (e.g. --cpus=4 for Docker). Note that total resources needed are parallel_workers * ncores. (default: 2)
+                        Number of parallel processes to run in certain portions of taxaHFE that
+                        support parallel processing. To limit overall resource usage of taxaHFE, limit the amount of resources available to the container (e.g. --cpus=4 for Docker). Note that total resources needed are parallel_workers * ncores. (default: 2)
 ```
 </details>
 </br>
@@ -345,6 +376,10 @@ Below are some some additional details about certain flags.
 - Setting this flag to ```--max_level 5``` means that, in a microbiome example, ```taxaHFE``` will at most choose taxa at the order level, but never at the genus, family, species, etc.
 
 ```--info_gain_n```: For ```taxaHFE-ML```, the number of features that should be selected during feature engineering, based on information gain. This is AFTER hierarchical feature engineering and the optional super filter. For example, if set to 5, the resulting training models will only see the top 5 features by information gain. This step is conducted at the end, meaning all other feature engineering steps come before it. Finally, if you set this too high, as in more features than are present, the program will still run. Setting the value to 0 (the default) will bypass this step entirely. You can read more about the underlying code [here](https://stevenpawley.github.io/colino/reference/step_select_infgain.html).
+
+```--vif_threshold```: For ```taxaHFE-ML```, collinear features can impact the performance of downstream machine learning (like info_gain_n, this is AFTER hierarchical feature and the optional super filter). One way to address collinearity is through pairwise correlation. We perform pairwise correlation both in the HFE step and in the downstream ML (perhaps you have included covariates which are co-corrleated?). Sometimes, multiple features (> 2) can work together to add collinearity to the data. To address this, we use variance inflation factors from the R package ```colinearity```. Setting ```vif_threshold``` to 0 will bypass this filter (default). Common thresholds are 5 or 10, with higher numbers allowing greater collinearity. Please see their documentation for more information. We also add some info in the log file and save intermediate files from using ```collinearity```.
+
+- Minor detail: For downstream ML, most pre-processing of the ```taxaHFE``` outputs will occur as part of a ```Tidymodels``` receipe. We could not seem to get the VIF analysis to run inside of the receipe. So we perform VIF on the entire training data. All other downstream preprocessing steps (such as pairwise correlation and information gain) happen as part of the receipe (inside the the cross validation folds).
 
 ```--parallel_workers```: During hyperparameter tuning and the SHAPley analysis, parallel workers can be utilized. This is done using makePSOCKcluster(), which spawns new R sessions for parallel work. Note that the resources you will need will be ncores * parallel workers. Note, this may increase RAM needs.
 
