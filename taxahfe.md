@@ -287,7 +287,7 @@ options:
                         Directory for the output files to be written. Defaults to a directory called 'outputs' (default: outputs)
   -v, --version         show program's version number and exit
   --data_dir <string>   Directory for MEATDATA, DATA, and output_dir, ignored if using absolute paths. Defaults to the current directory (default: .)
-  --seed <numeric>      Set the seed, if no value is provided, uses a random number from the range (-1 * 2^31, 2^31 - 1) (default: 1137588388)
+  --seed <numeric>      Set the seed, if no value is provided, uses a random number from the range (-1 * 2^31, 2^31 - 1) (default: 343707710)
 
 TaxaHFE arguments:
   Options to pass to TaxaHFE
@@ -298,9 +298,11 @@ TaxaHFE arguments:
                         Metadata column name of interest for ML (default: feature_of_interest)
   -t <string>, --feature_type <string>
                         Is the ML label a factor or numeric (default: factor)
-  -R, --random_effects  Consider repeated measures. Note: columns 'individual' and 'time' must be present. [BETA] (default: False)
+  -R, --random_effects  Consider repeated measures. Note: columns 'individual' and 'time' must be
+                        present. [BETA] (default: False)
   -k <numeric>, --k_splits <numeric>
-                        We use kmeans to factorize a numeric response for repeated measures. How many categories should we create? [BETA] (default: 3)
+                        We use kmeans to factorize a numeric response for repeated measures. How
+                        many categories should we create? [BETA] (default: 3)
   -a <numeric>, --abundance <numeric>
                         Minimum mean abundance of feature (default: 0)
   -p <numeric>, --prevalence <numeric>
@@ -318,10 +320,12 @@ TaxaHFE arguments:
   -W, --write_flattened_tree
                         Write a compressed backup of the entire competed tree (default: False)
   -D, --write_both_outputs
-                        Write an output for pre and post super filter results, overridden by --disable_super_filter (default: False)
+                        Write an output for pre and post super filter results, overridden by
+                        --disable_super_filter (default: False)
   --nperm <numeric>     Number of taxaHFE RF permutations (default: 40)
   -n <numeric>, --ncores <numeric>
-                        Number of parallel processes to run in certain portions of taxaHFE that support parallel processing. To limit overall resource usage of taxaHFE, limit the amount of resources available to the container (e.g. --cpus=4 for Docker). Note that total resources needed are parallel_workers * ncores. (default: 2)
+                        Number of parallel processes to run in certain portions of taxaHFE that
+                        support parallel processing. To limit overall resource usage of taxaHFE, limit the amount of resources available to the container (e.g. --cpus=4 for Docker). Note that total resources needed are parallel_workers * ncores. (default: 2)
 
 TaxaHFE-ML specific arguments:
   Options to pass to TaxaHFE-ML for machine learning and SHAP analysis of TaxaHFE features
@@ -329,8 +333,12 @@ TaxaHFE-ML specific arguments:
   --train_split <numeric>
                         Percentage of samples to use for training (default: 0.8)
   --info_gain_n <numeric>
-                        Should information gain preprocessing be used? Set n number of features to be selected during preprocessesing. Bypasses info_gain_n if set to 0. (default: 0)
-  --model <string>      ML model to use. Options: rf, enet, lasso, ridge. (default: rf)
+                        Should information gain preprocessing be used? Set n number of features
+                        to be selected during preprocessesing. Bypasses info_gain_n if set to 0. (default: 0)
+  --vif_threshold <numeric>
+                        Calculates variance inflation factor (VIF) scores and removes variables
+                        about a user-defined threshold. Bypasses vif_threshold if set to 0. (default: 0)
+  --model <string>      ML model to use. Options: rf, enet, lasso, ridge, xgboost, mars, svm. (default: rf)
   --folds <numeric>     Number of CV folds for tuning (default: 10)
   --cv_repeats <numeric>
                         Number of CV repeats to perform for repeated CV (default: 3)
@@ -341,8 +349,13 @@ TaxaHFE-ML specific arguments:
                         Time for hyperparameter search (in minutes) (default: 2)
   --tune_stop <numeric>
                         Number of HP iterations without improvement before stopping (default: 10)
+  --pct_loss <numeric>  Maximum acceptable percent loss performance relative to best HP
+                        combination. Used to select a more regularized model (perhaps more
+                        generalizable). Setting to 0 will select the best scoring model. (default: 0)
   --parallel_workers <numeric>
-                        Number of parallel search processes to run for hyperparameter tuning in dietML. Note that total resources needed are parallel_workers * ncores (e.g. --cpus=4 for Docker) (default: 1)
+                        Number of parallel search processes to run for hyperparameter tuning in
+                        dietML. Note that total resources needed are parallel_workers * ncores
+                        (e.g. --cpus=4 for Docker) (default: 1)
   --shap                Calculate SHAP values (default: False)
   --summarized_levels   Include summarized levels in ML competition (default: False)
 ```

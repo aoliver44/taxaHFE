@@ -195,6 +195,21 @@ Don't forget to set docker resources (```--cpus``` and ```--memory```), and to b
 </summary>
 
 ```
+usage: diet_ml [options] DATA
+
+Another ML pipeline wrapper
+
+positional arguments:
+  DATA                  path to input file from hierarchical data (i.e. hData data) (txt | tsv | csv)
+
+options:
+  -h, --help            show this help message and exit
+  -o <string>, --output_dir <string>
+                        Directory for the output files to be written. Defaults to a directory called 'outputs' (default: outputs)
+  -v, --version         show program's version number and exit
+  --data_dir <string>   Directory for MEATDATA, DATA, and output_dir, ignored if using absolute paths. Defaults to the current directory (default: .)
+  --seed <numeric>      Set the seed, if no value is provided, uses a random number from the range (-1 * 2^31, 2^31 - 1) (default: 699498982)
+
 DietML arguments:
   Run regression or classification ML models on a dataframe
 
@@ -205,10 +220,13 @@ DietML arguments:
   -c <numeric>, --cor_level <numeric>
                         Initial pearson correlation filter. Bypasses cor_level filter if set to 1 (default: 1)
   --info_gain_n <numeric>
-                        Should information gain preprocessing be used? Set n number of features to be selected during preprocessesing. Bypasses info_gain_n if set to 0. (default: 0)
+                        Should information gain preprocessing be used? Set n number of features
+                        to be selected during preprocessesing. Bypasses info_gain_n if set to 0. (default: 0)
+  --vif_threshold <numeric>
+                        Calculates variance inflation factor (VIF) scores and removes variables about a user-defined threshold. Bypasses vif_threshold if set to 0. (default: 0)
   --train_split <numeric>
                         Percentage of samples to use for training (default: 0.8)
-  --model <string>      ML model to use. Options: rf, enet, lasso, ridge. (default: rf)
+  --model <string>      ML model to use. Options: rf, enet, lasso, ridge, xgboost, mars, svm. (default: rf)
   --folds <numeric>     Number of CV folds for tuning (default: 10)
   --cv_repeats <numeric>
                         Number of CV repeats to perform for repeated CV (default: 3)
@@ -221,11 +239,19 @@ DietML arguments:
                         Time for hyperparameter search (in minutes) (default: 2)
   --tune_stop <numeric>
                         Number of HP iterations without improvement before stopping (default: 10)
+  --pct_loss <numeric>  Maximum acceptable percent loss performance relative to best HP
+                        combination. Used to select a more regularized model (perhaps more
+                        generalizable). Setting to 0 will select the best scoring model. (default: 0)
   --shap                Calculate SHAP values (default: False)
   -n <numeric>, --ncores <numeric>
-                        Number of threads/cores to use in certain functions that can perform parallel processing. To limit overall resource usage of dietML., limit the amount of resources available to the container (e.g. --cpus=4 for Docker). Note that total resources needed are parallel_workers * ncores. (default: 2)
+                        Number of threads/cores to use in certain functions that can perform
+                        parallel processing. To limit overall resource usage of dietML, limit the
+                        amount of resources available to the container (e.g. --cpus=4 for Docker).
+                        Note that total resources needed are parallel_workers * ncores. (default: 2)
   --parallel_workers <numeric>
-                        Number of parallel search processes to run for hyperparameter tuning in dietML. Note that total resources needed are parallel_workers * ncores (e.g. --cpus=4 for Docker) (default: 1)
+                        Number of parallel search processes to run for hyperparameter tuning in
+                        dietML. Note that total resources needed are parallel_workers * ncores
+                        (e.g. --cpus=4 for Docker) (default: 1)
 ```
 </details>
 </br>
