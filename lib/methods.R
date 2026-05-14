@@ -16,8 +16,7 @@ method_taxa_hfe <- function(
   col_names, output, random_effects
 ) {
   ## Build tree ================================================================
-  cat("\n\n", "###########################\n", "Building Tree...\n", "###########################\n\n")
-  cat("This may take a few minutes depending on how many features you have.\n")
+  logger::log_info("Building tree...")
   h_tree <- build_tree(
     h_data,
     filter_prevalence = prevalence,
@@ -60,85 +59,56 @@ method_taxa_hfe_ml <- function(
   test_metadata, seed, random_effects, write_flattened_tree, 
   output
 ) {
-
-  count <- 1
-
-  for (split_metadata in list(train_metadata, test_metadata)) {
-    ## select only the subject IDs from hData that are in the train or test split
-    h_data_split <- h_data %>% dplyr::select(., clade_name, dplyr::any_of(split_metadata$subject_id))
-
-    ## Build tree ================================================================
-    h_tree <- build_tree(
-      h_data_split,
-      filter_prevalence = switch(count, prevalence, 0), # for test data, no prevalence filter
-      filter_mean_abundance = switch(count, abundance, 0) # for test data, no abundance filter
-    )
-
-    ## Main competition ==========================================================
-    competed_tree <- compete_tree(
-      h_tree,
-      # if in train loop (count = 1), compete to lowest level specified, else count = 2, barely compete, just one level
-      lowest_level = switch(count, lowest_level, max(stringr::str_count(h_data$clade_name, "\\|"))),
-      max_level = max_level, # allows for all levels to be competed. Change to 1 for pairwise comparisons
-      col_names = colnames(h_data_split)[2:NCOL(h_data_split)],
-      # if in train loop (count = 1), corr competitions as specified, else count = 2, make almost everything a corr competition
-      corr_threshold = switch(count, cor_level, as.numeric(0.1)),
-      metadata = split_metadata,
-      ncores = ncores,
-      feature_type = feature_type,
-      # if in train loop (count = 1), nperm as specified, else count = 2, barely permute the RF competitions
-      nperm = switch(count, nperm, as.numeric(3)),
-      disable_super_filter = disable_super_filter,
-      random_effects = random_effects
-    )
-
-    ## Extract information from tree  ============================================
-    if (count == 1) {
-      train_data <- prepare_flattened_df(
-        node = competed_tree,
-        metadata = metadata,
-        disable_super_filter = disable_super_filter,
-        col_names = colnames(h_data_split)[2:NCOL(h_data_split)]
-      )
-      
-      ## this will write the flattened_tree_with_metadata file for the training
-      ## data if the arg is specified. It does not make sense in taxahfe-ml
-      ## to write the old files or both outputs. Note it is nested in
-      ## count==1, which means it only has the chance to run on training data.
-      if (write_flattened_tree) {
-        flattened_df <- flatten_tree_with_metadata(competed_tree)
-        colnames(flattened_df)[11:NCOL(flattened_df)] <- colnames(h_data_split)[2:NCOL(h_data_split)]
-        vroom::vroom_write(
-          x = flattened_df,
-          file = paste0(output,"/training_flattened_tree.tsv.gz"),
-          num_threads = ncores
-        )
-      }
-      
-    } else {
-      flattened_df_test <- flatten_tree_with_metadata(competed_tree)
-      col_names = colnames(h_data_split)[2:NCOL(h_data_split)]
-      colnames(flattened_df_test)[11:NCOL(flattened_df_test)] <- col_names
-
-      ## clean pathString names and use these, they will always be unique
-      ## downside, longer names
-      flattened_df_test$pathString <- flattened_df_test$pathString %>% janitor::make_clean_names()
-      flattened_df_test$pathString <- gsub(pattern = "taxa_tree_", replacement = "", x = flattened_df_test$pathString)
-
-      test_data <- flattened_df_test %>%
-        dplyr::select(., pathString, 11:dplyr::last_col()) %>%
-        tibble::remove_rownames() %>%
-        tibble::column_to_rownames(., var = "pathString") %>%
-        t() %>%
-        as.data.frame() %>%
-        tibble::rownames_to_column(var = "subject_id")
-
-      test_data <- merge(metadata, test_data, by = "subject_id")
-    }
-
-    ## iteratable to loop over train and test data
-    count <- count + 1
-  }
+  ## TRAIN DATA ================================================================
+  ## training data - gets HFE treatment
+  ## subset h_data for training samples
+  training_h_data_split <- h_data %>% dplyr::select(., clade_name, dplyr::any_of(train_metadata$subject_id))
+  ## build training tree
+  logger::log_info("Building tree for training data...")
+  h_tree_train <- build_tree(training_h_data_split, filter_prevalence = prevalence, filter_mean_abundance = abundance)
+  ## compete training tree
+  competed_tree <- compete_tree(
+    h_tree_train,
+    lowest_level = lowest_level,
+    max_level = max_level, 
+    col_names = colnames(training_h_data_split)[2:NCOL(training_h_data_split)],
+    corr_threshold = cor_level,
+    metadata = train_metadata,
+    ncores = ncores,
+    feature_type = feature_type,
+    nperm = nperm,
+    disable_super_filter = disable_super_filter,
+    random_effects = random_effects
+  )
+  ## Extract information from tree  ============================================
+  train_data <- prepare_flattened_df(
+    train = TRUE,
+    levels = FALSE,
+    node = competed_tree,
+    metadata = train_metadata,
+    disable_super_filter = disable_super_filter,
+    col_names = colnames(training_h_data_split)[2:NCOL(training_h_data_split)],
+    write_flattened_tree = write_flattened_tree,
+    ncores = ncores,
+    output = output
+  )
+  ## TEST DATA =================================================================
+  ## subset h_data for testing samples 
+  testing_h_data_split <- h_data %>% dplyr::select(., clade_name, dplyr::any_of(test_metadata$subject_id))
+  ## build testing tree - no filters get run! ALL testing features make it through
+  logger::log_info("Building tree for test data. Tree will not compete, this \nis just to generate the taxonomy from the input data.")
+  h_tree_test <- build_tree(testing_h_data_split, filter_prevalence = 0, filter_mean_abundance = 0)
+  ## Extract information from tree 
+  test_data <- prepare_flattened_df(
+    train = FALSE,
+    levels = FALSE,
+    node = h_tree_test,
+    metadata = test_metadata,
+    disable_super_filter = TRUE, ## same as abundance and prev filters, ALL testing features make it through
+    col_names = colnames(testing_h_data_split)[2:NCOL(testing_h_data_split)],
+    write_flattened_tree = FALSE,
+    output = output
+  )
 
   ## make colnames appropriate for ML (ranger is picky)
   colnames(train_data) <- make.names(colnames(train_data))
@@ -152,85 +122,60 @@ method_taxa_hfe_ml <- function(
   ##   ! The analysis and assessment sets must have the same columns
   test_data <- test_data %>% dplyr::select(., dplyr::any_of(colnames(train_data)))
   ## reorder test columns
-  test_data_for_diet_ml <- test_data[names(train_data)]
+  test_data <- test_data[names(train_data)]
   
   ## Error out if training data columns and testing columns do not match
   ## (if working well, should be TRUE. Below it is asking if it is the inverse
   ## of it is TRUE...basically a problem)
-  if (!all(colnames(train_data)==colnames(test_data_for_diet_ml))) {
-    stop("The training colnames and testing colnames do not match. This is unusual -
+  if (!all(colnames(train_data)==colnames(test_data))) {
+    logger::log_fatal("The training colnames and testing colnames do not match. This is unusual -
          take note of the command and your data and raise an issue on our GitHub
          (https://github.com/aoliver44/taxaHFE/issues)")
+    stop()
   }
 
   ## store data in list of data for dietML
-  diet_ml_inputs <- store_diet_ml_inputs(
-    list(),
-    object = train_data,
-    super_filter = ifelse(disable_super_filter, "no_sf", "sf"),
-    method = "taxa_hfe_ml",
-    train_test_attr = "train",
-    level_n = NA,
-    seed = seed
-  )
-  diet_ml_inputs <- store_diet_ml_inputs(
-    diet_ml_inputs,
-    object = test_data_for_diet_ml,
-    super_filter = ifelse(disable_super_filter, "no_sf", "sf"),
-    method = "taxa_hfe_ml",
-    train_test_attr = "test",
-    level_n = NA,
-    seed = seed
-  )
+  diet_ml_inputs <- list(train_data, test_data)
 
   return(diet_ml_inputs)
 }
   
 
 method_levels <- function(
-  h_data, metadata, prevalence, abundance,
-  lowest_level, max_level, cor_level, ncores,
-  feature_type, nperm, disable_super_filter,
-  col_names, seed, random_effects
+  h_data, metadata, ncores, 
+  prevalence, abundance,
+  disable_super_filter,
+  seed
 ) {
 
   ## Build tree ================================================================
   cat("\n\n", "###########################\n", "Building levels tree...\n", "###########################\n\n")
-  h_tree <- build_tree(
+  h_tree_levels <- build_tree(
     h_data,
     filter_prevalence = prevalence,
     filter_mean_abundance = abundance
   )
 
-  ## Main competition ==========================================================
-  ## fixed some competition parameters to make it much faster (for the levels,
-  ## really the tree building part is important, not the actual competition)
-  competed_tree <- compete_tree(
-    h_tree,
-    lowest_level = max(stringr::str_count(h_data$clade_name, "\\|")),
-    max_level = max_level, # allows for all levels to be competed. Change to 1 for pairwise comparisons
-    col_names = colnames(h_data)[2:NCOL(h_data)],
-    corr_threshold = cor_level,
+  ## flatten the data
+  flattened_df <- prepare_flattened_df(
+    train = FALSE,
+    levels = TRUE,
+    node = h_tree_levels,
     metadata = metadata,
-    ncores = ncores,
-    feature_type = feature_type,
-    nperm = 3, # hard encoded because the levels dont need an RF competition
     disable_super_filter = disable_super_filter,
-    random_effects = random_effects
+    col_names = colnames(h_data)[2:NCOL(h_data)],
+    write_flattened_tree = FALSE,
+    ncores = ncores,
+    output = output
   )
 
-  ## flatten the data
-  flattened_df <- flatten_tree_with_metadata(competed_tree)
-  ## add back in the col names
-  colnames(flattened_df)[11:NCOL(flattened_df)] <- col_names
-
   ## attach the summary files to dietML_input list
-  diet_ml_inputs <- generate_summary_files(
+  diet_ml_level_inputs <- generate_summary_files(
     input = flattened_df,
     metadata = metadata,
     disable_super_filter = ifelse(disable_super_filter, "no_sf", "sf"),
     seed = seed
   )
 
-  return(diet_ml_inputs)
+  return(diet_ml_level_inputs)
 }

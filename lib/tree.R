@@ -1,28 +1,7 @@
 ## HFE FUNCTIONS
 
-library(janitor, quietly = TRUE, verbose = FALSE, warn.conflicts = FALSE)
-library(tidyr, quietly = TRUE, verbose = FALSE, warn.conflicts = FALSE)
-library(tibble, quietly = TRUE, verbose = FALSE, warn.conflicts = FALSE)
-library(progress, quietly = TRUE, verbose = FALSE, warn.conflicts = FALSE)
-library(data.tree, quietly = TRUE, verbose = FALSE, warn.conflicts = FALSE)
-library(dplyr, quietly = TRUE, verbose = FALSE, warn.conflicts = FALSE)
-options(dplyr.summarise.inform = FALSE)
-library(corrr, quietly = TRUE, verbose = FALSE, warn.conflicts = FALSE)
-library(tibble, quietly = TRUE, verbose = FALSE, warn.conflicts = FALSE)
-library(purrr, quietly = TRUE, verbose = FALSE, warn.conflicts = FALSE)
-library(ranger, quietly = TRUE, verbose = FALSE, warn.conflicts = FALSE)
-library(readr, quietly = TRUE, verbose = FALSE, warn.conflicts = FALSE)
-library(vroom, quietly = TRUE, verbose = FALSE, warn.conflicts = FALSE)
-library(tidyselect, quietly = TRUE, verbose = FALSE, warn.conflicts = FALSE)
-library(recipes, quietly = TRUE, verbose = FALSE, warn.conflicts = FALSE)
-library(mikropml, quietly = TRUE, verbose = FALSE, warn.conflicts = FALSE)
-suppressPackageStartupMessages(library(ggplot2, quietly = TRUE, verbose = FALSE, warn.conflicts = FALSE))
-suppressPackageStartupMessages(library(tidymodels, quietly = TRUE, verbose = FALSE, warn.conflicts = FALSE))
-library(fastshap, quietly = TRUE, verbose = FALSE, warn.conflicts = FALSE)
-library(shapviz, quietly = TRUE, verbose = FALSE, warn.conflicts = FALSE)
-suppressPackageStartupMessages(library(doParallel, quietly = TRUE, verbose = FALSE, warn.conflicts = FALSE))
-library(foreach, quietly = TRUE, verbose = FALSE, warn.conflicts = FALSE)
-library(doParallel, quietly = TRUE, verbose = FALSE, warn.conflicts = FALSE)
+## libraries  ==================================================================
+source("lib/requirements.R")
 
 ## helper functions ============================================================
 
@@ -32,17 +11,48 @@ library(doParallel, quietly = TRUE, verbose = FALSE, warn.conflicts = FALSE)
 ## suppress warnings
 options(warn = -1)
 
+## initiate logger =============================================================
+initiate_logger <- function(opts_object, program) {
+  
+  ## make output directory if doesnt exist
+  if (!dir.exists(opts_object$output_dir)) {
+    dir.create(path = opts_object$output_dir, showWarnings = FALSE)
+  }
+  
+  ## initiate log file if doesnt exist
+  if (!file.exists(paste0(opts_object$output_dir, "/", program, "_", opts_object$seed, ".log"))) {
+    file.create(paste0(opts_object$output_dir, "/", program, "_", opts_object$seed, ".log"), showWarnings = FALSE)
+  } else {
+    logger::log_warn("Log file", paste0(opts_object$output_dir, "/", program, "_", opts_object$seed, ".log") ,"exists with this name in this directory. You might be re-running this analysis with the same seed. The log will continue to append here.")
+  }
+  
+  ## start log, create log file, specify log level, and record program and version
+  logger::log_appender(logger::appender_file(file = paste0(opts_object$output_dir, "/", program, "_", opts_object$seed, ".log")), )
+  ## To do: create option for verbosity in log file ie logger::log_threshold(TRACE, namespace = ".logger")
+  logger::log_info("{program}, version={Sys.getenv(\"TAXA_HFE_VERSION\")} is starting...")
+  ## log arguments from opts
+  arg_logs <- as.data.frame(unlist(opts_object)) %>% tibble::rownames_to_column(., var = "FLAG") %>% dplyr::rename(., "VALUE" = 2)
+  logger::log_info("Arguments specified: ", paste(arg_logs$FLAG, arg_logs$VALUE, sep = ":", collapse = " | "))
+  
+  ## return nothing
+  invisible()
+}
+
 ## read in metadata  ===========================================================
 ## rename the subject_identifier to subject_id and
 ## rename the label to feature_of_interest
 ## metadata, should be in tab or comma separated format
+## limit_covariates also serves as a taxahfe_ml/dietml switch of sorts. When it 
+## is on, its default TRUE behavior is to warn user about a bunch of covariates 
+## (data that is not the hData). We set it to false for dietML because all the 
+## predictors would look like covariates.
 read_in_metadata <- function(input, subject_identifier, label, feature_type, random_effects, limit_covariates = TRUE, k, cores) {
 
-  cat("\n\n", "Checking for METADATA...", "\n")
+  logger::log_info("Reading in data...")
   if (file.exists(input) == FALSE) {
-    stop("METADATA input not found.")
+    logger::log_fatal("DATA/METADATA input not found.")
+    stop()
   }
-  cat("\n", paste0("Using ", input, " as METADATA"), "\n")
   
   # read extension to determine file delim
   if (strsplit(basename(input), split = "\\.")[[1]][2] %in% c("tsv","txt")) {
@@ -71,25 +81,29 @@ read_in_metadata <- function(input, subject_identifier, label, feature_type, ran
   metadata <- metadata %>% tidyr::drop_na()
   new_row_count <- nrow(metadata)
   
+  ## log read in
+  logger::log_info("Read in {input}, which originally contains {original_row_count} rows and {NCOL(metadata)} columns")
+  
+  ## log warning if columns were dropped
   if (original_row_count > new_row_count) {
-    warning(paste0((original_row_count - new_row_count), " number of metadata rows were dropped because they contained NAs"), immediate. = TRUE)
-    if ((original_row_count - new_row_count) <= 0) {
-      stop("All rows were dropped in NA removal.")
-    }
+    logger::log_warn("{(original_row_count - new_row_count)} number of DATA/METADATA rows were dropped because they contained NAs")
+  }
+  
+  ## log fatal if all metadata columns were dropped and hard stop
+  if (nrow(metadata) == 0) {
+    logger::log_fatal("All rows were dropped in NA removal.")
+    stop()
   }
   
   ## check and make sure there are not too many metadata columns
   ## we will allow 10 total columns (8 columns of additional covariates)
   if (ncol(metadata) > 10 & limit_covariates) {
-    stop("Error: You have selected too many covariates. We recommend \nthat you conduct preliminary modeling to choose the \n8 most important covariates to carry forward.")
+    logger::log_warn("WARNING: You have selected quite a few covariates (this warning shows at > 8 covariates). TaxaHFE merely adds the covariates to the RF models. Its primary purpose is hierarchical feature engineering. Please do not rely on it to beautifully handle everything AND the kitchen sink")
   }
   
   ## notify user what covariates we find, if any
-  if (ncol(metadata) > 2) {
-    cat("You supplied covariates to consider for the RF competition. They are:\n")
-    print(metadata %>% 
-            dplyr::select(., -subject_id, -feature_of_interest) %>%
-            colnames())
+  if (ncol(metadata) > 2 & limit_covariates) {
+    logger::log_info("You supplied covariates to consider for the RF competition. They are: ", paste(metadata %>% dplyr::select(., -subject_id, -feature_of_interest) %>% colnames(), collapse = " "))
   }
   
   ## this is an effort to clean names for the RF later, which will complain big time
@@ -98,9 +112,15 @@ read_in_metadata <- function(input, subject_identifier, label, feature_type, ran
   
   ## for now, we convert continous response to k levels for a random effects run
   if (random_effects) {
+    ## check for individual and time
     if (FALSE %in% (c("individual", "time") %in% colnames(metadata))) {
-      stop("You specified random effects, you must have metadata columns named individual and time")
+      logger::log_fatal("You specified random effects, you must have metadata columns named individual and time")
+      stop()
     }
+    
+    ## make sure time col in metadata is numeric
+    metadata$time <- as.numeric(metadata$time)
+  
     if (feature_type == "numeric") {
       ## this is real ugly code, from SO (https://stackoverflow.com/questions/39906180/consistent-cluster-order-with-kmeans-in-r)
       ## basically it calculates the kmeans and sorts the clusters based on the center means
@@ -111,6 +131,9 @@ read_in_metadata <- function(input, subject_identifier, label, feature_type, ran
     }
   }
   
+  ## log levels of response
+  logger::log_info("The response variable is {label}, classified as a {feature_type}, with {dplyr::n_distinct(metadata$feature_of_interest)} levels")
+  
   return(metadata)
 }
 
@@ -119,12 +142,11 @@ read_in_metadata <- function(input, subject_identifier, label, feature_type, ran
 ## read in data, should be in tab or comma separated format
 read_in_hierarchical_data <- function(input, metadata, cores) {
   
-  cat("\n", "Checking for DATA...", "\n")
   if (file.exists(input) == FALSE) {
-    stop("DATA input not found.")
+    logger::log_fatal("DATA input not found.")
+    stop()
   }
-  cat("\n", paste0("Using ", input, " as DATA"), "\n") 
-  
+
   ## read extension to determine file delim
   if (strsplit(basename(input), split = "\\.")[[1]][2] %in% c("tsv","txt")) {
     delim = "\t"
@@ -143,6 +165,9 @@ read_in_hierarchical_data <- function(input, metadata, cores) {
                               # symbols.
                               janitor::clean_names(use_make_names = F))
   
+  ## log read in
+  logger::log_info("Read in {input}, which originally contains {NROW(hData)} rows and {NCOL(hData)} columns")
+  
   ## only select columns that are in metadata file, reduce computation if
   ## you have a lot more data than metadata
   
@@ -157,7 +182,8 @@ read_in_hierarchical_data <- function(input, metadata, cores) {
   
   ## check and make sure clade_name is the first column in hData
   if ("clade_name" %!in% colnames(hData)) {
-    stop("column clade_name not found in input data")
+    logger::log_fatal("Column clade_name not found in input data")
+    stop()
   }
   if (colnames(hData)[1] != "clade_name") {
     hData <- hData %>% dplyr::relocate(., "clade_name")
@@ -165,7 +191,8 @@ read_in_hierarchical_data <- function(input, metadata, cores) {
   
   ## check and make sure there are no NAs in hData
   if (anyNA(hData)) {
-    stop("Please remove NAs from your hierarchical data input.")
+    logger::log_fatal("Please remove NAs from your hierarchical data input.")
+    stop()
   }
   
   ## write input to file
@@ -404,6 +431,7 @@ build_tree <- function(df, filter_prevalence, filter_mean_abundance) {
   # start the unique id counter at 1 greater than the original df size
   next_row_id <- nrow(df) + 1
 
+  logger::log_info("Fixing unpopulated nodes...")
   pb2 <- progress::progress_bar$new(format = " Fixing unpopulated nodes [:bar] :percent in :elapsed", total = taxa_tree$totalCount, clear = FALSE, width = 60)
 
   # traverse the tree and fix the unpopulated nodes
@@ -416,6 +444,7 @@ build_tree <- function(df, filter_prevalence, filter_mean_abundance) {
     next_row_id <<- next_row_id + 1
   }, traversal = "post-order")
 
+  logger::log_info("Tree built!")
   return(taxa_tree)
 }
 
@@ -645,6 +674,7 @@ compete_tree <- function(tree, modify_tree = TRUE, col_names, lowest_level = 2, 
   # if not modifying the input tree, create a copy of the tree to perform the competition
   if (!modify_tree) tree <- data.tree::Clone(tree)
 
+  logger::log_info("Competing tree...")
   pb <- progress::progress_bar$new(format = " Competing tree [:bar] :percent in :elapsed", total = tree$totalCount, clear = FALSE, width = 60)
 
   # perform the competition, modifying the tree (which may or may not be a clone of the input)
@@ -665,9 +695,11 @@ compete_tree <- function(tree, modify_tree = TRUE, col_names, lowest_level = 2, 
     random_effects = random_effects
   )
 
+  logger::log_info("Inital tree competition done!")
   # compete all winners
   # increasing nperm by a factor of 10 to further reduce the variability in the final rf importance scores
   if (disable_super_filter == FALSE) {
+    logger::log_info("Competing final winners...")
     compete_all_winners(
       tree,
       metadata,
@@ -678,8 +710,9 @@ compete_tree <- function(tree, modify_tree = TRUE, col_names, lowest_level = 2, 
       random_effects,
       max_level
     )
+    logger::log_info("Competing final winners finished!")
   } else {
-    cat(" Skipping super filter\n")
+    logger::log_info("Skipping super filter!")
   }
 
   # return the tree
@@ -756,13 +789,15 @@ rf_competition <- function(df, metadata, parent_descendent_competition, feature_
         dplyr::rename(., "importance" = "importance_rank") %>%
         tibble::rownames_to_column(var = "taxa") 
       ranger_result <- merge(ranger_avg_abundance, ranger_slope, by = "taxa", all = T)
-      ranger_result %>% dplyr::mutate(., importance = (importance.x + importance.y)/2) %>% dplyr::select(., -importance.x, -importance.y)
+      ranger_result <- ranger_result %>% dplyr::mutate(., importance = (importance.x + importance.y)/2) %>% dplyr::select(., -importance.x, -importance.y)
+      return(ranger_result)
       
     } else {
-      ranger::ranger(response_formula, data = merged_data, importance = "impurity_corrected", seed = seed, sample.fraction = 1, replace = TRUE, num.threads = ncores)$variable.importance %>%
+      ranger_result <- ranger::ranger(response_formula, data = merged_data, importance = "impurity_corrected", seed = seed, sample.fraction = 1, replace = TRUE, num.threads = ncores)$variable.importance %>%
         as.data.frame() %>%
         dplyr::rename(., "importance" = ".") %>%
         tibble::rownames_to_column(var = "taxa")
+      return(ranger_result)
     }
   }
   
@@ -842,28 +877,46 @@ flatten_tree_with_metadata <- function(node) {
 }
 
 ## massage the output of flattened tree to be less information
-prepare_flattened_df <- function(node, metadata, disable_super_filter, col_names) {
+prepare_flattened_df <- function(node, metadata, disable_super_filter, col_names, write_flattened_tree, ncores, output, train, levels) {
   
   ## flatten tree with the supplied metadata
   flattened_df <- flatten_tree_with_metadata(node)
   ## add back in the col names
   colnames(flattened_df)[11:NCOL(flattened_df)] <- col_names
-  
-  ## only take the features that win or win the superfilter
-  if (disable_super_filter) {
-    flattened_df <- flattened_df %>%
-      dplyr::filter(., winner == TRUE)
-  } else {
-    flattened_df <- flattened_df %>%
-      dplyr::filter(., sf_winner == TRUE)
+  ## write "reasons file" output if specified
+  if (write_flattened_tree) {
+    vroom::vroom_write(
+      x = flattened_df,
+      file = paste0(output,"/training_flattened_tree.tsv.gz"),
+      num_threads = ncores
+    )
   }
   
+  ## only take the features that win or win the superfilter for the training
+  ## data. We care about the competition here!! Not for the test data (no
+  ## competition happens for the test data or the levels data)
+  if (train) {
+    if (disable_super_filter) {
+      flattened_df <- flattened_df %>%
+        dplyr::filter(., winner == TRUE)
+    } else {
+      flattened_df <- flattened_df %>%
+        dplyr::filter(., sf_winner == TRUE)
+    }
+  }
+
   ## clean pathString names and use these, they will always be unique
   ## downside, longer names
   flattened_df$pathString <- flattened_df$pathString %>% janitor::make_clean_names()
   flattened_df$pathString <- gsub(pattern = "taxa_tree_", replacement = "", x = flattened_df$pathString)
   
-  flattened_df <- flattened_df %>%
+  ## if summarized levels competition, leave the whole flattened_tree object
+  ## as it is (dont remove columns)
+  if (levels) {
+    return(flattened_df)
+  }
+  ## else clean it up
+  flattened_df_clean <- flattened_df %>%
     dplyr::select(., pathString, 11:dplyr::last_col()) %>%
     tibble::remove_rownames() %>%
     tibble::column_to_rownames(., var = "pathString") %>%
@@ -871,10 +924,9 @@ prepare_flattened_df <- function(node, metadata, disable_super_filter, col_names
     as.data.frame() %>%
     tibble::rownames_to_column(var = "subject_id")
   
-  flattened_df <- merge(metadata, flattened_df, by = "subject_id")
+  flattened_df_clean <- merge(metadata, flattened_df_clean, by = "subject_id")
   
-  return(flattened_df)
-  
+  return(flattened_df_clean)
 }
 
 # write an output file containing the HFE results
@@ -925,16 +977,16 @@ generate_outputs <- function(tree, metadata, col_names, output_location, disable
   if (write_both_outputs == TRUE && disable_super_filter == FALSE) {
     write_output_file(flattened_winners, metadata, output_location, "taxahfe_no_sf.csv")
   }
-
-  cat(" Features (no super filter): ", nrow(flattened_winners), "\n")
+  
+  logger::log_info(paste0("Features (no super filter): ", nrow(flattened_winners)))
+  
   if (disable_super_filter != TRUE) {
-    cat("\n Features (super filter): ", nrow(flattened_sf_winners), "\n")
+    logger::log_info(paste0("Features (super filter): ", nrow(flattened_sf_winners)))
   }
 
   ## write old files
   if (write_old_files == TRUE) {
-    cat("\n", "###########################\n", "Writing old files...\n", "###########################\n\n")
-
+    logger::log_info("Writing old files...")
     write_summary_files(input = flattened_df, metadata = metadata, output = output_location)
     write_oudah_input(input = flattened_df, output = output_location, metadata = metadata)
   }
@@ -1027,192 +1079,6 @@ generate_summary_files <- function(input, metadata, disable_super_filter, seed) 
   return(diet_ml_inputs)
 }
 
-## loops over dietML_inputs list and checks if there is a train, test
-## version of the object (df). If there isnt, creates 2 new objects in the
-## list that is a test and a train object of that original object. The split
-## is informed from the tr_te_split code in the run_file.R
-split_train_data <- function(diet_ml_inputs, attribute_name, seed, train_metadata, test_metadata) {
-  # Initialize an empty vector to store indices with NA values
-  na_indices <- integer(0)
-  
-  # Loop through the list
-  for (i in seq_along(diet_ml_inputs)) {
-    # Get the current item
-    item <- diet_ml_inputs[[i]]
-    
-    # Check if the item has the attribute
-    if (!is.null(attr(item, attribute_name))) {
-      # Get the value of the attribute
-      attr_value <- attr(item, attribute_name)
-      
-      # Check if the attribute value is NA
-      if (is.na(attr_value)) {
-        # Append the index to the na_indices vector
-        na_indices <- c(na_indices, i)
-      }
-      }
-    }
-  
-  for (missing_train_index in na_indices) {
-    temp_train <- diet_ml_inputs[[missing_train_index]] %>% as.data.frame() %>% dplyr::filter(., subject_id %in% train_metadata$subject_id)
-    diet_ml_inputs <- store_diet_ml_inputs(diet_ml_inputs,
-                                          object = temp_train,
-                                          super_filter = attributes(diet_ml_inputs[[missing_train_index]])$superfilter,
-                                          method = attributes(diet_ml_inputs[[missing_train_index]])$program_method,
-                                          train_test_attr = "train",
-                                          level_n = attributes(diet_ml_inputs[[missing_train_index]])$level,
-                                          seed = seed
-    )
-    
-    temp_test <- diet_ml_inputs[[missing_train_index]] %>% as.data.frame() %>% dplyr::filter(., subject_id %in% test_metadata$subject_id)
-    diet_ml_inputs <- store_diet_ml_inputs(diet_ml_inputs,
-                                          object = temp_test,
-                                          super_filter = attributes(diet_ml_inputs[[missing_train_index]])$superfilter,
-                                          method = attributes(diet_ml_inputs[[missing_train_index]])$program_method,
-                                          train_test_attr = "test",
-                                          level_n = attributes(diet_ml_inputs[[missing_train_index]])$level,
-                                          seed = seed
-    )
-  }
-  
-  return(diet_ml_inputs)
-  
-}
-
-## writes every object in dietML_inputs to file
-write_list_to_csv <- function(diet_ml_inputs, directory = ".") {
-  # Check if the provided directory exists
-  if (!dir.exists(directory)) {
-    stop("The specified directory does not exist.")
-  }
-  
-  # Get the names of the list items
-  names_lst <- names(diet_ml_inputs)
-  
-  # Check if the list has names
-  if (is.null(names_lst)) {
-    stop("The list must have names for the objects.")
-  }
-  
-  # Loop through the list and write each object to a CSV file
-  for (i in seq_along(diet_ml_inputs)) {
-    # Get the current item and its name
-    item <- diet_ml_inputs[[i]]
-    item_name <- names_lst[i]
-    
-    # Check for the "train_test_attr" attribute and if it is non-NA and non-null
-    train_test_attr <- attr(item, "train_test_attr")
-    if (is.null(train_test_attr) || is.na(train_test_attr)) {
-      next
-    }
-    
-    # Create a filename for the current item
-    filename <- file.path(directory, paste0(item_name, ".csv"))
-    
-    # Check if the item is a data.frame or matrix
-    if (is.data.frame(item) || is.matrix(item)) {
-      # Write the item to a CSV file
-      readr::write_csv(item, filename)
-    } else {
-      # Print a warning if the item is not a data.frame or matrix
-      warning(paste("Item", item_name, "is not a data.frame or matrix and was not written to a CSV file."), immediate. = TRUE)
-    }
-  }
-  
-  # Inform the user that the process is complete
-  message("Finished writing objects to CSV files.")
-}
-
-## create a dataframe of attributes I care about (attr_to_return list) from the
-## diet_ml_inputs list, which i can use to pass to dietML
-extract_attributes <- function(diet_ml_inputs) {
-  # Initialize an empty list to store attributes for each item
-  attr_list <- list()
-  ## create a list of attributes we want to pull into a dataframe
-  attr_to_return <- c("program_method", "superfilter", "train_test_attr", "level", "seed")
-  
-  # Loop through each item in the list
-  for (i in seq_along(diet_ml_inputs)) {
-    # Get attributes of the current item
-    item_attr <- attributes(diet_ml_inputs[[i]])
-    item_attr <- subset(item_attr, names(item_attr) %in% attr_to_return)
-    item_attr <- append(item_attr, values = c("name" =  names(diet_ml_inputs[i])))
-    
-    # Add the item number or name for reference
-    if (is.null(item_attr)) {
-      item_attr <- list(item_name = paste0("Item_", i))
-    } else {
-      item_attr$item_name <- paste0("Item_", i)
-    }
-    
-    # Store the attributes in the list
-    attr_list[[i]] <- as.data.frame(item_attr, stringsAsFactors = FALSE)
-  }
-  
-  # Combine all attributes into one dataframe
-  combined_df <- do.call(rbind, attr_list)
-  # remove any objects that do not have a train_test_attr. These are the 
-  # objects that existed in the list prior to running the split_train_data() 
-  # funtion.
-  combined_df <- combined_df %>% dplyr::filter(., train_test_attr != "")
-  # create a general name for each method. ie instead of summarized_level_NA_train_1,
-  # the general name should be summarized_level_1
-  combined_df$general_name <- gsub(pattern = "_train|_test|_NA",replacement = "", x = combined_df$name)
-  
-  return(combined_df)
-}
-
-## run dietML based on diet_ml_input_df
-run_diet_ml <- function(diet_ml_inputs, metadata, n_repeat, feature_type, seed, train, test, model, program, random_effects, folds, cv_repeats, cor_level, ncores, parallel_workers, tune_length, tune_stop, tune_time, metric, label, output, shap) {
-  input_df <- extract_attributes(diet_ml_inputs)
-
-  ## create a number of random seeds, which are used across all programs 
-  ## run, ie taxahfe, taxahfe-ml - they need to be run across the same seeds!
-  ## to make sure these are created determistically based on set seed, make
-  ## sure its set before (might not matter?)
-  set.seed(seed)
-  random_seeds <- sample(1:100000000, replace = F, size = n_repeat)
-  ## make sure the first seed used is always the one specified. 
-  random_seeds[1] <- seed
-  
-  for (seed in random_seeds) {
-    for (dML_input in unique(input_df[["general_name"]])) {
-      
-      train_data <- diet_ml_inputs[[input_df %>% 
-                                     dplyr::filter(., general_name == dML_input & train_test_attr == "train") %>% 
-                                     dplyr::pull(name)]]
-      
-      test_data <- diet_ml_inputs[[input_df %>% 
-                                    dplyr::filter(., general_name == dML_input & train_test_attr == "test") %>% 
-                                    dplyr::pull(name)]]
-      
-      ## keep track of what method is being passed to dietML
-      ## this gets printed in the results file
-      program <- dML_input
-      pass_to_dietML(train = train_data, 
-                     test = test_data,
-                     metadata = metadata,
-                     program = program, 
-                     model = model, 
-                     seed = seed, 
-                     random_effects = random_effects, 
-                     folds = folds,
-                     cv_repeats = cv_repeats,
-                     cor_level = cor_level, 
-                     ncores = ncores, 
-                     parallel_workers = parallel_workers,
-                     tune_length = tune_length, 
-                     tune_stop = tune_stop, 
-                     tune_time = tune_time, 
-                     metric = metric, 
-                     label = label, 
-                     output = output, 
-                     feature_type = feature_type, 
-                     shap = shap)
-      
-    }
-  }
-}
 
 ## prep data for random effects random forest
 ## input needs to be formated as merged data prior to RF
@@ -1222,6 +1088,7 @@ prep_re_data <- function(input, feature_type, abund) {
   ## onehot encode any factors (only factors should be those from covariates)
   merged_data_hotencode <- input %>%
     recipes::recipe(~ .) %>% 
+    recipes::step_zv(all_predictors()) %>%
     recipes::step_dummy(recipes::all_nominal_predictors(), -feature_of_interest, -individual, -time) %>% 
     recipes::prep() %>% 
     recipes::bake(input) 
@@ -1240,7 +1107,11 @@ prep_re_data <- function(input, feature_type, abund) {
     ## remove individual and time columns from dataset for RF
     merged_data_avg_abund_rf <- merged_data_avg_abund %>% dplyr::select(., -individual, -time)
     
-    if (abund) {
+  } else {
+    merged_data_avg_abund <- merged_data_hotencode
+  }
+  
+  if (abund) {
       return(merged_data_avg_abund_rf)
     } else {
       ## slope analysis ##
@@ -1270,655 +1141,6 @@ prep_re_data <- function(input, feature_type, abund) {
       
       return(merged_data_slope_rf)
     }
-  } 
-}
-  
-pass_to_dietML <- function(train, test, metadata, model, program, seed, random_effects, folds, cv_repeats, cor_level, ncores, parallel_workers, tune_length, tune_stop, tune_time, metric, label, output, feature_type, shap) {
-  
-  ## check for outdir and make if not there
-  if (dir.exists(paste0(output, "/ml_analysis")) != TRUE) {
-    dir.create(path = paste0(output, "/ml_analysis"))
-  }
-  
-  
-  ## check for label
-  if ("feature_of_interest" %in% colnames(train) == FALSE & "feature_of_interest" %in% colnames(test) == FALSE) {
-    stop(paste0("label not found in training AND testing data"))
-  } 
-  
-  ## check if classification was mis-specified
-  if (feature_type == "factor") {
-    type <- "classification"
-    if(length(levels(as.factor(metadata$feature_of_interest))) > 9)
-      stop("You are trying to predict 10 or more classes. That is a bit much. Did you mean to do regression?")
-  } else {
-    type <- "regression"
-  }
-  
-  ## run null model first, results_df is needed for the actually runs
-  results_df <- run_null_model(train = train, test = test, seed = seed, type = type, cor_level = cor_level, random_effects = random_effects, output = output)
-  
-  ## if specified, run random forest
-  if (model == "rf") {
-    shap_inputs <- run_dietML_ranger(
-      train = train,
-      test = test,
-      seed = seed,
-      random_effects = random_effects,
-      folds = folds,
-      cv_repeats = cv_repeats,
-      cor_level = cor_level,
-      ncores = ncores,
-      parallel_workers = parallel_workers,
-      tune_length = tune_length,
-      tune_stop = tune_stop,
-      tune_time = tune_time,
-      metric = metric,
-      label = label,
-      model = model,
-      program = program,
-      output = output,
-      type = type,
-      null_results = results_df
-    )
-  }
-  
-  if (shap) {
-    shap_analysis(label = label, 
-                  output = output, 
-                  model = model, 
-                  filename = paste0(program, "_", seed), 
-                  shap_inputs = shap_inputs,
-                  train = train,
-                  test = test,
-                  type = type,
-                  parallel_workers = parallel_workers)
-  }
-}
-
-run_dietML_ranger <- function(train, test, seed, random_effects, folds, cv_repeats, cor_level, parallel_workers, ncores, tune_length, tune_stop, tune_time, metric, label, model, program, output, type, null_results) {
-  
-  ## check and make sure results_df has been created from run_null_model,
-  ## needed for this function downstream
-  if (!exists("null_results")) {
-    stop("Null model was not run. Cannot complete model evaluation.")
-  }
-  
-  ## set total cores
-  total_cores <- (as.numeric(ncores) * as.numeric(parallel_workers))
-  
-  ## remove individual and train if random effects
-  if (random_effects) {
-    train <- train %>% dplyr::select(., -dplyr::any_of(c("individual", "time")))
-    test <- train %>% dplyr::select(., -dplyr::any_of(c("individual", "time")))
-  }
-  
-  split_from_data_frame <- make_splits(
-    x = train,
-    assessment = test
-  )
-  
-  ## set resampling scheme
-  folds <- rsample::vfold_cv(train, v = as.numeric(folds), strata = feature_of_interest, repeats = cv_repeats)
-  
-  ## recipe
-  
-  ## specify recipe (this is like the pre-process work)
-  if (as.numeric(cor_level) < 1) {
-    diet_ml_recipe <- recipes::recipe(feature_of_interest ~ ., data = train) %>% 
-      recipes::update_role(tidyr::any_of("subject_id"), new_role = "ID") %>% 
-      recipes::step_dummy(recipes::all_nominal_predictors()) %>% 
-      recipes::step_corr(all_numeric_predictors(), threshold = as.numeric(cor_level), use = "everything") %>% 
-      recipes::step_zv(all_predictors())
-    
-  } else {
-    diet_ml_recipe <- recipes::recipe(feature_of_interest ~ ., data = train) %>% 
-      recipes::update_role(tidyr::any_of("subject_id"), new_role = "ID") %>% 
-      recipes::step_dummy(recipes::all_nominal_predictors()) 
-  }
-  
-  ## ML engine
-  
-  ## specify ML model and engine 
-  if (as.numeric(tune_time) == 0) {
-    initial_mod <- parsnip::rand_forest(mode = type) %>%
-      parsnip::set_engine("ranger", 
-                          num.threads = total_cores,
-                          importance = "none")
-    
-    initial_mod %>% parsnip::translate()
-    
-  } else {
-    ## specify ML model and engine 
-    initial_mod <- parsnip::rand_forest(mode = type, 
-                                        mtry = tune(),
-                                        trees = tune(),
-                                        min_n = tune()) %>%
-      parsnip::set_engine("ranger", 
-                          num.threads = as.numeric(total_cores),
-                          importance = "none")
-    
-    initial_mod %>% parsnip::translate()
-  }
-  
-  ## workflow ====================================================================
-  
-  ## define workflow
-  dietML_wflow <- 
-    workflows::workflow() %>% 
-    workflows::add_model(initial_mod) %>% 
-    workflows::add_recipe(diet_ml_recipe)  
-  #print(dietML_wflow)
-  
-  ## hyperparameters =============================================================
-  
-  if (as.numeric(tune_time) == 0) {
-    no_tune_model <- parsnip::fit(dietML_wflow, train)
-    ## create the last model based on best parameters
-    last_best_mod <- 
-      parsnip::rand_forest(mtry = no_tune_model$fit[[2]]$fit$mtry, min_n = no_tune_model$fit[[2]]$fit$min.node.size, trees = no_tune_model$fit[[2]]$fit$num.trees) %>% 
-      parsnip::set_engine("ranger", num.threads = as.numeric(total_cores), importance = "none") %>% 
-      parsnip::set_mode(type)
-    
-    ## update workflow with best model
-    best_tidy_workflow <- 
-      dietML_wflow %>% 
-      workflows::update_model(last_best_mod)
-    
-  } else {
-    ## define the hyper parameter set
-    dietML_param_set <- parsnip::extract_parameter_set_dials(dietML_wflow)
-    
-    if (as.numeric(cor_level) < 1) {
-      ## for random forests, set mtry to max features after correlation
-      ## co-correlate features at specified threshold (get upper limit of mtry)
-      training_cor <- mikropml:::group_correlated_features(train %>% dplyr::select(where(is.numeric)) %>% dplyr::select(., -dplyr::any_of(c("feature_of_interest", "subject_id"))), 
-                                                           corr_thresh = as.numeric(cor_level), group_neg_corr = T)
-      
-      ## make dataframe of what is correlated at specified threshold.
-      training_cor <- as.data.frame(training_cor) %>% 
-        tidyr::separate(., col = training_cor, into = c("keep", "co_correlated"), sep = "\\|", extra = "merge")
-      
-      ## set mtry to max features after correlation
-      dietML_param_set <- 
-        dietML_param_set %>% 
-        # Pick an upper bound for mtry: 
-        recipes::update(mtry = mtry(range(c(2, round((NROW(training_cor) * 0.9), digits = 0)))), 
-                        min_n = min_n(range(c(2, nrow(test)))))
-      
-    } else {
-      dietML_param_set <- 
-        dietML_param_set %>% 
-        # Pick an upper bound for mtry: 
-        recipes::update(mtry = mtry(range(1, ncol(train %>% dplyr::select(., dplyr::any_of(c("feature_of_interest", "subject_id")))))))
-    }
-    
-    ## set up parallel jobs ========================================================
-    ## remove any doParallel job setups that may have
-    ## unneccessarily hung around
-    unregister_dopar()
-    
-    ## register parallel cluster
-    cl <- parallel::makePSOCKcluster(as.numeric(parallel_workers))
-    doParallel::registerDoParallel(cl)
-    
-    ## set up hyper parameter search
-    if (type == "classification") {
-      
-      search_res <-
-        dietML_wflow %>% 
-        tune::tune_bayes(
-          resamples = folds,
-          # To use non-default parameter ranges
-          param_info = dietML_param_set,
-          # Generate five at semi-random to start
-          initial = 5,
-          iter = tune_length,
-          # How to measure performance?
-          metrics = yardstick::metric_set(bal_accuracy, roc_auc, accuracy, kap, f_meas),
-          control = tune::control_bayes(no_improve = as.numeric(tune_stop),
-                                        uncertain = 5,
-                                        verbose = FALSE,
-                                        parallel_over = "resamples",
-                                        time_limit = as.numeric(tune_time),
-                                        seed = as.numeric(seed),
-                                        save_pred = FALSE)
-        )
-      
-    } else if (type == "regression") {
-      
-      search_res <-
-        dietML_wflow %>% 
-        tune::tune_bayes(
-          resamples = folds,
-          # To use non-default parameter ranges
-          param_info = dietML_param_set,
-          # Generate five at semi-random to start
-          initial = 5,
-          iter = tune_length,
-          # How to measure performance?
-          metrics = yardstick::metric_set(mae, rmse, rsq, ccc),
-          control = tune::control_bayes(no_improve = as.numeric(tune_stop),
-                                        uncertain = 5,
-                                        verbose = FALSE,
-                                        parallel_over = "resamples",
-                                        time_limit = as.numeric(tune_time),
-                                        seed = as.numeric(seed),
-                                        save_pred = FALSE)
-        )
-    }
-    
-    ## stop parallel jobs
-    parallel::stopCluster(cl)
-    ## remove any doParallel job setups that may have
-    ## unneccessarily hung around
-    unregister_dopar()
-    
-    ## fit best model ============================================================
-    
-    ## get the best parameters from tuning
-    best_mod <- 
-      search_res %>% 
-      tune::select_best(metric = metric)
-    
-    ## create the last model based on best parameters
-    last_best_mod <- 
-      parsnip::rand_forest(mtry = best_mod$mtry, min_n = best_mod$min_n, trees = best_mod$trees) %>% 
-      parsnip::set_engine("ranger", num.threads = as.numeric(total_cores), importance = "none") %>% 
-      parsnip::set_mode(type)
-    
-    ## update workflow with best model
-    best_tidy_workflow <- 
-      dietML_wflow %>% 
-      workflows::update_model(last_best_mod)
-    
-    ## graphs ====================================================================
-    
-    hyperpar_perf_plot <- autoplot(search_res, type = "performance")
-    ggplot2::ggsave(plot = hyperpar_perf_plot, filename = paste0(output, "/ml_analysis/", "training_performance.pdf"), width = 7, height = 2.5, units = "in")
-    
-    hyperpar_tested_plot <- autoplot(search_res, type = "parameters") + 
-      labs(x = "Iterations", y = NULL)
-    ggplot2::ggsave(plot = hyperpar_tested_plot, filename = paste0(output, "/ml_analysis/", "hyperpars_tested.pdf"), width = 7, height = 2.5, units = "in")
-    
-  }
-  
-  ## fit to test data
-  
-  if (type == "classification") {
-    final_res <- tune::last_fit(best_tidy_workflow, split_from_data_frame, 
-                                metrics = yardstick::metric_set(bal_accuracy, 
-                                                                roc_auc, accuracy, 
-                                                                kap, f_meas))
-  } else if (type == "regression") {
-    final_res <- tune::last_fit(best_tidy_workflow, split_from_data_frame, 
-                                metrics = yardstick::metric_set(mae, rmse, rsq, 
-                                                                ccc))
-  }
-  
-  ## merge null results with trained results and write table
-  null_results <- null_results %>% 
-    dplyr::select(., -seed) %>% 
-    summarise_all(., mean) %>% 
-    t() %>% 
-    as.data.frame() %>% 
-    tibble::rownames_to_column(var = ".metric") %>% 
-    dplyr::rename(., "null_model_avg" = 2)
-  full_results <- merge(workflowsets::collect_metrics(final_res), null_results, by = ".metric", all = T)
-  full_results$seed <- seed
-  
-  ## keep track of what program is being run for compete all levels
-  full_results$program <- program
-  
-  
-  ## write final results to file or append if file exists
-  readr::write_csv(x = full_results, file = paste0(output, "/ml_analysis/ml_results.csv"), 
-                   append = T, col_names = !file.exists(paste0(output, "/ml_analysis/ml_results.csv")))
-  
-  ## load up list for shap analysis
-  shap_inputs <- list("split_from_data_frame" = split_from_data_frame, "diet_ml_recipe" = diet_ml_recipe, "best_tidy_workflow" = best_tidy_workflow)
-  return(shap_inputs)
-  
-}
-
-run_null_model <- function(train, test, seed, type, cor_level, random_effects, output) {
-  
-  ## create results df
-  if (type == "classification") {
-    results_df <- data.frame(seed = numeric(), bal_accuracy = numeric(), f_meas = numeric(), accuracy = numeric(), stringsAsFactors = F)
-  } else if (type == "regression") {
-    results_df <- data.frame(seed = numeric(), mae = numeric(), rmse = numeric(), ccc = numeric(), stringsAsFactors = F)
-  }
-  
-  ## interate over null model
-  if (type == "classification") {
-    df_loop_results <- data.frame(truth = character(), estimate = character(), stringsAsFactors = F)
-  } else if (type == "regression") {
-    df_loop_results <- data.frame(truth = numeric(), estimate = numeric(), stringsAsFactors = F)
-  }
-  
-  ## remove individual and train if random effects
-  if (random_effects) {
-    train <- train %>% dplyr::select(., -dplyr::any_of(c("individual", "time")))
-    test <- train %>% dplyr::select(., -dplyr::any_of(c("individual", "time")))
-  }
-  
-  ## recipe
-  
-  ## specify recipe (this is like the pre-process work)
-  diet_ml_recipe <- 
-    recipes::recipe(feature_of_interest ~ ., data = train) %>% 
-    recipes::update_role(tidyr::any_of("subject_id"), new_role = "ID") %>%
-    recipes::step_dummy(recipes::all_nominal_predictors()) %>%
-    recipes::step_corr(all_numeric_predictors(), threshold = cor_level) %>%
-    recipes::step_zv(all_predictors())
-  
-  
-  ## ML engine
-  
-  ## specify ML model and engine 
-  initial_mod <- null_model() %>% 
-    set_engine("parsnip") %>% 
-    set_mode(type) %>% 
-    translate()
-  
-  ## workflow
-  
-  ## define workflow
-  diet_ml_wflow <- 
-    workflows::workflow() %>% 
-    workflows::add_model(initial_mod) %>% 
-    workflows::add_recipe(diet_ml_recipe)  
-  
-  
-  ## fit model
-  
-  ## fit to test data
-  final_res <- parsnip::fit(diet_ml_wflow, test)
-  
-  df_loop_results <- add_row(df_loop_results, truth = test$feature_of_interest)
-  df_loop_results$estimate <- final_res$fit$fit$fit$value
-  
-  if (type== "classification") {
-    df_loop_results$estimate <- factor(x = df_loop_results$estimate, levels = levels(as.factor(df_loop_results$truth)))
-    results_df <- results_df %>% 
-      tibble::add_row(., bal_accuracy = 
-                        yardstick::bal_accuracy_vec(truth = as.factor(df_loop_results$truth), 
-                                                    estimate = as.factor(df_loop_results$estimate), 
-                                                    data = df_loop_results), 
-                      accuracy = 
-                        yardstick::accuracy_vec(truth = as.factor(df_loop_results$truth), 
-                                                estimate = as.factor(df_loop_results$estimate), 
-                                                data = df_loop_results), 
-                      f_meas = 
-                        yardstick::f_meas_vec(truth = as.factor(df_loop_results$truth), 
-                                              estimate = as.factor(df_loop_results$estimate), 
-                                              data = df_loop_results),
-                      seed = seed)
-  } else if (type == "regression") {
-    results_df <- results_df %>% 
-      tibble::add_row(., mae = 
-                        yardstick::mae_vec(truth = df_loop_results$truth, 
-                                           estimate = df_loop_results$estimate, 
-                                           data = df_loop_results), 
-                      rmse = 
-                        yardstick::rmse_vec(truth = df_loop_results$truth, 
-                                            estimate = df_loop_results$estimate, 
-                                            data = df_loop_results),
-                      ccc = yardstick::ccc_vec(truth = df_loop_results$truth, 
-                                               estimate = df_loop_results$estimate, 
-                                               data = df_loop_results),
-                      seed = seed)
-    
-  }
-  
-  ## write table of results to file
-  readr::write_csv(x = results_df, file =paste0(output, "/ml_analysis/dummy_model_results.csv"), 
-                   append = T, col_names = !file.exists(paste0(output, "/ml_analysis/dummy_model_results.csv")))
-  
-  ## return results_df because that is what the other models need (ranger, enet)
-  return(results_df)
-  
-}
-
-shap_analysis <- function(label, output, model, filename, shap_inputs, train, test, type, parallel_workers) {
-  
-  # --- Setup ---
-  shap_plot_env <- new.env()
-  shap.error.occured <- FALSE
-  error_message <- NULL
-  output_dir <- paste0(output, "/ml_analysis")
-  
-  # --- Load SHAP inputs ---
-  split_from_data_frame <- shap_inputs$split_from_data_frame
-  best_tidy_workflow <- shap_inputs$best_tidy_workflow
-  diet_ml_recipe <- shap_inputs$diet_ml_recipe
-  
-  assign(paste0("split_from_data_frame"), split_from_data_frame, envir = shap_plot_env)
-  assign(paste0("best_tidy_workflow"), best_tidy_workflow, envir = shap_plot_env)
-  assign(paste0("diet_ml_recipe"), diet_ml_recipe, envir = shap_plot_env)
-  
-
-  ## save some initial inputs to env, in case the below 
-  ## shap analysis does not finish. Occasionaly it does not finish on
-  ## the "test" dataset. Which is fine, i cant think of why that is used.
-  ## But if it fails, we still want as much data returned as possible, so 
-  ## that is why we return everything prior to returning the test shap data
-  assign("split_from_data_frame", split_from_data_frame, envir = shap_plot_env)
-  assign("label", label, envir = shap_plot_env)
-  
-  # --- Define prediction wrapper (pfun) ---
-  pfun <- NULL
-  if (length(levels(as.factor(split_from_data_frame$data$feature_of_interest))) == 2) {
-    # Binary classification
-    pfun <- function(object, newdata) {
-      preds <- predict(object, data = newdata)$predictions
-      class_level <- levels(as.factor(split_from_data_frame$data$feature_of_interest))[1]
-      return(preds[, class_level])
-    }
-  } else if (type == "regression" && model == "rf") {
-    # Regression
-    pfun <- function(object, newdata) {
-      preds <- predict(object, data = newdata)$predictions
-      return(preds)
-    }
-  }
-  
-  if (is.null(pfun)) {
-    message("Error: Could not define prediction function (pfun). Check model and type inputs.")
-    shap.error.occured <- TRUE
-  } else {
-    # --- SHAP analysis block ---
-    result <- tryCatch({
-      
-      shap_data_subsets <- list(list(split_from_data_frame$data, "full"), list(train, "train"), list(test, "test"))
-
-      for (i in seq_along(shap_data_subsets)) {
-        # Fit the model
-        best_workflow <- parsnip::fit(best_tidy_workflow, shap_data_subsets[[i]][[1]])
-        best_workflow_mod <- workflows::extract_fit_parsnip(best_workflow)
-        
-        # Prepare data
-        shap_data <- recipes::prep(diet_ml_recipe, shap_data_subsets[[i]][[1]]) %>%
-          recipes::juice() %>%
-          dplyr::select(-feature_of_interest, -subject_id)
-        assign(paste0("shap_data_", shap_data_subsets[[i]][[2]]), shap_data, envir = shap_plot_env)
-        
-        ## shap safety checks!
-        n_rows <- nrow(shap_data)
-        n_cols <- ncol(shap_data)
-        # try and calc a conservative nsim, otherwise choose 10.
-        safe_nsim <- max(10, floor(1200000 / (n_rows * n_cols))) # 20 features x 300 samples x 200 sims = 1200000
-        ## for smaller datasets, the above could lead to huge nsim. lets set max at 200.
-        safe_nsim <- ifelse(safe_nsim > 199, 200, safe_nsim)
-        
-        ## warning if shap analysis looks like its going to take a long time
-        if ((n_cols * n_rows) > 500000) {
-          warning("This input dataset is pretty large for a SHAP analysis. This may take a long time, potentially exceeding walltime limits for shared resources (e.g., HPCs)", immediate. = T)
-        }
-        
-        message(glue::glue("Running SHAP with nsim = {safe_nsim}"))
-        
-        ## start a parallel process
-        cl <- parallel::makeForkCluster(as.numeric(parallel_workers))
-        doParallel::registerDoParallel(cl)
-        
-        # Compute SHAP values
-        shap_explanations <- fastshap::explain(
-          object = best_workflow_mod$fit,
-          X = shap_data,
-          pred_wrapper = pfun,
-          nsim = safe_nsim,
-          adjust = TRUE,
-          parallel = TRUE
-        )
-        
-        parallel::stopCluster(cl)
-        
-        assign(paste0("shap_explanations_", shap_data_subsets[[i]][[2]]), shap_explanations, envir = shap_plot_env)
-        
-        # SHAP object for plotting
-        sv <- shapviz::shapviz(shap_explanations, X = shap_data)
-        assign(paste0("sv_", shap_data_subsets[[i]][[2]]), sv, envir = shap_plot_env)
-        
-        # Generate and save plot
-        plot <- shap_plot(
-          sv = sv,
-          label = label,
-          data_subset_label = shap_data_subsets[[i]][[2]],
-          split_from_data_frame = split_from_data_frame,
-          filename = filename,
-          output_dir = output_dir,
-          data_subset_index = i
-        )
-        assign(paste0("plot_", shap_data_subsets[[i]][[2]]), plot, envir = shap_plot_env)
-      }
-
-      
-    }, error = function(e) {
-      shap.error.occured <<- TRUE
-      error_message <<- e$message
-      NULL
-    })
-  }
-  
-  # --- Save and return results ---
-  if (shap.error.occured) {
-    message(paste("SHAP analysis encountered an issue and all output files may not have been generated:", error_message))
-    if (!is.null(error_message)) { 
-      ## attempt to still return what was written to shap_plot_env
-      save(list = ls(envir = shap_plot_env), 
-      envir = shap_plot_env,
-      file = file.path(paste0(output_dir, "/shap_inputs_", filename, ".RData")),
-      compress = "gzip"
-    )
-      ## return error message
-      message("Error: ", error_message)
-    }
-  } else {
-    message("✅ SHAP analysis completed successfully.")
-    save(list = ls(envir = shap_plot_env), 
-      envir = shap_plot_env,
-      file = file.path(paste0(output_dir, "/shap_inputs_", filename, ".RData")),
-      compress = "gzip"
-    )
-  }
-  
-  # --- Clean up large local objects ---
-  rm(list = ls(envir = shap_plot_env), envir = shap_plot_env)
-  gc(verbose = FALSE)
-  
-  return(invisible(list(
-    success = !shap.error.occured,
-    shap_plot_env = shap_plot_env,
-    error_message = error_message
-  )))
-  
-}
-
-shap_plot <- function(
-    sv,
-    label,
-    data_subset_label,
-    split_from_data_frame,
-    filename,
-    output_dir,
-    data_subset_index
-) {
-  # Ensure output directory exists
-  if (!dir.exists(output_dir)) {
-    dir.create(output_dir, recursive = TRUE)
-  }
-  
-  # Determine class labels (assumes binary classification)
-  class_levels <- levels(as.factor(split_from_data_frame$data$feature_of_interest))
-  if (length(class_levels) < 2) {
-    stop("Insufficient factor levels for feature_of_interest.")
-  }
-  
-  # Create plot
-  ## MODIFY THESE PARAMETERS IF YOU WANT THE PLOT TO LOOK DIFFERENTLY!!
-  plot <- shapviz::sv_importance(
-    sv,
-    kind = "bee",
-    show_numbers = TRUE,
-    bee_width = 0.2,
-    max_display = 10
-  ) +
-    ggtitle(label = paste0("SHAP: ", label, " (", data_subset_label, ")")) +
-    labs(x = paste0(
-      "predictive of ",
-      class_levels[2],
-      " < SHAP > predictive of ",
-      class_levels[1]
-    )) +
-    theme_bw(base_size = 14)
-  
-  # Construct filename and save plot
-  filename_out <- file.path(output_dir, paste0("shap_", filename, "_", data_subset_label, ".pdf"))
-  
-  ggplot2::ggsave(
-    plot = plot,
-    filename = filename_out,
-    width = pmax(0.1 * max(nchar(colnames(sv$X))), 6),
-    height = 4.5,
-    units = "in"
-  )
-  
-  message("SHAP plot saved to: ", filename_out)
-  
-  return(plot)
-}
-
-## This is a helper script to shorten the long names of shap plots. It doesnt
-## get used in this codebase, but its too got not to exist somewhere. 
-## TODO: If we organize code, this should live with the shap_analysis() code
-shap_shorten_colnames <- function(shap_sv_obj, splits) {
-  # Function to extract the last matching split and everything after it
-  shorten_name <- function(name, splits) {
-    matches <- sapply(splits, function(split) {
-      regexpr(split, name, fixed = TRUE)
-    })
-    
-    # Filter valid matches (not -1), and get the last one
-    valid_matches <- which(matches != -1)
-    if (length(valid_matches) == 0) {
-      return(name)  # no split found, return original
-    }
-    
-    last_match_pos <- max(matches[valid_matches])
-    substring(name, last_match_pos)
-  }
-  
-  # Apply shortening to all column names
-  new_colnames <- sapply(colnames(shap_sv_obj$X), shorten_name, splits = splits, USE.NAMES = FALSE)
-  
-  # Create new object with shortened column names
-  obj_new <- shap_sv_obj
-  colnames(obj_new$X) <- new_colnames
-  colnames(obj_new$S) <- new_colnames
-  
-  return(obj_new)
 }
 
 unregister_dopar <- function() {

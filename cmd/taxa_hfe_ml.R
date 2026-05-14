@@ -8,16 +8,27 @@
 ##          ML model) of taxaHFE feature reduction
 
 ## load libraries & functions ==================================================
+source("lib/requirements.R")
 source("lib/tree.R")
+source("lib/diet_ml_funcs.R")
+source("lib/shap_funcs.R")
 source("lib/options.R")
 source("lib/methods.R")
 
 ## add commandline options =====================================================
 
 # to use this code line-by-line in the Rstudio context, commandArgs can be overloaded to specify the desired flags
-# ex. commandArgs <- function(x) { c("example_inputs/metadata.txt", "example_inputs/microbiome_data.txt", "-o", "example_outputs", "-s", "Sample", "-l", "Category", "-L", "3", "-n", "2", "--seed", "42", "--train_split", "0.8", "--tune_time", "0", "-W", "--parallel_workers", "2", "--shap") }
+# ex. command <- "example_inputs/metadata.txt example_inputs/microbiome_data.txt -o test_outputs -s Sample -l Category --seed 1234 --shap -n 2"
+# commandArgs <- function(x) { unlist(strsplit(command, split = " ")) }
+# these will be used by the argparser
+
 # these will be used by the argparser
 opts <- load_taxa_hfe_ml_args()
+program <- paste0("taxahfe_ml", ifelse(opts$disable_super_filter, "_no_sf", "_sf"))
+
+## initiate logger
+initiate_logger(opts_object = opts, program = program)
+logger::log_info("Command seen: {paste(commandArgs(), collapse = ' ')}")
 
 ## Run main ====================================================================
 
@@ -63,55 +74,114 @@ diet_ml_inputs <- method_taxa_hfe_ml(
   output = opts$output_dir
 )
 
+## write dietML objects to file (if people want the output files that
+readr::write_csv(x = as.data.frame(diet_ml_inputs[1]), 
+                 file = paste0(opts$output_dir, "/", program, "_train_", opts$seed, ".csv"), 
+                 append = FALSE)
+readr::write_csv(x = as.data.frame(diet_ml_inputs[2]), 
+                 file = paste0(opts$output_dir, "/", program, "_test_", opts$seed, ".csv"), 
+                 append = FALSE)
+
+## pass to dietML if selected
+shap_inputs <- run_dietML(train = as.data.frame(diet_ml_inputs[1]), 
+                          test = as.data.frame(diet_ml_inputs[2]), 
+                          model = opts$model,
+                          program = program, 
+                          seed = opts$seed, 
+                          random_effects = opts$random_effects, 
+                          nfolds = opts$folds, 
+                          cv_repeats = opts$cv_repeats, 
+                          ncores = opts$ncores, 
+                          parallel_workers = opts$parallel_workers, 
+                          tune_length = opts$tune_length, 
+                          tune_stop = opts$tune_stop, 
+                          tune_time = opts$tune_time, 
+                          metric = opts$metric, 
+                          label = opts$label, 
+                          output = opts$output, 
+                          feature_type = opts$feature_type, 
+                          shap = opts$shap, 
+                          cor_level = opts$cor_level, 
+                          info_gain_n = opts$info_gain_n,
+                          vif_threshold = opts$vif_threshold,
+                          pct_loss = opts$pct_loss
+)
+
+## run shap analysis if requested
+if (opts$shap) {
+  shap_analysis(label = opts$label, 
+                output = opts$output, 
+                model = opts$model, 
+                filename = paste0(program, "_", opts$seed), 
+                shap_inputs = shap_inputs, 
+                train = as.data.frame(diet_ml_inputs[1]), 
+                test = as.data.frame(diet_ml_inputs[2]), 
+                feature_type = opts$feature_type, 
+                parallel_workers = opts$parallel_workers
+  )
+}
+
 # also run summarized levels if requested
 diet_ml_inputs_levels <- list()
 if (opts$summarized_levels) {
   diet_ml_inputs_levels <- method_levels(
-    h_data = hierarchical_data,
-    metadata = metadata,
-    abundance = opts$abundance,
+    h_data = hierarchical_data, 
+    metadata = metadata, 
     prevalence = opts$prevalence,
-    lowest_level = opts$lowest_level,
-    max_level = opts$max_level,
-    cor_level = 0.1,
-    # low cor_level for speed - makes almost everything a correlation battle (becase the battles dont matter, only the tree)
+    abundance = opts$abundance,
     ncores = opts$ncores,
-    feature_type = opts$feature_type,
-    nperm = opts$nperm,
     disable_super_filter = opts$disable_super_filter,
-    col_names = colnames(hierarchical_data)[2:NCOL(hierarchical_data)],
-    seed = opts$seed,
-    random_effects = opts$random_effects
+    seed = opts$seed
   )
+  
+  for (level in seq(1:length(diet_ml_inputs_levels))) {
+    ## save them to file
+    readr::write_csv(x =diet_ml_inputs_levels[level][[1]], 
+                     file = paste0(opts$output_dir, "/", "summarized_level_", level, "_", opts$seed, ".csv"), 
+                     append = FALSE)
+    
+    ## seperate out train and test for summarized levels, based on the 
+    ## original splits at the top
+    train_levels <- diet_ml_inputs_levels[level][[1]] %>% 
+      dplyr::filter(., subject_id %in% train_metadata$subject_id)
+    test_levels <- diet_ml_inputs_levels[level][[1]] %>% 
+      dplyr::filter(., subject_id %in% test_metadata$subject_id)
+    
+    ## feed train and test to dietml
+    shap_inputs <- run_dietML(train = train_levels, 
+                              test = test_levels, 
+                              model = opts$model,
+                              program = paste0("summarized_level_", level), 
+                              seed = opts$seed, 
+                              random_effects = opts$random_effects, 
+                              folds = opts$folds, 
+                              cv_repeats = opts$cv_repeats, 
+                              ncores = opts$ncores, 
+                              parallel_workers = opts$parallel_workers, 
+                              tune_length = opts$tune_length, 
+                              tune_stop = opts$tune_stop, 
+                              tune_time = opts$tune_time, 
+                              metric = opts$metric, 
+                              label = opts$label, 
+                              output = opts$output, 
+                              feature_type = opts$feature_type, 
+                              shap = opts$shap, 
+                              cor_level = opts$cor_level, 
+                              info_gain_n = opts$info_gain_n
+    )
+    
+    if (opts$shap) {
+      shap_analysis(label = opts$label, 
+                    output = opts$output, 
+                    model = opts$model, 
+                    filename = paste0("summarized_level_", level, "_", opts$seed), 
+                    shap_inputs = shap_inputs, 
+                    train = as.data.frame(train_levels), 
+                    test = as.data.frame(test_levels), 
+                    feature_type = opts$feature_type, 
+                    parallel_workers = opts$parallel_workers
+      )
+    }
+  }
 }
 
-# merge summarized level data with already existing diet_ml_inputs list
-diet_ml_inputs <- c(diet_ml_inputs, diet_ml_inputs_levels)
-
-## make sure test train in each item of list
-diet_ml_inputs <- split_train_data(diet_ml_inputs, attribute_name = "train_test_attr", seed = opts$seed, train_metadata = train_metadata, test_metadata = test_metadata)
-
-## write dietML objects to file (if people want the output files that
-## went into dietML)
-write_list_to_csv(diet_ml_inputs, opts$output_dir)
-  
-## pass to dietML if selected
-run_diet_ml(diet_ml_inputs,
-            metadata,
-            n_repeat = opts$permute, 
-            model = opts$model,
-            feature_type = opts$feature_type,
-            seed = opts$seed,
-            random_effects = opts$random_effects,
-            folds = opts$folds,
-            cv_repeats = opts$cv_repeats,
-            cor_level = opts$cor_level,
-            ncores = opts$ncores,
-            parallel_workers = opts$parallel_workers,
-            tune_length = opts$tune_length,
-            tune_stop = opts$tune_stop,
-            tune_time = opts$tune_time,
-            metric = opts$metric,
-            label = opts$label,
-            output = opts$output_dir,
-            shap = opts$shap)

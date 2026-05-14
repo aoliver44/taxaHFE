@@ -1,0 +1,16 @@
+name: taxa_hfe
+
+services:
+  rstudio:
+    # this will try to pull a remote image of taxa_hfe_rstudio for development
+    # if a local build is desired, pass the --build flag to "docker compose"
+    image: aoliver44/taxa_hfe_rstudio:dev
+    build:
+      context: .
+      target: rstudio
+    ports:
+      - 8787:8787
+    volumes:
+      - .:/home/rstudio
+    environment:
+      PASSWORD: rstudio

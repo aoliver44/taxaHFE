@@ -7,6 +7,7 @@
 ##          compete feature engineering methods
 
 ## load libraries & functions ==================================================
+source("lib/requirements.R")
 source("lib/tree.R")
 source("lib/options.R")
 source("lib/methods.R")
@@ -17,6 +18,11 @@ source("lib/methods.R")
 # ex. commandArgs <- function(x) { c("example_inputs/metadata.txt", "example_inputs/microbiome_data.txt", "-o", "example_outputs", "-s", "Sample", "-l", "Category", "-L", "3", "-n", "4", "--seed", "42", "-wWD") }
 # these will be used by the argparser
 opts <- load_taxa_hfe_args()
+program <- paste0("taxahfe", ifelse(opts$disable_super_filter, "_no_sf", "_sf"))
+
+## initiate logger
+initiate_logger(opts_object = opts, program = program)
+logger::log_info("Command seen: {paste(commandArgs(), collapse = ' ')}")
 
 ## Run main ====================================================================
 
