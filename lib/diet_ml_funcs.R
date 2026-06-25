@@ -17,7 +17,7 @@ run_dietML <- function(train, test, model, program, seed,
                        random_effects, nfolds, cv_repeats, ncores, 
                        parallel_workers, tune_length, tune_stop, tune_time, 
                        metric, label, output, feature_type, shap, cor_level, 
-                       vif_threshold, info_gain_n, pct_loss) {
+                       vif_threshold, vif_preference, info_gain_n, pct_loss) {
   
   ## check for outdir and make if not there
   if (!dir.exists(paste0(output, "/ml_analysis"))) {
@@ -43,6 +43,7 @@ run_dietML <- function(train, test, model, program, seed,
   
   ## perform collinearity checks/engineering
   train <- reduce_collinearity_train(train = train, vif_threshold = vif_threshold, 
+                                     vif_preference = vif_preference,
                                      cor_level = cor_level, type = type, output = output, 
                                      ncores = ncores, parallel_workers = parallel_workers)
   
@@ -1026,7 +1027,7 @@ write_dietml_outputs <- function(type,  best_tidy_workflow, split_from_data_fram
   
 }
 
-reduce_collinearity_train <- function(train, vif_threshold, cor_level, type, output, ncores, parallel_workers) {
+reduce_collinearity_train <- function(train, vif_threshold, vif_preference, cor_level, type, output, ncores, parallel_workers) {
   
   ## perform VIF and correlation filtering on entire training data, if specifified.
   ## this is mainly because the collinear::step_collinear() function
@@ -1041,6 +1042,21 @@ reduce_collinearity_train <- function(train, vif_threshold, cor_level, type, out
     logger::log_info(paste0("# numeric features identified in training data: ", length(numeric_vars)))
     
     if (length(numeric_vars) > 0) {
+      
+      ## check to see if VIF numeric preference file exits and pull in if so
+      ## note, not all variables have to be in preference file. Any not in 
+      ## preference file will be assessed with the collinear f (f_categorical_rf or
+      ## f_numeric_rf).
+      vif_preference_order <- NULL
+      if (!is.null(vif_preference)) {
+        ## see if file exists
+        if (file.exists(vif_preference) == FALSE) {
+          logger::log_fatal("vif_preference file not found as specified")
+          stop()
+        } else {
+          vif_preference_order <- create_vif_preference_order(vif_preference_file = vif_preference, numeric_train_vars = numeric_vars)
+        }
+      }
       
       ## alter the identify_zero_variance() in order to make use of the 
       ## decimals argument that is not passed to the top of collinear functions
@@ -1067,7 +1083,10 @@ reduce_collinearity_train <- function(train, vif_threshold, cor_level, type, out
                         Their documentation is very good, please look at the defaults and assumptions they employ.
                        Note the only collinear arguements we modify, beyond the VIF and correlation thresholds, is 
                        the function to rank predictors. We use f_categorical_rf() for classification tasks and 
-                       f_numeric_rf() for regression tasks.
+                       f_numeric_rf() for regression tasks. If you specified vif_preference, we prioritize
+                       those variable to survive (though they might not if they are highly collinear with
+                       each other). With vif_preference, the automatic ranking of variables gets converted 
+                       to correlation with response (higher correlated variables are preserved first).
 
                        Pairwise correlation filtering is applied twice, both times on training data only. First 
                        pass: raw numeric features, pre-recipe, on the full training set. Second pass: 
@@ -1094,6 +1113,7 @@ reduce_collinearity_train <- function(train, vif_threshold, cor_level, type, out
           max_cor = cor_level,
           max_vif = vif_threshold, 
           #options = 
+          preference_order = vif_preference_order,
           cv_training_fraction = 0.5, cv_iterations = 10,
           quiet = TRUE
         )
@@ -1105,11 +1125,11 @@ reduce_collinearity_train <- function(train, vif_threshold, cor_level, type, out
           f = collinear::f_numeric_rf,
           max_cor = cor_level,
           max_vif = vif_threshold, 
+          preference_order = vif_preference_order,
           cv_training_fraction = 0.5, cv_iterations = 10,
           quiet = TRUE
         )
       }
-      
       
       ## keep track of vars kept or dropped
       vars_to_keep <- c("subject_id", "feature_of_interest", filtered_vars$feature_of_interest$selection)
@@ -1161,3 +1181,42 @@ reduce_collinearity_train <- function(train, vif_threshold, cor_level, type, out
     return(train)
   }
 }
+
+create_vif_preference_order <- function(vif_preference_file, numeric_train_vars) {
+  # read extension to determine file delim
+  if (strsplit(basename(vif_preference_file), split = "\\.")[[1]][2] %in% c("tsv","txt")) {
+    delim = "\t"
+  } else {
+    delim = ","
+  }
+  
+  ## read in vif_preference
+  vif_preference_read_in <-
+    suppressMessages(
+      vroom::vroom(
+        file = vif_preference_file,
+        delim = delim,
+        skip = 0,
+        col_names = FALSE,
+        .name_repair = "minimal",
+        num_threads = 1
+      ))
+  
+  ## clean variable names to match input (make_clean_names() should do
+  ## what clean_names() does on the colnames of train (numeric_train_vars))
+  vif_preference_order <- janitor::make_clean_names(string = vif_preference_read_in$X1)
+  vif_preference_order <- vif_preference_order[vif_preference_order %in% numeric_train_vars]
+  vif_preference_order_not_found <- vif_preference_order[vif_preference_order %!in% numeric_train_vars]
+  
+  ## warn if variable in preference file that are not found in training input
+  if (length(vif_preference_order_not_found) > 0) {
+    logger::log_warn(paste0("You specified a vif_preference, which contained 
+                                variables not found in a list of the numeric inputs: ", paste(vif_preference_order_not_found, collapse = ",")))
+  }
+  
+  ## return preference order 
+  if (length(vif_preference_order) > 0) {
+    return(vif_preference_order)
+  }
+}
+
