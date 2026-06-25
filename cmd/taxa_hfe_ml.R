@@ -98,19 +98,20 @@ shap_inputs <- run_dietML(train = as.data.frame(diet_ml_inputs[1]),
                           tune_time = opts$tune_time, 
                           metric = opts$metric, 
                           label = opts$label, 
-                          output = opts$output, 
+                          output = opts$output_dir, 
                           feature_type = opts$feature_type, 
                           shap = opts$shap, 
                           cor_level = opts$cor_level, 
                           info_gain_n = opts$info_gain_n,
                           vif_threshold = opts$vif_threshold,
+                          vif_preference = opts$vif_preference,
                           pct_loss = opts$pct_loss
 )
 
 ## run shap analysis if requested
 if (opts$shap) {
   shap_analysis(label = opts$label, 
-                output = opts$output, 
+                output = opts$output_dir, 
                 model = opts$model, 
                 filename = paste0(program, "_", opts$seed), 
                 shap_inputs = shap_inputs, 
@@ -151,10 +152,10 @@ if (opts$summarized_levels) {
     shap_inputs <- run_dietML(train = train_levels, 
                               test = test_levels, 
                               model = opts$model,
-                              program = paste0("summarized_level_", level), 
+                              program = paste0("summarized_level_", level),
                               seed = opts$seed, 
                               random_effects = opts$random_effects, 
-                              folds = opts$folds, 
+                              nfolds = opts$folds, 
                               cv_repeats = opts$cv_repeats, 
                               ncores = opts$ncores, 
                               parallel_workers = opts$parallel_workers, 
@@ -163,16 +164,19 @@ if (opts$summarized_levels) {
                               tune_time = opts$tune_time, 
                               metric = opts$metric, 
                               label = opts$label, 
-                              output = opts$output, 
+                              output = opts$output_dir, 
                               feature_type = opts$feature_type, 
                               shap = opts$shap, 
                               cor_level = opts$cor_level, 
-                              info_gain_n = opts$info_gain_n
+                              info_gain_n = opts$info_gain_n,
+                              vif_threshold = opts$vif_threshold,
+                              vif_preference = opts$vif_preference,
+                              pct_loss = opts$pct_loss
     )
     
     if (opts$shap) {
       shap_analysis(label = opts$label, 
-                    output = opts$output, 
+                    output = opts$output_dir, 
                     model = opts$model, 
                     filename = paste0("summarized_level_", level, "_", opts$seed), 
                     shap_inputs = shap_inputs, 
