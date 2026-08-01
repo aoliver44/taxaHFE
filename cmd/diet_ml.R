@@ -61,11 +61,12 @@ shap_inputs <- run_dietML(train = as.data.frame(train_data),
                           tune_time = opts$tune_time, 
                           metric = opts$metric, 
                           label = opts$label, 
-                          output = opts$output, 
+                          output = opts$output_dir, 
                           feature_type = opts$feature_type, 
                           shap = opts$shap, 
                           cor_level = opts$cor_level, 
                           vif_threshold = opts$vif_threshold,
+                          vif_preference = opts$vif_preference,
                           info_gain_n = opts$info_gain_n,
                           pct_loss = opts$pct_loss
 )
@@ -73,7 +74,7 @@ shap_inputs <- run_dietML(train = as.data.frame(train_data),
 ## run shap analysis if requested
 if (opts$shap) {
   shap_analysis(label = opts$label, 
-                output = opts$output, 
+                output = opts$output_dir, 
                 model = opts$model, 
                 filename = paste0(program, "_", opts$seed), 
                 shap_inputs = shap_inputs, 

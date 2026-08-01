@@ -48,6 +48,7 @@ argument_groups <- list(
       train_split=list("--train_split", type="numeric", metavar="<numeric>", default = 0.8, help="Percentage of samples to use for training"),
       info_gain_n=list("--info_gain_n", type="numeric", metavar="<numeric>", default = 0, help="Should information gain preprocessing be used? Set n number of features\nto be selected during preprocessesing. Bypasses info_gain_n if set to 0."),
       vif_threshold=list("--vif_threshold", type="numeric", metavar="<numeric>", default = 0, help="Calculates variance inflation factor (VIF) scores and removes variables\nabout a user-defined threshold. Bypasses vif_threshold if set to 0."),
+      vif_preference=list("--vif_preference", type="character", metavar="<string>", help="File with list of numeric predictors in order of preference (txt | tsv | csv)"),
       model=list("--model", type="character", metavar="<string>", default="rf", choices=c("rf", "enet", "lasso", "ridge", "xgboost", "mars", "svm"), help="ML model to use. Options: rf, enet, lasso, ridge, xgboost, mars, svm."),
       folds=list("--folds", type="numeric", metavar="<numeric>", default = 10, help="Number of CV folds for tuning"),
       cv_repeats=list("--cv_repeats", type="numeric", metavar="<numeric>", default = 3, help="Number of CV repeats to perform for repeated CV"),
@@ -70,6 +71,7 @@ argument_groups <- list(
       cor_level=list("-c", "--cor_level", type="numeric", metavar="<numeric>", default = 1, help="Initial pearson correlation filter. Bypasses cor_level filter if set to 1"),
       info_gain_n=list("--info_gain_n", type="numeric", metavar="<numeric>", default = 0, help="Should information gain preprocessing be used? Set n number of features\nto be selected during preprocessesing. Bypasses info_gain_n if set to 0."),
       vif_threshold=list("--vif_threshold", type="numeric", metavar="<numeric>", default = 0, help="Calculates variance inflation factor (VIF) scores and removes variables about a user-defined threshold. Bypasses vif_threshold if set to 0."),
+      vif_preference=list("--vif_preference", type="character", metavar="<string>", help="File with list of numeric predictors in order of preference (txt | tsv | csv)"),
       train_split=list("--train_split", type="numeric", metavar="<numeric>", default = 0.8, help="Percentage of samples to use for training"),
       model=list("--model", type="character", metavar="<string>", default="rf", choices=c("rf", "enet", "lasso", "ridge", "xgboost", "mars", "svm"), help="ML model to use. Options: rf, enet, lasso, ridge, xgboost, mars, svm."),
       folds=list("--folds", type="numeric", metavar="<numeric>", default = 10, help="Number of CV folds for tuning"),
@@ -117,7 +119,7 @@ validators <- list(
   tune_time=validate_numeric(min=0, max_warning=list(480, "spending excessive time tuning hyperparameters my not result in substaintal increases in accuracy")),
   seed=validate_numeric(min = -1 * .Machine$integer.max, max = .Machine$integer.max),
   info_gain_n=validate_numeric(min=0),
-  vif_threshold=validate_numeric(min=0, max_warning=list(11, "a VIF score above 10 may result in features that are significantly collinear.")),
+  vif_threshold=validate_numeric(min=0, max_warning=list(11, "0 is a special case which will be treated as 'bypass VIF analysis'. Collinear, the VIF engine, will automatically set any values above 10 and below 1 (except the 0 we catch!) to 5. That was their call.")),
   pct_loss=validate_numeric(min=0, max=100, max_warning=list(10, "an acceptable pct_loss greater than 10 may include underfit models"))
   
 )
