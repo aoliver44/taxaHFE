@@ -119,7 +119,7 @@ validators <- list(
   tune_time=validate_numeric(min=0, max_warning=list(480, "spending excessive time tuning hyperparameters my not result in substaintal increases in accuracy")),
   seed=validate_numeric(min = -1 * .Machine$integer.max, max = .Machine$integer.max),
   info_gain_n=validate_numeric(min=0),
-  vif_threshold=validate_numeric(min=0, max_warning=list(11, "a VIF score above 10 may result in features that are significantly collinear.")),
+  vif_threshold=validate_numeric(min=0, max_warning=list(11, "0 is a special case which will be treated as 'bypass VIF analysis'. Collinear, the VIF engine, will automatically set any values above 10 and below 1 (except the 0 we catch!) to 5. That was their call.")),
   pct_loss=validate_numeric(min=0, max=100, max_warning=list(10, "an acceptable pct_loss greater than 10 may include underfit models"))
   
 )

@@ -1001,9 +1001,21 @@ write_dietml_outputs <- function(type,  best_tidy_workflow, split_from_data_fram
       dplyr::select(., dplyr::starts_with(".pred_"), feature_of_interest, .model_input_type) %>%
       readr::write_csv(., paste0(output, "/ml_analysis/raw_predictions.csv"))
     
+    ## make sure the order of levels for feature of interest and pred class are the same,
+    ## otherwise tidymodels errors out with a weird bug:
+    # Error in `metric_set()`:                                                                                                                                                        
+    #   ! Failed to compute `bal_accuracy()`.
+    # Caused by error:
+    #   ✖ `truth` and `estimate` levels must be equivalent.
+    # • `truth`: non_secretor and secretor.
+    # • `estimate`: secretor and non_secretor.
+    ## notice in the above error example that the order of levels for truth do not
+    ## match the order of levels for estimate. Weird.
+    all_predictions$feature_of_interest <- factor(x = all_predictions$feature_of_interest)
+    all_predictions$.pred_class <- factor(x = all_predictions$.pred_class, levels = levels(all_predictions$feature_of_interest), ordered = T)
     all_predictions <- all_predictions %>% dplyr::group_by(.model_input_type) %>% 
-      dplyr::mutate(feature_of_interest = factor(feature_of_interest), .pred_class = factor(.pred_class)) %>% 
       class_metrics(truth = feature_of_interest, estimate = .pred_class)
+    
   } else {
     
     ## write raw predictions to file in case other metrics want to be calculated
@@ -1111,7 +1123,7 @@ reduce_collinearity_train <- function(train, vif_threshold, vif_preference, cor_
           responses = "feature_of_interest",
           f = collinear::f_categorical_rf,
           max_cor = cor_level,
-          max_vif = vif_threshold, 
+          max_vif = if (vif_threshold > 0) vif_threshold else NULL, 
           #options = 
           preference_order = vif_preference_order,
           cv_training_fraction = 0.5, cv_iterations = 10,
@@ -1124,7 +1136,7 @@ reduce_collinearity_train <- function(train, vif_threshold, vif_preference, cor_
           responses = "feature_of_interest",
           f = collinear::f_numeric_rf,
           max_cor = cor_level,
-          max_vif = vif_threshold, 
+          max_vif = if (vif_threshold > 0) vif_threshold else NULL, 
           preference_order = vif_preference_order,
           cv_training_fraction = 0.5, cv_iterations = 10,
           quiet = TRUE
