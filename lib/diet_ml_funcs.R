@@ -17,7 +17,7 @@ run_dietML <- function(train, test, model, program, seed,
                        random_effects, nfolds, cv_repeats, ncores, 
                        parallel_workers, tune_length, tune_stop, tune_time, 
                        metric, label, output, feature_type, shap, cor_level, 
-                       vif_threshold, vif_preference, info_gain_n, pct_loss) {
+                       vif_threshold, vif_preference, step_vip_n, pct_loss) {
   
   ## check for outdir and make if not there
   if (!dir.exists(paste0(output, "/ml_analysis"))) {
@@ -62,7 +62,7 @@ run_dietML <- function(train, test, model, program, seed,
   ## recipe
   diet_ml_recipe <- dietml_recipe(split_from_data_frame = split_from_data_frame, 
                                   cor_level = cor_level, vif_threshold = vif_threshold,
-                                  info_gain_n = info_gain_n,
+                                  vif_preference = vif_preference, step_vip_n = step_vip_n,
                                   type = type, ncores = ncores, model = model)
 
   
@@ -70,7 +70,7 @@ run_dietML <- function(train, test, model, program, seed,
   null_results <- run_null_model(split_from_data_frame = split_from_data_frame, seed = seed, 
                                  type = type, output = output, cv_repeats = cv_repeats, 
                                  feature_of_interest = "feature_of_interest", cor_level = cor_level, 
-                                 vif_threshold = vif_threshold, info_gain_n = info_gain_n, ncores = ncores, model = model,
+                                 vif_threshold = vif_threshold, step_vip_n = step_vip_n, ncores = ncores, model = model,
                                  diet_ml_recipe = diet_ml_recipe, folds = folds)
   
   ## run model specified
@@ -84,7 +84,7 @@ run_dietML <- function(train, test, model, program, seed,
     feature_of_interest = "feature_of_interest",
     type = type, null_results = null_results,
     cor_level = cor_level, vif_threshold = vif_threshold,
-    info_gain_n = info_gain_n, pct_loss = pct_loss,
+    step_vip_n = step_vip_n, pct_loss = pct_loss,
     diet_ml_recipe = diet_ml_recipe,
     folds = folds
   )
@@ -115,7 +115,7 @@ run_dietML_ranger <- function(split_from_data_frame, seed, folds, cv_repeats,
                               parallel_workers, ncores, tune_length, tune_stop, 
                               tune_time, metric, feature_of_interest, model, program, 
                               output, type, null_results, cor_level, vif_threshold,
-                              info_gain_n, pct_loss, diet_ml_recipe) {
+                              step_vip_n, pct_loss, diet_ml_recipe) {
   
   ## log start of RF function
   logger::log_info("{model} model started...")
@@ -194,7 +194,7 @@ run_dietML_enet <- function(split_from_data_frame, seed, folds, cv_repeats,
                             parallel_workers, ncores, tune_length, tune_stop, 
                             tune_time, metric, feature_of_interest, model, program, 
                             output, type, null_results, cor_level, vif_threshold,
-                            info_gain_n, pct_loss, diet_ml_recipe) {
+                            step_vip_n, pct_loss, diet_ml_recipe) {
   
   ## log start of ENET function
   logger::log_info("{model} model started...")
@@ -272,7 +272,7 @@ run_dietML_ridge_lasso <- function(split_from_data_frame, seed, folds, cv_repeat
                                    parallel_workers, ncores, tune_length, tune_stop, 
                                    tune_time, metric, feature_of_interest, model, program, 
                                    output, type, null_results, cor_level, vif_threshold,
-                                   info_gain_n, pct_loss, diet_ml_recipe) {
+                                   step_vip_n, pct_loss, diet_ml_recipe) {
   
   ## log start of ridge, lasso function
   logger::log_info("{model} model started...")
@@ -342,7 +342,7 @@ run_dietML_ridge_lasso <- function(split_from_data_frame, seed, folds, cv_repeat
 
 run_null_model <- function(split_from_data_frame, seed, type, output, cv_repeats, 
                            feature_of_interest, folds, cor_level, vif_threshold, 
-                           info_gain_n, ncores, model, diet_ml_recipe) {
+                           step_vip_n, ncores, model, diet_ml_recipe) {
   
   ## log start of null model
   logger::log_info("null model started...")
@@ -423,7 +423,7 @@ run_dietML_xgboost <- function(split_from_data_frame, seed, folds, cv_repeats,
                                parallel_workers, ncores, tune_length, tune_stop, 
                                tune_time, metric, feature_of_interest, model, program, 
                                output, type, null_results, cor_level, vif_threshold,
-                               info_gain_n, pct_loss, diet_ml_recipe) {
+                               step_vip_n, pct_loss, diet_ml_recipe) {
   
   ## log start of RF function
   logger::log_info("{model} model started...")
@@ -512,7 +512,7 @@ run_dietML_mars <- function(split_from_data_frame, seed, folds, cv_repeats,
                             parallel_workers, ncores, tune_length, tune_stop, 
                             tune_time, metric, feature_of_interest, model, program, 
                             output, type, null_results, cor_level, vif_threshold,
-                            info_gain_n, pct_loss, diet_ml_recipe) {
+                            step_vip_n, pct_loss, diet_ml_recipe) {
   
   ## log start of RF function
   logger::log_info("{model} model started...")
@@ -589,7 +589,7 @@ run_dietML_svm <- function(split_from_data_frame, seed, folds, cv_repeats,
                            parallel_workers, ncores, tune_length, tune_stop, 
                            tune_time, metric, feature_of_interest, model, program, 
                            output, type, null_results, cor_level, vif_threshold,
-                           info_gain_n, pct_loss, diet_ml_recipe) {
+                           step_vip_n, pct_loss, diet_ml_recipe) {
   
   ## log start of RF function
   logger::log_info("{model} model started...")
@@ -684,10 +684,37 @@ set_cv_strategy <- function(split_from_data_frame, nfolds, feature_of_interest, 
   return(cv_folds)
 }
 
-dietml_recipe <- function(split_from_data_frame, cor_level, vif_threshold, info_gain_n, type, ncores, model) {
+dietml_recipe <- function(split_from_data_frame, cor_level, vif_threshold, step_vip_n, type, ncores, model, vif_preference) {
   
   ## grab the training data
   train <- rsample::training(split_from_data_frame)
+  
+  ## for step_select_vip, if specified, ignore predictors that we told VIF to ignore
+  ## in the same way as the VIF
+  if (step_vip_n > 0) {
+    ## get numeric names
+    numeric_vars <- train %>% 
+      dplyr::select(., -feature_of_interest, -subject_id) %>%
+      dplyr::select(where(is.numeric)) %>%
+      names()
+    
+    ## get vif preference order if exists
+    vif_preference_order <- NULL
+    if (!is.null(vif_preference)) {
+      ## see if file exists
+      if (file.exists(vif_preference) == FALSE) {
+        logger::log_fatal("vif_preference file not found as specified")
+        stop()
+      } else {
+        vif_preference_order <- create_vif_preference_order(vif_preference_file = vif_preference, numeric_train_vars = numeric_vars)
+      }
+    }
+    
+    ## set VIP inner model engine, prevent it from absorbing the main recipie 
+    ## instructions, otherwise it will try and tune
+    ranking_model <- parsnip::rand_forest(mode = type) %>%
+      parsnip::set_engine("ranger", importance = "permutation", num.threads = 1) 
+  }
   
   ## specify recipe (this is like the pre-process work)
   dietML_recipe <- recipes::recipe(feature_of_interest ~ ., data = train) %>% 
@@ -700,10 +727,14 @@ dietml_recipe <- function(split_from_data_frame, cor_level, vif_threshold, info_
     ## even though correlation filtering is done at the inital step of train (with VIF filtering)
     ## we correlate here too in case dummy encoding created additional things that should be correlated
     {if (cor_level < 1) recipes::step_corr(., recipes::all_numeric_predictors(), threshold = cor_level, use = "everything") else .} %>%
-    {if (info_gain_n > 0) colino::step_select_infgain(., recipes::all_predictors(), 
-                                                      top_p = info_gain_n,
-                                                      outcome = "feature_of_interest",
-                                                      threads = ncores) else .}
+    {if (step_vip_n > 0 & (!is.null(vif_preference_order) && (length(vif_preference_order) > 0))) colino::step_select_vip(., recipes::all_predictors(), -dplyr::all_of(vif_preference_order),
+                                                 model = ranking_model,
+                                                 top_p = step_vip_n,
+                                                 outcome = "feature_of_interest") else .} %>%
+    {if (step_vip_n > 0 & is.null(vif_preference_order)) colino::step_select_vip(., recipes::all_predictors(),
+                                                 model = ranking_model,
+                                                 top_p = step_vip_n,
+                                                 outcome = "feature_of_interest") else .}
   
   ## idea - log intermediate file of what these steps do to the data
   

@@ -246,7 +246,7 @@ test_flag_values <- list(
   taxa_hfe_ml_args=list(
     train_split=list(flags=list("--train_split"), value=0.7, errors=list(-1, 2), warnings=list(0.4)),
     model=list(flags=list("--model"), value="enet"),
-    info_gain_n=list(flags=list("--info_gain_n"), value=4, errors=list(-1, -10)),
+    step_vip_n=list(flags=list("--step_vip_n"), value=4, errors=list(-1, -10)),
     vif_threshold=list(flags=list("--vif_threshold"), value=4, errors=list(-1, -10), warnings=list(15)),
     vif_preference=list(flags=list("-vif_preference"), value="vif_preference"),
     folds=list(flags=list("--folds"), value=5, errors=list(-1, 0), warnings=list(12)),
@@ -264,7 +264,7 @@ test_flag_values <- list(
     subject_identifier=list(flags=list("-s", "--subject_identifier"), value="sid"),
     label=list(flags=list("-l", "--label"), value="label_factor"),
     cor_level=list(flags=list("-c", "--cor_level"), value=.99, errors=list(-1, 2), warnings=list(.4)),
-    info_gain_n=list(flags=list("--info_gain_n"), value=4, errors=list(-1, -10)),
+    step_vip_n=list(flags=list("--step_vip_n"), value=4, errors=list(-1, -10)),
     vif_threshold=list(flags=list("--vif_threshold"), value=4, errors=list(-1, -10), warnings=list(15)),
     vif_preference=list(flags=list("-vif_preference"), value="vif_preference"),
     train_split=list(flags=list("--train_split"), value=0.7, errors=list(-1, 2), warnings=list(0.4)),

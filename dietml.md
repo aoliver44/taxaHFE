@@ -219,9 +219,9 @@ DietML arguments:
                         Metadata column name of interest for ML (default: feature_of_interest)
   -c <numeric>, --cor_level <numeric>
                         Initial pearson correlation filter. Bypasses cor_level filter if set to 1 (default: 1)
-  --info_gain_n <numeric>
-                        Should information gain preprocessing be used? Set n number of features
-                        to be selected during preprocessesing. Bypasses info_gain_n if set to 0. (default: 0)
+  --step_vip_n <numeric>
+                        Should VIP filter preprocessing be used?? Set n number of features
+                        to be selected during preprocessesing. Bypasses step_vip_n if set to 0. (default: 0)
   --vif_threshold <numeric>
                         Calculates variance inflation factor (VIF) scores and removes variables about a user-defined threshold. Bypasses vif_threshold if set to 0. (default: 0)
   --train_split <numeric>
@@ -266,7 +266,7 @@ Below are some some additional details about certain flags.
 
 ```--cor_level```: A number between 0-1, which defines a Pearson correlation threshold at which features are combined. The underlying function can be found [here](https://recipes.tidymodels.org/reference/step_corr.html). Note that if set to 1--its defualt value--this correlation filter is entirely bypassed.
 
-```--info_gain_n```: The number of features that should be selected during feature engineering, based on information gain. For example, if set to 5, the resulting training models will only see the top 5 features by information gain. This step is conducted at the end, meaning all other feature engineering steps come before it. Finally, if you set this too high, as in more features than are present, the program will still run. Setting the value to 0 (the default) will bypass this step entirely. You can read more about the underlying code [here](https://stevenpawley.github.io/colino/reference/step_select_infgain.html).
+```--step_vip_n```: The number of features that should be selected during feature engineering, based on VIP scores. For example, if set to 5, the resulting training models will only see the top 5 features by VIP scores. This step is conducted at the end, meaning all other feature engineering steps come before it. Finally, if you set this too high, as in more features than are present, the program will still run. Setting the value to 0 (the default) will bypass this step entirely. You can read more about the underlying code [here](https://stevenpawley.github.io/colino/reference/step_select_vip.html).
 
 ```--vif_threshold```: For ```dietML```, collinear features can impact the performance of machine learning. One way to address collinearity is through pairwise correlation. We perform pairwise correlation. Sometimes, multiple features (> 2) can work together to add collinearity to the data. To address this, we use variance inflation factors from the R package ```colinearity```. Setting ```vif_threshold``` to 0 will bypass this filter (default). Common thresholds are 5 or 10, with higher numbers allowing greater collinearity. Please see their documentation for more information. We also add some info in the log file and save intermediate files from using ```collinearity```.
 

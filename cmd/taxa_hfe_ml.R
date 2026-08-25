@@ -102,7 +102,7 @@ shap_inputs <- run_dietML(train = as.data.frame(diet_ml_inputs[1]),
                           feature_type = opts$feature_type, 
                           shap = opts$shap, 
                           cor_level = opts$cor_level, 
-                          info_gain_n = opts$info_gain_n,
+                          step_vip_n = opts$step_vip_n,
                           vif_threshold = opts$vif_threshold,
                           vif_preference = opts$vif_preference,
                           pct_loss = opts$pct_loss
@@ -168,7 +168,7 @@ if (opts$summarized_levels) {
                               feature_type = opts$feature_type, 
                               shap = opts$shap, 
                               cor_level = opts$cor_level, 
-                              info_gain_n = opts$info_gain_n,
+                              step_vip_n = opts$step_vip_n,
                               vif_threshold = opts$vif_threshold,
                               vif_preference = opts$vif_preference,
                               pct_loss = opts$pct_loss

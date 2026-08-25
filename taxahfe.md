@@ -332,9 +332,9 @@ TaxaHFE-ML specific arguments:
 
   --train_split <numeric>
                         Percentage of samples to use for training (default: 0.8)
-  --info_gain_n <numeric>
-                        Should information gain preprocessing be used? Set n number of features
-                        to be selected during preprocessesing. Bypasses info_gain_n if set to 0. (default: 0)
+  --step_vip_n <numeric>
+                        Should VIP filter preprocessing be used?? Set n number of features
+                        to be selected during preprocessesing. Bypasses step_vip_n if set to 0. (default: 0)
   --vif_threshold <numeric>
                         Calculates variance inflation factor (VIF) scores and removes variables
                         about a user-defined threshold. Bypasses vif_threshold if set to 0. (default: 0)
@@ -388,9 +388,9 @@ Below are some some additional details about certain flags.
 
 - Setting this flag to ```--max_level 5``` means that, in a microbiome example, ```taxaHFE``` will at most choose taxa at the order level, but never at the genus, family, species, etc.
 
-```--info_gain_n```: For ```taxaHFE-ML```, the number of features that should be selected during feature engineering, based on information gain. This is AFTER hierarchical feature engineering and the optional super filter. For example, if set to 5, the resulting training models will only see the top 5 features by information gain. This step is conducted at the end, meaning all other feature engineering steps come before it. Finally, if you set this too high, as in more features than are present, the program will still run. Setting the value to 0 (the default) will bypass this step entirely. You can read more about the underlying code [here](https://stevenpawley.github.io/colino/reference/step_select_infgain.html).
+```--step_vip_n```: For ```taxaHFE-ML```, the number of features that should be selected during feature engineering, based on VIP scores. This is AFTER hierarchical feature engineering and the optional super filter. For example, if set to 5, the resulting training models will only see the top 5 features by VIP scores. This step is conducted at the end, meaning all other feature engineering steps come before it. Finally, if you set this too high, as in more features than are present, the program will still run. Setting the value to 0 (the default) will bypass this step entirely. You can read more about the underlying code [here](https://stevenpawley.github.io/colino/reference/step_select_vip.html).
 
-```--vif_threshold```: For ```taxaHFE-ML```, collinear features can impact the performance of downstream machine learning (like info_gain_n, this is AFTER hierarchical feature and the optional super filter). One way to address collinearity is through pairwise correlation. We perform pairwise correlation both in the HFE step and in the downstream ML (perhaps you have included covariates which are co-corrleated?). Sometimes, multiple features (> 2) can work together to add collinearity to the data. To address this, we use variance inflation factors from the R package ```colinearity```. Setting ```vif_threshold``` to 0 will bypass this filter (default). Common thresholds are 5 or 10, with higher numbers allowing greater collinearity. Please see their documentation for more information. We also add some info in the log file and save intermediate files from using ```collinearity```.
+```--vif_threshold```: For ```taxaHFE-ML```, collinear features can impact the performance of downstream machine learning (like step_vip_n, this is AFTER hierarchical feature and the optional super filter). One way to address collinearity is through pairwise correlation. We perform pairwise correlation both in the HFE step and in the downstream ML (perhaps you have included covariates which are co-corrleated?). Sometimes, multiple features (> 2) can work together to add collinearity to the data. To address this, we use variance inflation factors from the R package ```colinearity```. Setting ```vif_threshold``` to 0 will bypass this filter (default). Common thresholds are 5 or 10, with higher numbers allowing greater collinearity. Please see their documentation for more information. We also add some info in the log file and save intermediate files from using ```collinearity```.
 
 - Minor detail: For downstream ML, most pre-processing of the ```taxaHFE``` outputs will occur as part of a ```Tidymodels``` receipe. We could not seem to get the VIF analysis to run inside of the receipe. So we perform VIF on the entire training data. All other downstream preprocessing steps (such as pairwise correlation and information gain) happen as part of the receipe (inside the the cross validation folds).
 

@@ -46,7 +46,7 @@ argument_groups <- list(
     desc="Options to pass to TaxaHFE-ML for machine learning and SHAP analysis of TaxaHFE features",
     args=list(
       train_split=list("--train_split", type="numeric", metavar="<numeric>", default = 0.8, help="Percentage of samples to use for training"),
-      info_gain_n=list("--info_gain_n", type="numeric", metavar="<numeric>", default = 0, help="Should information gain preprocessing be used? Set n number of features\nto be selected during preprocessesing. Bypasses info_gain_n if set to 0."),
+      step_vip_n=list("--step_vip_n", type="numeric", metavar="<numeric>", default = 0, help="Should VIP filter preprocessing be used? Set n number of features\nto be selected during preprocessesing. Bypasses step_vip_n if set to 0."),
       vif_threshold=list("--vif_threshold", type="numeric", metavar="<numeric>", default = 0, help="Calculates variance inflation factor (VIF) scores and removes variables\nabout a user-defined threshold. Bypasses vif_threshold if set to 0."),
       vif_preference=list("--vif_preference", type="character", metavar="<string>", help="File with list of numeric predictors in order of preference (txt | tsv | csv)"),
       model=list("--model", type="character", metavar="<string>", default="rf", choices=c("rf", "enet", "lasso", "ridge", "xgboost", "mars", "svm"), help="ML model to use. Options: rf, enet, lasso, ridge, xgboost, mars, svm."),
@@ -69,7 +69,7 @@ argument_groups <- list(
       subject_identifier=list("-s", "--subject_identifier", type="character", metavar="<string>", default="subject_id", help="Metadata column name containing subject IDs"),
       label=list("-l", "--label", type="character", metavar="<string>", default="feature_of_interest", help="Metadata column name of interest for ML"),
       cor_level=list("-c", "--cor_level", type="numeric", metavar="<numeric>", default = 1, help="Initial pearson correlation filter. Bypasses cor_level filter if set to 1"),
-      info_gain_n=list("--info_gain_n", type="numeric", metavar="<numeric>", default = 0, help="Should information gain preprocessing be used? Set n number of features\nto be selected during preprocessesing. Bypasses info_gain_n if set to 0."),
+      step_vip_n=list("--step_vip_n", type="numeric", metavar="<numeric>", default = 0, help="Should VIP filter preprocessing be used? Set n number of features\nto be selected during preprocessesing. Bypasses step_vip_n if set to 0."),
       vif_threshold=list("--vif_threshold", type="numeric", metavar="<numeric>", default = 0, help="Calculates variance inflation factor (VIF) scores and removes variables about a user-defined threshold. Bypasses vif_threshold if set to 0."),
       vif_preference=list("--vif_preference", type="character", metavar="<string>", help="File with list of numeric predictors in order of preference (txt | tsv | csv)"),
       train_split=list("--train_split", type="numeric", metavar="<numeric>", default = 0.8, help="Percentage of samples to use for training"),
@@ -118,7 +118,7 @@ validators <- list(
   cv_repeats=validate_numeric(min=1, max_warning=list(5, "a high about of repeats can result in a large amount of model fits, increasing run time")),
   tune_time=validate_numeric(min=0, max_warning=list(480, "spending excessive time tuning hyperparameters my not result in substaintal increases in accuracy")),
   seed=validate_numeric(min = -1 * .Machine$integer.max, max = .Machine$integer.max),
-  info_gain_n=validate_numeric(min=0),
+  step_vip_n=validate_numeric(min=0),
   vif_threshold=validate_numeric(min=0, max_warning=list(11, "0 is a special case which will be treated as 'bypass VIF analysis'. Collinear, the VIF engine, will automatically set any values above 10 and below 1 (except the 0 we catch!) to 5. That was their call.")),
   pct_loss=validate_numeric(min=0, max=100, max_warning=list(10, "an acceptable pct_loss greater than 10 may include underfit models"))
   
