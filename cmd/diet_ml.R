@@ -8,7 +8,7 @@ source("lib/tree.R")
 # load flags
 # to use this code line-by-line in the Rstudio context, commandArgs can be overloaded to specify the desired flags
 # Example cmd:
-# command <- "example_inputs/bike_share_day.csv -o test_outputs -s instant -l cnt --model ridge -t numeric --metric rsq --tune_time 1 --seed 1234 --shap -n 2"
+# command <- "example_inputs/baseline_data_crp_grs.csv -o example_inputs/output_1810256/ -s subject_id -t numeric --parallel_workers 4 --model rf -l milk_vol -n 2 --metric mae -c 0.95 --vif_threshold 10 --info_gain_n 0 --train_split 0.80 --tune_time 0.5 --tune_length 20 --tune_stop 10 --folds 10 --cv_repeats 1 --shap --seed 1810256"
 # commandArgs <- function(x) { unlist(strsplit(command, split = " ")) }
 
 # these will be used by the argparser

@@ -693,7 +693,7 @@ dietml_recipe <- function(split_from_data_frame, cor_level, vif_threshold, info_
   dietML_recipe <- recipes::recipe(feature_of_interest ~ ., data = train) %>% 
     recipes::update_role("subject_id", new_role = "ID") %>% 
     recipes::update_role("mid", new_role = "grouping_id") %>% 
-    recipes::step_BoxCox(., recipes::all_outcomes()) %>%
+    recipes::step_BoxCox(., recipes::all_outcomes(),  skip = TRUE) %>%
     recipes::step_novel(recipes::all_nominal_predictors()) %>%
     recipes::step_dummy(recipes::all_nominal_predictors()) %>% 
     recipes::step_zv(recipes::all_predictors()) %>%
@@ -708,6 +708,10 @@ dietml_recipe <- function(split_from_data_frame, cor_level, vif_threshold, info_
                                                       threads = ncores) else .}
   
   ## idea - log intermediate file of what these steps do to the data
+  
+  ## for milq impute specifically
+  trained_rec <- prep(dietML_recipe, training = train)
+  logger::log_info(paste0("BoxCox lambda used (id ", tidy(trained_rec, number = 1)$id, "): ", tidy(trained_rec, number = 1)$value ))
   
   return(dietML_recipe)
   
