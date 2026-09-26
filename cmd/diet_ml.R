@@ -30,7 +30,7 @@ data <- read_in_metadata(input = opts$DATA,
                              cores = (opts$ncores * opts$parallel_workers))
 
 ## split data
-tr_te_split <- rsample::initial_split(data, prop = as.numeric(opts$train_split), strata = feature_of_interest)
+tr_te_split <- rsample::group_initial_split(data, prop = as.numeric(opts$train_split), group = "mid")
 train_data <- rsample::training(tr_te_split)
 test_data  <- rsample::testing(tr_te_split)
 
