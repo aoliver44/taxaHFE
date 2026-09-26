@@ -28,9 +28,9 @@ echo "Building taxaHFE containers for version $VERSION"
 
 echo "Building individual command containers..."
 # build args specifies which cmd/ script to use
-docker buildx build --target taxa_hfe $PLATFORM_FLAG --build-arg version=$VERSION -t aoliver44/taxa_hfe:$VERSION $TAXA_HFE_TAGS --push .
-docker buildx build --target taxa_hfe_ml $PLATFORM_FLAG --build-arg version=$VERSION -t aoliver44/taxa_hfe_ml:$VERSION $TAXA_HFE_ML_TAGS --push .
+#docker buildx build --target taxa_hfe $PLATFORM_FLAG --build-arg version=$VERSION -t aoliver44/taxa_hfe:$VERSION $TAXA_HFE_TAGS --push .
+#docker buildx build --target taxa_hfe_ml $PLATFORM_FLAG --build-arg version=$VERSION -t aoliver44/taxa_hfe_ml:$VERSION $TAXA_HFE_ML_TAGS --push .
 docker buildx build --target diet_ml $PLATFORM_FLAG --build-arg version=$VERSION -t aoliver44/diet_ml:$VERSION $DIET_ML_TAGS --push .
 
 echo "Building the rstudio development image..."
-docker buildx build --target rstudio $PLATFORM_FLAG --build-arg version=$VERSION -t aoliver44/taxa_hfe_rstudio:$VERSION $RSTUDIO_TAGS --push .
+#docker buildx build --target rstudio $PLATFORM_FLAG --build-arg version=$VERSION -t aoliver44/taxa_hfe_rstudio:$VERSION $RSTUDIO_TAGS --push .
