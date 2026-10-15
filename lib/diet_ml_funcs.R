@@ -808,7 +808,8 @@ dietml_hp_tune <- function(diet_ml_workflow, model, parallel_workers, folds, typ
         parallel_over = "resamples",
         time_limit = ifelse(tune_time == 0 && model %in% c("enet", "ridge", "lasso"), 10e5, as.numeric(tune_time)),
         seed = as.numeric(seed),
-        save_pred = FALSE
+        save_pred = TRUE,
+        save_workflow = TRUE
       )
     )
   
