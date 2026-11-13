@@ -153,7 +153,7 @@ shap_analysis <- function(label, output, model, filename, shap_inputs, train, te
       save(list = ls(envir = shap_plot_env), 
            envir = shap_plot_env,
            file = file.path(paste0(output_dir, "/shap_inputs_", filename, ".RData")),
-           compress = "gzip"
+           compress = "xz"
       )
       ## return error message
       logger::log_fatal("Error: ", error_message)
@@ -163,7 +163,7 @@ shap_analysis <- function(label, output, model, filename, shap_inputs, train, te
     save(list = ls(envir = shap_plot_env), 
          envir = shap_plot_env,
          file = file.path(paste0(output_dir, "/shap_inputs_", filename, ".RData")),
-         compress = "gzip"
+         compress = "xz"
     )
   }
   
