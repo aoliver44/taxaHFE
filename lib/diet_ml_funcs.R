@@ -998,7 +998,7 @@ write_dietml_outputs <- function(type,  best_tidy_workflow, split_from_data_fram
     
     ## write raw predictions to file in case other metrics want to be calculated
     all_predictions %>% 
-      dplyr::select(., dplyr::starts_with(".pred_"), feature_of_interest, .model_input_type) %>%
+      dplyr::select(., dplyr::starts_with(".pred_"), feature_of_interest, .model_input_type, subject_id) %>%
       readr::write_csv(., paste0(output, "/ml_analysis/raw_predictions.csv"))
     
     ## make sure the order of levels for feature of interest and pred class are the same,
@@ -1020,7 +1020,7 @@ write_dietml_outputs <- function(type,  best_tidy_workflow, split_from_data_fram
     
     ## write raw predictions to file in case other metrics want to be calculated
     all_predictions %>% 
-      dplyr::select(., feature_of_interest, .pred, .model_input_type) %>%
+      dplyr::select(., feature_of_interest, .pred, .model_input_type, subject_id) %>%
       readr::write_csv(., paste0(output, "/ml_analysis/raw_predictions.csv"))
     
     all_predictions <- all_predictions %>% dplyr::group_by(.model_input_type) %>% yardstick::metrics(feature_of_interest, .pred)
