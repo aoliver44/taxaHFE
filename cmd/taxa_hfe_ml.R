@@ -82,6 +82,47 @@ readr::write_csv(x = as.data.frame(diet_ml_inputs[2]),
                  file = paste0(opts$output_dir, "/", program, "_test_", opts$seed, ".csv"), 
                  append = FALSE)
 
+## run an initial dietML run and shuffle the outcome for another NULL model
+## remove any outputs from this run because we dont need them
+## create a new logging threshold so we dont log everything we normally log,
+## we just need to log the performance of the shuffled model only. Log level
+## SUCCESS is a level higher than INFO, so INFO wont get logged here.
+logger::log_threshold(level = "SUCCESS")
+logger::log_level(level = "SUCCESS", "Running a shuffled outcome model. 
+                  We train the model using a shuffled response, and then test it on
+                  left out, un-shuffled data. Note, this means DietML will take 
+                  twice as long, as we run the model exactly the same way twice, except
+                  for shuffling the outcome in training.")
+to_trash <- run_dietML(train = as.data.frame(diet_ml_inputs[1]), 
+                          test = as.data.frame(diet_ml_inputs[2]), 
+                          model = opts$model,
+                          program = program, 
+                          seed = opts$seed, 
+                          random_effects = opts$random_effects, 
+                          nfolds = opts$folds, 
+                          cv_repeats = opts$cv_repeats, 
+                          ncores = opts$ncores, 
+                          parallel_workers = opts$parallel_workers, 
+                          tune_length = opts$tune_length, 
+                          tune_stop = opts$tune_stop, 
+                          tune_time = opts$tune_time, 
+                          metric = opts$metric, 
+                          label = opts$label, 
+                          output = opts$output_dir, 
+                          feature_type = opts$feature_type, 
+                          shap = opts$shap, 
+                          cor_level = opts$cor_level, 
+                          info_gain_n = opts$info_gain_n,
+                          vif_threshold = opts$vif_threshold,
+                          vif_preference = opts$vif_preference,
+                          pct_loss = opts$pct_loss,
+                          shuffle_response = TRUE
+)
+rm(to_trash)
+
+## Go back to logging everything we normal log (INFO level)
+logger::log_threshold(level = "INFO")
+
 ## pass to dietML if selected
 shap_inputs <- run_dietML(train = as.data.frame(diet_ml_inputs[1]), 
                           test = as.data.frame(diet_ml_inputs[2]), 
@@ -105,7 +146,8 @@ shap_inputs <- run_dietML(train = as.data.frame(diet_ml_inputs[1]),
                           info_gain_n = opts$info_gain_n,
                           vif_threshold = opts$vif_threshold,
                           vif_preference = opts$vif_preference,
-                          pct_loss = opts$pct_loss
+                          pct_loss = opts$pct_loss,
+                          shuffle_response = FALSE
 )
 
 ## run shap analysis if requested
@@ -171,7 +213,8 @@ if (opts$summarized_levels) {
                               info_gain_n = opts$info_gain_n,
                               vif_threshold = opts$vif_threshold,
                               vif_preference = opts$vif_preference,
-                              pct_loss = opts$pct_loss
+                              pct_loss = opts$pct_loss,
+                              shuffle_response = FALSE
     )
     
     if (opts$shap) {
