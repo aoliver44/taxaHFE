@@ -17,7 +17,8 @@ run_dietML <- function(train, test, model, program, seed,
                        random_effects, nfolds, cv_repeats, ncores, 
                        parallel_workers, tune_length, tune_stop, tune_time, 
                        metric, label, output, feature_type, shap, cor_level, 
-                       vif_threshold, vif_preference, info_gain_n, pct_loss) {
+                       vif_threshold, vif_preference, info_gain_n, pct_loss,
+                       shuffle_response) {
   
   ## check for outdir and make if not there
   if (!dir.exists(paste0(output, "/ml_analysis"))) {
@@ -26,7 +27,7 @@ run_dietML <- function(train, test, model, program, seed,
 
   ## check for label
   if ("feature_of_interest" %in% colnames(train) == FALSE & "feature_of_interest" %in% colnames(test) == FALSE) {
-    logger::log_fatal("label not found in training AND testing data")
+    logger::log_level(level = "FATAL", "label not found in training AND testing data")
     stop()
   } 
   
@@ -34,7 +35,7 @@ run_dietML <- function(train, test, model, program, seed,
   if (feature_type == "factor") {
     type <- "classification"
     if (length(levels(as.factor(train$feature_of_interest))) > 9) {
-      logger::log_fatal("You are trying to predict 10 or more classes. That is a bit much. Did you mean to do regression?")
+      logger::log_level(level = "FATAL", "You are trying to predict 10 or more classes. That is a bit much. Did you mean to do regression?")
       stop() 
     } 
   } else {
@@ -63,7 +64,8 @@ run_dietML <- function(train, test, model, program, seed,
   diet_ml_recipe <- dietml_recipe(split_from_data_frame = split_from_data_frame, 
                                   cor_level = cor_level, vif_threshold = vif_threshold,
                                   info_gain_n = info_gain_n,
-                                  type = type, ncores = ncores, model = model)
+                                  type = type, ncores = ncores, model = model,
+                                  shuffle_response = shuffle_response)
 
   
   ## run null model first, results_df is needed for the actually runs
@@ -71,7 +73,7 @@ run_dietML <- function(train, test, model, program, seed,
                                  type = type, output = output, cv_repeats = cv_repeats, 
                                  feature_of_interest = "feature_of_interest", cor_level = cor_level, 
                                  vif_threshold = vif_threshold, info_gain_n = info_gain_n, ncores = ncores, model = model,
-                                 diet_ml_recipe = diet_ml_recipe, folds = folds)
+                                 diet_ml_recipe = diet_ml_recipe, folds = folds, shuffle_response = shuffle_response)
   
   ## run model specified
   common_args <- list(
@@ -86,7 +88,7 @@ run_dietML <- function(train, test, model, program, seed,
     cor_level = cor_level, vif_threshold = vif_threshold,
     info_gain_n = info_gain_n, pct_loss = pct_loss,
     diet_ml_recipe = diet_ml_recipe,
-    folds = folds
+    folds = folds, shuffle_response = shuffle_response
   )
   
   model_fn <- list(
@@ -101,7 +103,7 @@ run_dietML <- function(train, test, model, program, seed,
   
   
   if (is.null(model_fn[[model]])) {
-    logger::log_fatal(paste0("Unknown model, not in model_fn list: ", model))
+    logger::log_level(level = "FATAL", paste0("Unknown model, not in model_fn list: ", model))
     stop()
   } 
   
@@ -115,10 +117,10 @@ run_dietML_ranger <- function(split_from_data_frame, seed, folds, cv_repeats,
                               parallel_workers, ncores, tune_length, tune_stop, 
                               tune_time, metric, feature_of_interest, model, program, 
                               output, type, null_results, cor_level, vif_threshold,
-                              info_gain_n, pct_loss, diet_ml_recipe) {
+                              info_gain_n, pct_loss, diet_ml_recipe, shuffle_response) {
   
   ## log start of RF function
-  logger::log_info("{model} model started...")
+  logger::log_level(level = "INFO", "{model} model started...")
   
   ## Random Forest ML engine
   ## specify ML model and engine 
@@ -161,10 +163,10 @@ run_dietML_ranger <- function(split_from_data_frame, seed, folds, cv_repeats,
       diet_ml_workflow %>% 
       workflows::update_model(last_best_mod)
     
-    logger::log_info("Hyperparameters selected: ")
-    logger::log_info(paste0("mtry: ", floor(sqrt(ncol(rsample::training(split_from_data_frame))))))
-    logger::log_info(paste0("trees: 500"))
-    logger::log_info(paste0("min_n: ", ifelse(type == "classification", 10, 5)))
+    logger::log_level(level = "INFO", "Hyperparameters selected: ")
+    logger::log_level(level = "INFO", paste0("mtry: ", floor(sqrt(ncol(rsample::training(split_from_data_frame))))))
+    logger::log_level(level = "INFO", paste0("trees: 500"))
+    logger::log_level(level = "INFO", paste0("min_n: ", ifelse(type == "classification", 10, 5)))
     
   } else {
     best_tidy_workflow <- dietml_hp_tune(split_from_data_frame = split_from_data_frame, 
@@ -180,10 +182,10 @@ run_dietML_ranger <- function(split_from_data_frame, seed, folds, cv_repeats,
   shap_inputs <- write_dietml_outputs(type = type, best_tidy_workflow = best_tidy_workflow, 
                                       split_from_data_frame = split_from_data_frame,
                                       seed = seed, null_results = null_results, 
-                                      program = program, output = output)
+                                      program = program, output = output, shuffle_response = shuffle_response)
   
   ## log end of rf model
-  logger::log_info("{model} model finished!")
+  logger::log_level(level = "INFO", "{model} model finished!")
   
   ## return outputs
   return(shap_inputs)
@@ -197,7 +199,7 @@ run_dietML_enet <- function(split_from_data_frame, seed, folds, cv_repeats,
                             info_gain_n, pct_loss, diet_ml_recipe) {
   
   ## log start of ENET function
-  logger::log_info("{model} model started...")
+  logger::log_level(level = "INFO", "{model} model started...")
   
   ## ML engine
   ## specify ML model and engine 
@@ -233,7 +235,7 @@ run_dietML_enet <- function(split_from_data_frame, seed, folds, cv_repeats,
   
   ## hyperparameters =============================================================
   if (as.numeric(tune_time) == 0) {
-    logger::log_warn("You specified tune_time = 0, but penalized regression requires selecting a penalty. 
+    logger::log_level(level = "WARN", "You specified tune_time = 0, but penalized regression requires selecting a penalty. 
                      We do a fast, light cross-validation to choose a reasonable value. However, if your 
                      dataset is large, this may take a little time.")
     best_tidy_workflow <- dietml_hp_tune(split_from_data_frame = split_from_data_frame, 
@@ -258,10 +260,10 @@ run_dietML_enet <- function(split_from_data_frame, seed, folds, cv_repeats,
   shap_inputs <- write_dietml_outputs(type = type, best_tidy_workflow = best_tidy_workflow, 
                                       split_from_data_frame = split_from_data_frame, 
                                       seed = seed, null_results = null_results, 
-                                      program = program, output = output)
+                                      program = program, output = output, shuffle_response = shuffle_response)
   
   ## log end of enet model
-  logger::log_info("{model} model finished!")
+  logger::log_level(level = "INFO", "{model} model finished!")
   
   ## return outputs
   return(shap_inputs)
@@ -272,10 +274,10 @@ run_dietML_ridge_lasso <- function(split_from_data_frame, seed, folds, cv_repeat
                                    parallel_workers, ncores, tune_length, tune_stop, 
                                    tune_time, metric, feature_of_interest, model, program, 
                                    output, type, null_results, cor_level, vif_threshold,
-                                   info_gain_n, pct_loss, diet_ml_recipe) {
+                                   info_gain_n, pct_loss, diet_ml_recipe, shuffle_response) {
   
   ## log start of ridge, lasso function
-  logger::log_info("{model} model started...")
+  logger::log_level(level = "INFO", "{model} model started...")
   
   ## ML engine
   ## specify ML model and engine 
@@ -305,7 +307,7 @@ run_dietML_ridge_lasso <- function(split_from_data_frame, seed, folds, cv_repeat
   
   ## hyperparameters =============================================================
   if (as.numeric(tune_time) == 0) {
-    logger::log_warn("You specified tune_time = 0, but penalized regression requires selecting a penalty. 
+    logger::log_level(level = "WARN", "You specified tune_time = 0, but penalized regression requires selecting a penalty. 
                      We do a fast, light cross-validation to choose a reasonable value. However, if your 
                      dataset is large, this may take a little time.")
     best_tidy_workflow <- dietml_hp_tune(split_from_data_frame = split_from_data_frame, 
@@ -330,10 +332,10 @@ run_dietML_ridge_lasso <- function(split_from_data_frame, seed, folds, cv_repeat
   shap_inputs <- write_dietml_outputs(type = type, best_tidy_workflow = best_tidy_workflow, 
                                       split_from_data_frame = split_from_data_frame, 
                                       seed = seed, null_results = null_results, 
-                                      program = program, output = output)
+                                      program = program, output = output, shuffle_response = shuffle_response)
   
   ## log end of ridge/lasso model
-  logger::log_info("{model} model finished!")
+  logger::log_level(level = "INFO", "{model} model finished!")
   
   ## return outputs
   return(shap_inputs)
@@ -342,10 +344,10 @@ run_dietML_ridge_lasso <- function(split_from_data_frame, seed, folds, cv_repeat
 
 run_null_model <- function(split_from_data_frame, seed, type, output, cv_repeats, 
                            feature_of_interest, folds, cor_level, vif_threshold, 
-                           info_gain_n, ncores, model, diet_ml_recipe) {
+                           info_gain_n, ncores, model, diet_ml_recipe, shuffle_response) {
   
   ## log start of null model
-  logger::log_info("null model started...")
+  logger::log_level(level = "INFO", "null model started...")
   
   ## create results df
   if (type == "classification") {
@@ -409,11 +411,13 @@ run_null_model <- function(split_from_data_frame, seed, type, output, cv_repeats
   }
   
   ## write table of results to file
-  readr::write_csv(x = results_df, file = paste0(output, "/ml_analysis/dummy_model_results.csv"), 
-                   append = T, col_names = !file.exists(paste0(output, "/ml_analysis/dummy_model_results.csv")))
+  if (!shuffle_response) {
+    readr::write_csv(x = results_df, file = paste0(output, "/ml_analysis/dummy_model_results.csv"), 
+                     append = T, col_names = !file.exists(paste0(output, "/ml_analysis/dummy_model_results.csv")))
+  }
   
   ## log end of null model
-  logger::log_info("null model finished!")
+  logger::log_level(level = "INFO", "null model finished!")
   
   ## return results_df because that is what the other models need (ranger, enet)
   return(results_df)
@@ -423,10 +427,10 @@ run_dietML_xgboost <- function(split_from_data_frame, seed, folds, cv_repeats,
                                parallel_workers, ncores, tune_length, tune_stop, 
                                tune_time, metric, feature_of_interest, model, program, 
                                output, type, null_results, cor_level, vif_threshold,
-                               info_gain_n, pct_loss, diet_ml_recipe) {
+                               info_gain_n, pct_loss, diet_ml_recipe, shuffle_response) {
   
   ## log start of RF function
-  logger::log_info("{model} model started...")
+  logger::log_level(level = "INFO", "{model} model started...")
   
   ## xgboost ML engine
   ## specify ML model and engine 
@@ -475,14 +479,14 @@ run_dietML_xgboost <- function(split_from_data_frame, seed, folds, cv_repeats,
       diet_ml_workflow %>% 
       workflows::update_model(last_best_mod)
     
-    logger::log_info("Hyperparameters selected: ")
-    logger::log_info("tree_depth: 6")
-    logger::log_info("trees: 500")
-    logger::log_info("learn_rate: 0.3")
-    logger::log_info("mtry: 100% of columns/features")
-    logger::log_info("loss_reduction: 0")
-    logger::log_info("sample_size: 100% of training samples")
-    logger::log_info("min_n: 1")
+    logger::log_level(level = "INFO", "Hyperparameters selected: ")
+    logger::log_level(level = "INFO", "tree_depth: 6")
+    logger::log_level(level = "INFO", "trees: 500")
+    logger::log_level(level = "INFO", "learn_rate: 0.3")
+    logger::log_level(level = "INFO", "mtry: 100% of columns/features")
+    logger::log_level(level = "INFO", "loss_reduction: 0")
+    logger::log_level(level = "INFO", "sample_size: 100% of training samples")
+    logger::log_level(level = "INFO", "min_n: 1")
     
   } else {
     best_tidy_workflow <- dietml_hp_tune(split_from_data_frame = split_from_data_frame, 
@@ -498,10 +502,10 @@ run_dietML_xgboost <- function(split_from_data_frame, seed, folds, cv_repeats,
   shap_inputs <- write_dietml_outputs(type = type, best_tidy_workflow = best_tidy_workflow, 
                                       split_from_data_frame = split_from_data_frame,
                                       seed = seed, null_results = null_results, 
-                                      program = program, output = output)
+                                      program = program, output = output, shuffle_response = shuffle_response)
   
   ## log end of rf model
-  logger::log_info("{model} model finished!")
+  logger::log_level(level = "INFO", "{model} model finished!")
   
   ## return outputs
   return(shap_inputs)
@@ -512,10 +516,10 @@ run_dietML_mars <- function(split_from_data_frame, seed, folds, cv_repeats,
                             parallel_workers, ncores, tune_length, tune_stop, 
                             tune_time, metric, feature_of_interest, model, program, 
                             output, type, null_results, cor_level, vif_threshold,
-                            info_gain_n, pct_loss, diet_ml_recipe) {
+                            info_gain_n, pct_loss, diet_ml_recipe, shuffle_response) {
   
   ## log start of RF function
-  logger::log_info("{model} model started...")
+  logger::log_level(level = "INFO", "{model} model started...")
   
   ## Mars ML engine
   ## specify ML model and engine 
@@ -556,10 +560,10 @@ run_dietML_mars <- function(split_from_data_frame, seed, folds, cv_repeats,
       diet_ml_workflow %>% 
       workflows::update_model(last_best_mod)
     
-    logger::log_info("Hyperparameters selected: ")
-    logger::log_info("prune_method: backward")
-    logger::log_info("prod_degree: 1")
-    logger::log_info("num_terms: NULL (all)")
+    logger::log_level(level = "INFO", "Hyperparameters selected: ")
+    logger::log_level(level = "INFO", "prune_method: backward")
+    logger::log_level(level = "INFO", "prod_degree: 1")
+    logger::log_level(level = "INFO", "num_terms: NULL (all)")
     
   } else {
     best_tidy_workflow <- dietml_hp_tune(split_from_data_frame = split_from_data_frame, 
@@ -575,10 +579,10 @@ run_dietML_mars <- function(split_from_data_frame, seed, folds, cv_repeats,
   shap_inputs <- write_dietml_outputs(type = type, best_tidy_workflow = best_tidy_workflow, 
                                       split_from_data_frame = split_from_data_frame,
                                       seed = seed, null_results = null_results, 
-                                      program = program, output = output)
+                                      program = program, output = output, shuffle_response = shuffle_response)
   
   ## log end of rf model
-  logger::log_info("{model} model finished!")
+  logger::log_level(level = "INFO", "{model} model finished!")
   
   ## return outputs
   return(shap_inputs)
@@ -589,10 +593,10 @@ run_dietML_svm <- function(split_from_data_frame, seed, folds, cv_repeats,
                            parallel_workers, ncores, tune_length, tune_stop, 
                            tune_time, metric, feature_of_interest, model, program, 
                            output, type, null_results, cor_level, vif_threshold,
-                           info_gain_n, pct_loss, diet_ml_recipe) {
+                           info_gain_n, pct_loss, diet_ml_recipe, shuffle_response) {
   
   ## log start of RF function
-  logger::log_info("{model} model started...")
+  logger::log_level(level = "INFO", "{model} model started...")
   
   ## SVM ML engine
   ## specify ML model and engine 
@@ -633,9 +637,9 @@ run_dietML_svm <- function(split_from_data_frame, seed, folds, cv_repeats,
       diet_ml_workflow %>% 
       workflows::update_model(last_best_mod)
     
-    logger::log_info("Hyperparameters selected: ")
-    logger::log_info("cost: 1")
-    logger::log_info("rbf_sigma: not specified")
+    logger::log_level(level = "INFO", "Hyperparameters selected: ")
+    logger::log_level(level = "INFO", "cost: 1")
+    logger::log_level(level = "INFO", "rbf_sigma: not specified")
     
   } else {
     best_tidy_workflow <- dietml_hp_tune(split_from_data_frame = split_from_data_frame, 
@@ -651,10 +655,10 @@ run_dietML_svm <- function(split_from_data_frame, seed, folds, cv_repeats,
   shap_inputs <- write_dietml_outputs(type = type, best_tidy_workflow = best_tidy_workflow, 
                                       split_from_data_frame = split_from_data_frame,
                                       seed = seed, null_results = null_results, 
-                                      program = program, output = output)
+                                      program = program, output = output, shuffle_response = shuffle_response)
   
   ## log end of rf model
-  logger::log_info("{model} model finished!")
+  logger::log_level(level = "INFO", "{model} model finished!")
   
   ## return outputs
   return(shap_inputs)
@@ -680,18 +684,19 @@ set_cv_strategy <- function(split_from_data_frame, nfolds, feature_of_interest, 
   cv_folds <- rsample::vfold_cv(train, v = as.numeric(nfolds), strata = feature_of_interest, repeats = cv_repeats)
   
   ## log CV strategy
-  logger::log_info("Stratified (across the response) cross validation strategy set, using {as.numeric(nfolds)} folds and repeating {cv_repeats}x time(s).")
+  logger::log_level(level = "INFO", "Stratified (across the response) cross validation strategy set, using {as.numeric(nfolds)} folds and repeating {cv_repeats}x time(s).")
   return(cv_folds)
 }
 
-dietml_recipe <- function(split_from_data_frame, cor_level, vif_threshold, info_gain_n, type, ncores, model) {
+dietml_recipe <- function(split_from_data_frame, cor_level, vif_threshold, info_gain_n, type, ncores, model, shuffle_response) {
   
   ## grab the training data
   train <- rsample::training(split_from_data_frame)
   
   ## specify recipe (this is like the pre-process work)
   dietML_recipe <- recipes::recipe(feature_of_interest ~ ., data = train) %>% 
-    recipes::update_role("subject_id", new_role = "ID") %>% 
+    recipes::update_role("subject_id", new_role = "ID") %>%
+    {if (shuffle_response) recipes::step_shuffle(., recipes::all_outcomes(), skip = T) else .} %>%
     recipes::step_novel(recipes::all_nominal_predictors()) %>%
     recipes::step_dummy(recipes::all_nominal_predictors()) %>% 
     recipes::step_zv(recipes::all_predictors()) %>%
@@ -835,7 +840,7 @@ dietml_hp_tune <- function(diet_ml_workflow, model, parallel_workers, folds, typ
   }
   
   ## log hyperparameters selected for less-complex, best model
-  logger::log_info("If --pct_loss > 0, training parameters 
+  logger::log_level(level = "INFO", "If --pct_loss > 0, training parameters 
 selected based on simplest model which optimize performance 
 (--pct_loss of best model). This attempts to reduce overfitting. Thus, 
 you may see training performance is VERY slightlylower than testing 
@@ -864,18 +869,18 @@ between the training and test score).
                    
                    ")
   
-  logger::log_info("Hyperparameters selected: ")
+  logger::log_level(level = "INFO", "Hyperparameters selected: ")
   for (n in seq(1:ncol(best_mod))) {
-    logger::log_info(paste0(colnames(best_mod[n]), ": ", best_mod[1,n]))
+    logger::log_level(level = "INFO", paste0(colnames(best_mod[n]), ": ", best_mod[1,n]))
   }
   
   ## log mean validation scores
   val_scores <- workflowsets::collect_metrics(search_res) %>% 
     dplyr::group_by(., .metric) %>% 
     dplyr::summarise(., mean_validation = mean(mean), mean_std_err = mean(std_err))
-  logger::log_info("Mean validation scores: ")
+  logger::log_level(level = "INFO", "Mean validation scores: ")
   for (n in seq(1:nrow(val_scores))) {
-    logger::log_info(paste0(val_scores[n,1], " (validation): ", round(val_scores[n,2], 4), " (", round(val_scores[n,3], 4), " std err)"))
+    logger::log_level(level = "INFO", paste0(val_scores[n,1], " (validation): ", round(val_scores[n,2], 4), " (", round(val_scores[n,3], 4), " std err)"))
   }
   
   ## create the last model based on best parameters: Random Forest
@@ -958,7 +963,7 @@ between the training and test score).
   return(best_tidy_workflow)
 }
 
-write_dietml_outputs <- function(type,  best_tidy_workflow, split_from_data_frame, seed, null_results, program, output) {
+write_dietml_outputs <- function(type,  best_tidy_workflow, split_from_data_frame, seed, null_results, program, output, shuffle_response) {
   if (type == "classification") {
     final_res <- tune::last_fit(best_tidy_workflow, split_from_data_frame, 
                                 metrics = yardstick::metric_set(bal_accuracy, 
@@ -985,9 +990,11 @@ write_dietml_outputs <- function(type,  best_tidy_workflow, split_from_data_fram
   full_results$program <- program
   
   ## write final results to file or append if file exists
-  readr::write_csv(x = full_results, file = paste0(output, "/ml_analysis/ml_results.csv"), 
-                   append = T, col_names = !file.exists(paste0(output, "/ml_analysis/ml_results.csv")))
-  
+  if (!shuffle_response) {
+    readr::write_csv(x = full_results, file = paste0(output, "/ml_analysis/ml_results.csv"), 
+                     append = T, col_names = !file.exists(paste0(output, "/ml_analysis/ml_results.csv")))
+  }
+
   ## calculate training scores and log them 
   all_predictions <- bind_rows(tune::augment(final_res$.workflow[[1]], new_data = rsample::training(split_from_data_frame)) %>% 
                                  dplyr::mutate(.model_input_type = "train"), 
@@ -997,9 +1004,11 @@ write_dietml_outputs <- function(type,  best_tidy_workflow, split_from_data_fram
     class_metrics <- yardstick::metric_set(bal_accuracy, accuracy, kap, f_meas)
     
     ## write raw predictions to file in case other metrics want to be calculated
-    all_predictions %>% 
-      dplyr::select(., dplyr::starts_with(".pred_"), feature_of_interest, .model_input_type, subject_id) %>%
-      readr::write_csv(., paste0(output, "/ml_analysis/raw_predictions.csv"))
+    if (!shuffle_response) {
+      all_predictions %>% 
+        dplyr::select(., dplyr::starts_with(".pred_"), feature_of_interest, .model_input_type, subject_id) %>%
+        readr::write_csv(., paste0(output, "/ml_analysis/raw_predictions.csv"))
+    }
     
     ## make sure the order of levels for feature of interest and pred class are the same,
     ## otherwise tidymodels errors out with a weird bug:
@@ -1019,16 +1028,28 @@ write_dietml_outputs <- function(type,  best_tidy_workflow, split_from_data_fram
   } else {
     
     ## write raw predictions to file in case other metrics want to be calculated
-    all_predictions %>% 
-      dplyr::select(., feature_of_interest, .pred, .model_input_type, subject_id) %>%
-      readr::write_csv(., paste0(output, "/ml_analysis/raw_predictions.csv"))
+    if (!shuffle_response) {
+      all_predictions %>% 
+        dplyr::select(., feature_of_interest, .pred, .model_input_type, subject_id) %>%
+        readr::write_csv(., paste0(output, "/ml_analysis/raw_predictions.csv"))
+    }
     
     all_predictions <- all_predictions %>% dplyr::group_by(.model_input_type) %>% yardstick::metrics(feature_of_interest, .pred)
   }
   
-  logger::log_info("ML results (assessment on test data recorded in ml_results.csv):")
-  for (n in seq(1:nrow(all_predictions))) {
-    logger::log_info(paste0(all_predictions[n,2], " (", all_predictions[n,1], "): ", all_predictions[n,4]))
+  ## record this to log if we are doing the shuffled NULL
+  if (shuffle_response) {
+    ## record ML performance to logging file
+    logger::log_level(level = "SUCCESS", "ML results for SHUFFLED RESONSE (another NULL model): ")
+    for (n in seq(1:nrow(all_predictions))) {
+      logger::log_level(level = "SUCCESS", paste0(all_predictions[n,2], " (", all_predictions[n,1], "): ", all_predictions[n,4]))
+    }
+  } else {
+    ## record ML performance to logging file
+    logger::log_level(level = "INFO", "ML results (assessment on test data recorded in ml_results.csv):")
+    for (n in seq(1:nrow(all_predictions))) {
+      logger::log_level(level = "INFO", paste0(all_predictions[n,2], " (", all_predictions[n,1], "): ", all_predictions[n,4]))
+    }
   }
   
   ## return shap inputs list and results. The recipe and workflow are all 
@@ -1051,7 +1072,7 @@ reduce_collinearity_train <- function(train, vif_threshold, vif_preference, cor_
       dplyr::select(., -feature_of_interest, -subject_id) %>%
       dplyr::select(where(is.numeric)) %>%
       names()
-    logger::log_info(paste0("# numeric features identified in training data: ", length(numeric_vars)))
+    logger::log_level(level = "INFO", paste0("# numeric features identified in training data: ", length(numeric_vars)))
     
     if (length(numeric_vars) > 0) {
       
@@ -1063,7 +1084,7 @@ reduce_collinearity_train <- function(train, vif_threshold, vif_preference, cor_
       if (!is.null(vif_preference)) {
         ## see if file exists
         if (file.exists(vif_preference) == FALSE) {
-          logger::log_fatal("vif_preference file not found as specified")
+          logger::log_level(level = "FATAL", "vif_preference file not found as specified")
           stop()
         } else {
           vif_preference_order <- create_vif_preference_order(vif_preference_file = vif_preference, numeric_train_vars = numeric_vars)
@@ -1081,7 +1102,7 @@ reduce_collinearity_train <- function(train, vif_threshold, vif_preference, cor_
         return(original_identify_var_func(df = df, responses = responses, predictors = predictors, decimals = 12, 
                                           quiet = quiet, ...))
       }
-      logger::log_info(paste0("Overwriting internal collinear function for identifying zero var variables to 
+      logger::log_level(level = "INFO", paste0("Overwriting internal collinear function for identifying zero var variables to 
                                look for variance out to 12 decimal places"))
       utils::assignInNamespace(x = "identify_zero_variance_variables", value = new_identify_zero_var_func, ns = "collinear")
       
@@ -1090,7 +1111,7 @@ reduce_collinearity_train <- function(train, vif_threshold, vif_preference, cor_
       collinear_stats_pre_vifdf <- collinear::vif_df(df = train, predictors = numeric_vars)
       collinear_stats_pre_cordf <- collinear::cor_df(df = train, predictors = numeric_vars)
       collinear_stats_pre <- collinear::collinear_stats(df = collinear_stats_pre_cordf, predictors = numeric_vars)
-      logger::log_info("You selected to perform correlation and/or VIF. Note, the VIF/Correlation is only d
+      logger::log_level(level = "INFO", "You selected to perform correlation and/or VIF. Note, the VIF/Correlation is only d
                         one on the training data! Not the entire data. We perform this using the collinear package in R. 
                         Their documentation is very good, please look at the defaults and assumptions they employ.
                        Note the only collinear arguements we modify, beyond the VIF and correlation thresholds, is 
@@ -1108,7 +1129,7 @@ reduce_collinearity_train <- function(train, vif_threshold, vif_preference, cor_
 
                        ")
       ## log the stats prior to VIF/Correlation
-      logger::log_info(paste0("(Pre) Mean VIF, Correlation: ", 
+      logger::log_level(level = "INFO", paste0("(Pre) Mean VIF, Correlation: ", 
                               collinear_stats_pre %>% 
                                 dplyr::filter(., method == "vif", statistic == "mean") %>% 
                                 dplyr::pull(value), ", ",
@@ -1146,8 +1167,8 @@ reduce_collinearity_train <- function(train, vif_threshold, vif_preference, cor_
       ## keep track of vars kept or dropped
       vars_to_keep <- c("subject_id", "feature_of_interest", filtered_vars$feature_of_interest$selection)
       vif_vars_to_drop <- numeric_vars[numeric_vars %!in% vars_to_keep]
-      logger::log_info(paste0("# numeric features dropped due to VIF/Correlation: ", length(vif_vars_to_drop)))
-      logger::log_info(paste0("vars dropped are: ", paste(vif_vars_to_drop, collapse = ",")))
+      logger::log_level(level = "INFO", paste0("# numeric features dropped due to VIF/Correlation: ", length(vif_vars_to_drop)))
+      logger::log_level(level = "INFO", paste0("vars dropped are: ", paste(vif_vars_to_drop, collapse = ",")))
       train_filtered <- train %>% dplyr::select(-dplyr::all_of(vif_vars_to_drop))
       
       ## filtered numeric vars
@@ -1158,7 +1179,7 @@ reduce_collinearity_train <- function(train, vif_threshold, vif_preference, cor_
       
       ## log the stats after  VIF/Correlation
       collinear_stats_post <- collinear::collinear_stats(df = train_filtered, predictors = filtered_numeric_vars)
-      logger::log_info(paste0("(Post) Mean VIF, Correlation: ", 
+      logger::log_level(level = "INFO", paste0("(Post) Mean VIF, Correlation: ", 
                               collinear_stats_post %>% 
                                 dplyr::filter(., method == "vif", statistic == "mean") %>% 
                                 dplyr::pull(value), ", ",
@@ -1167,7 +1188,7 @@ reduce_collinearity_train <- function(train, vif_threshold, vif_preference, cor_
                                 dplyr::pull(value)))
       
       ## revert the custom collinear shadow 
-      logger::log_info(paste0("Reverting modified collinear identify_zero_variance_variables function back to original"))
+      logger::log_level(level = "INFO", paste0("Reverting modified collinear identify_zero_variance_variables function back to original"))
       utils::assignInNamespace(x = "identify_zero_variance_variables", value = original_identify_var_func, ns = "collinear")
       
       ## write VIF/cor info to files
@@ -1222,7 +1243,7 @@ create_vif_preference_order <- function(vif_preference_file, numeric_train_vars)
   
   ## warn if variable in preference file that are not found in training input
   if (length(vif_preference_order_not_found) > 0) {
-    logger::log_warn(paste0("You specified a vif_preference, which contained 
+    logger::log_level(level = "WARN", paste0("You specified a vif_preference, which contained 
                                 variables not found in a list of the numeric inputs: ", paste(vif_preference_order_not_found, collapse = ",")))
   }
   
