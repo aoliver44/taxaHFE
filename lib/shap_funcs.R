@@ -53,7 +53,7 @@ shap_analysis <- function(label, output, model, filename, shap_inputs, train, te
   
   ## log the positive class that pfun sees
   if (feature_type == "factor") {
-    logger::log_info(paste0("Positive class (pfun): ", levels(as.factor(split_from_data_frame$data$feature_of_interest))[1]))
+    logger::log_level(level = "INFO", paste0("Positive class (pfun): ", levels(as.factor(split_from_data_frame$data$feature_of_interest))[1]))
   }
   
   if (is.null(pfun)) {
@@ -88,10 +88,10 @@ shap_analysis <- function(label, output, model, filename, shap_inputs, train, te
         
         ## warning if shap analysis looks like its going to take a long time
         if ((n_cols * n_rows) > 500000) {
-          logger::log_warn("This input dataset is pretty large for a SHAP analysis. This may take a long time, potentially exceeding walltime limits for shared resources (e.g., HPCs)", immediate. = T)
+          logger::log_level(level = "WARN", "This input dataset is pretty large for a SHAP analysis. This may take a long time, potentially exceeding walltime limits for shared resources (e.g., HPCs)", immediate. = T)
         }
         
-        logger::log_info(glue::glue("Running SHAP with nsim = {safe_nsim}"))
+        logger::log_level(level = "INFO", glue::glue("Running SHAP with nsim = {safe_nsim}"))
         
         ## start a parallel process
         ## xgboost does not like parallel shap
@@ -147,7 +147,7 @@ shap_analysis <- function(label, output, model, filename, shap_inputs, train, te
   
   # --- Save and return results ---
   if (shap.error.occured) {
-    logger::log_warn(paste("SHAP analysis encountered an issue and all output files may not have been generated:", error_message))
+    logger::log_level(level = "WARN", paste("SHAP analysis encountered an issue and all output files may not have been generated:", error_message))
     if (!is.null(error_message)) { 
       ## attempt to still return what was written to shap_plot_env
       save(list = ls(envir = shap_plot_env), 
@@ -156,10 +156,10 @@ shap_analysis <- function(label, output, model, filename, shap_inputs, train, te
            compress = "xz"
       )
       ## return error message
-      logger::log_fatal("Error: ", error_message)
+      logger::log_level(level = "INFO", "Error: ", error_message)
     }
   } else {
-    logger::log_info("✅ SHAP analysis completed successfully.")
+    logger::log_level(level = "INFO", "✅ SHAP analysis completed successfully.")
     save(list = ls(envir = shap_plot_env), 
          envir = shap_plot_env,
          file = file.path(paste0(output_dir, "/shap_inputs_", filename, ".RData")),
@@ -197,12 +197,12 @@ shap_plot <- function(
   # Determine class labels (assumes binary classification)
   class_levels <- levels(as.factor(split_from_data_frame$data$feature_of_interest))
   if (length(class_levels) < 2) {
-    logger::log_fatal("Insufficient factor levels for feature_of_interest.")
+    logger::log_level(level = "FATAL", "Insufficient factor levels for feature_of_interest.")
     stop()
   }
   ## log shap viz positive class
   if (feature_type == "factor") {
-    logger::log_info(paste0("Positive class (shap_vis): ", class_levels[1]))
+    logger::log_level(level = "INFO", paste0("Positive class (shap_vis): ", class_levels[1]))
   }
   
   # Create plot
@@ -236,7 +236,7 @@ shap_plot <- function(
     units = "in"
   )
   
-  logger::log_info(paste0("SHAP plot saved to: ", filename_out))
+  logger::log_level(level = "INFO", paste0("SHAP plot saved to: ", filename_out))
   
   return(plot)
 }
@@ -275,7 +275,7 @@ shap_shorten_colnames <- function(shap_sv_obj, splits) {
 log_shap_analysis <- function(sv_object, top_features, data_subset) {
   
   ## Add shap header to log
-  logger::log_info(paste0("#### Mean absolute SHAP results: ", data_subset, " data (*up to top 10 features) ####"))
+  logger::log_level(level = "INFO", paste0("#### Mean absolute SHAP results: ", data_subset, " data (*up to top 10 features) ####"))
   
   ## get the top n features based on mean abs shap values
   tmp <- data.frame(feature=colnames(sv_object$S), 
@@ -286,6 +286,6 @@ log_shap_analysis <- function(sv_object, top_features, data_subset) {
   
   ## add them individually to logger
   for (n in seq(1:nrow(tmp))) {
-    logger::log_info(paste0(tmp[n,1], " | ", tmp[n,2]))
+    logger::log_level(level = "INFO", paste0(tmp[n,1], " | ", tmp[n,2]))
   }
 }

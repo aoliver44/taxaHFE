@@ -28,7 +28,7 @@ program <- paste0("taxahfe_ml", ifelse(opts$disable_super_filter, "_no_sf", "_sf
 
 ## initiate logger
 initiate_logger(opts_object = opts, program = program)
-logger::log_info("Command seen: {paste(commandArgs(), collapse = ' ')}")
+logger::log_level(level = "INFO", "Command seen: {paste(commandArgs(), collapse = ' ')}")
 
 ## Run main ====================================================================
 

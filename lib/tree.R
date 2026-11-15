@@ -14,6 +14,9 @@ options(warn = -1)
 ## initiate logger =============================================================
 initiate_logger <- function(opts_object, program) {
   
+  ## specify log threshold to info
+  logger::log_threshold(level = "INFO")
+  
   ## make output directory if doesnt exist
   if (!dir.exists(opts_object$output_dir)) {
     dir.create(path = opts_object$output_dir, showWarnings = FALSE)
@@ -23,16 +26,16 @@ initiate_logger <- function(opts_object, program) {
   if (!file.exists(paste0(opts_object$output_dir, "/", program, "_", opts_object$seed, ".log"))) {
     file.create(paste0(opts_object$output_dir, "/", program, "_", opts_object$seed, ".log"), showWarnings = FALSE)
   } else {
-    logger::log_warn("Log file", paste0(opts_object$output_dir, "/", program, "_", opts_object$seed, ".log") ,"exists with this name in this directory. You might be re-running this analysis with the same seed. The log will continue to append here.")
+    logger::log_level(level = "WARN", paste0("Log file ", opts_object$output_dir, "/", program, "_", opts_object$seed, ".log") ," exists with this name in this directory. You might be re-running this analysis with the same seed. The log will continue to append here.")
   }
   
   ## start log, create log file, specify log level, and record program and version
   logger::log_appender(logger::appender_file(file = paste0(opts_object$output_dir, "/", program, "_", opts_object$seed, ".log")), )
   ## To do: create option for verbosity in log file ie logger::log_threshold(TRACE, namespace = ".logger")
-  logger::log_info("{program}, version={Sys.getenv(\"TAXA_HFE_VERSION\")} is starting...")
+  logger::log_level(level = "INFO", "{program}, version={Sys.getenv(\"TAXA_HFE_VERSION\")} is starting...")
   ## log arguments from opts
   arg_logs <- as.data.frame(unlist(opts_object)) %>% tibble::rownames_to_column(., var = "FLAG") %>% dplyr::rename(., "VALUE" = 2)
-  logger::log_info("Arguments specified: ", paste(arg_logs$FLAG, arg_logs$VALUE, sep = ":", collapse = " | "))
+  logger::log_level(level = "INFO", "Arguments specified: ", paste(arg_logs$FLAG, arg_logs$VALUE, sep = ":", collapse = " | "))
   
   ## return nothing
   invisible()
@@ -48,9 +51,9 @@ initiate_logger <- function(opts_object, program) {
 ## predictors would look like covariates.
 read_in_metadata <- function(input, subject_identifier, label, feature_type, random_effects, limit_covariates = TRUE, k, cores) {
 
-  logger::log_info("Reading in data...")
+  logger::log_level(level = "INFO", "Reading in data...")
   if (file.exists(input) == FALSE) {
-    logger::log_fatal("DATA/METADATA input not found.")
+    logger::log_level(level = "FATAL", "DATA/METADATA input not found.")
     stop()
   }
   
@@ -82,28 +85,28 @@ read_in_metadata <- function(input, subject_identifier, label, feature_type, ran
   new_row_count <- nrow(metadata)
   
   ## log read in
-  logger::log_info("Read in {input}, which originally contains {original_row_count} rows and {NCOL(metadata)} columns")
+  logger::log_level(level = "INFO", "Read in {input}, which originally contains {original_row_count} rows and {NCOL(metadata)} columns")
   
   ## log warning if columns were dropped
   if (original_row_count > new_row_count) {
-    logger::log_warn("{(original_row_count - new_row_count)} number of DATA/METADATA rows were dropped because they contained NAs")
+    logger::log_level(level = "WARN", "{(original_row_count - new_row_count)} number of DATA/METADATA rows were dropped because they contained NAs")
   }
   
   ## log fatal if all metadata columns were dropped and hard stop
   if (nrow(metadata) == 0) {
-    logger::log_fatal("All rows were dropped in NA removal.")
+    logger::log_level(level = "FATAL", "All rows were dropped in NA removal.")
     stop()
   }
   
   ## check and make sure there are not too many metadata columns
   ## we will allow 10 total columns (8 columns of additional covariates)
   if (ncol(metadata) > 10 & limit_covariates) {
-    logger::log_warn("WARNING: You have selected quite a few covariates (this warning shows at > 8 covariates). TaxaHFE merely adds the covariates to the RF models. Its primary purpose is hierarchical feature engineering. Please do not rely on it to beautifully handle everything AND the kitchen sink")
+    logger::log_level(level = "WARN", "WARNING: You have selected quite a few covariates (this warning shows at > 8 covariates). TaxaHFE merely adds the covariates to the RF models. Its primary purpose is hierarchical feature engineering. Please do not rely on it to beautifully handle everything AND the kitchen sink")
   }
   
   ## notify user what covariates we find, if any
   if (ncol(metadata) > 2 & limit_covariates) {
-    logger::log_info("You supplied covariates to consider for the RF competition. They are: ", paste(metadata %>% dplyr::select(., -subject_id, -feature_of_interest) %>% colnames(), collapse = " "))
+    logger::log_level(level = "INFO", "You supplied covariates to consider for the RF competition. They are: ", paste(metadata %>% dplyr::select(., -subject_id, -feature_of_interest) %>% colnames(), collapse = " "))
   }
   
   ## this is an effort to clean names for the RF later, which will complain big time
@@ -114,7 +117,7 @@ read_in_metadata <- function(input, subject_identifier, label, feature_type, ran
   if (random_effects) {
     ## check for individual and time
     if (FALSE %in% (c("individual", "time") %in% colnames(metadata))) {
-      logger::log_fatal("You specified random effects, you must have metadata columns named individual and time")
+      logger::log_level(level = "FATAL", "You specified random effects, you must have metadata columns named individual and time")
       stop()
     }
     
@@ -132,7 +135,7 @@ read_in_metadata <- function(input, subject_identifier, label, feature_type, ran
   }
   
   ## log levels of response
-  logger::log_info("The response variable is {label}, classified as a {feature_type}, with {dplyr::n_distinct(metadata$feature_of_interest)} levels")
+  logger::log_level(level = "INFO", "The response variable is {label}, classified as a {feature_type}, with {dplyr::n_distinct(metadata$feature_of_interest)} levels")
   
   return(metadata)
 }
@@ -143,7 +146,7 @@ read_in_metadata <- function(input, subject_identifier, label, feature_type, ran
 read_in_hierarchical_data <- function(input, metadata, cores) {
   
   if (file.exists(input) == FALSE) {
-    logger::log_fatal("DATA input not found.")
+    logger::log_level(level = "FATAL", "DATA input not found.")
     stop()
   }
 
@@ -166,7 +169,7 @@ read_in_hierarchical_data <- function(input, metadata, cores) {
                               janitor::clean_names(use_make_names = F))
   
   ## log read in
-  logger::log_info("Read in {input}, which originally contains {NROW(hData)} rows and {NCOL(hData)} columns")
+  logger::log_level(level = "INFO", "Read in {input}, which originally contains {NROW(hData)} rows and {NCOL(hData)} columns")
   
   ## only select columns that are in metadata file, reduce computation if
   ## you have a lot more data than metadata
@@ -182,7 +185,7 @@ read_in_hierarchical_data <- function(input, metadata, cores) {
   
   ## check and make sure clade_name is the first column in hData
   if ("clade_name" %!in% colnames(hData)) {
-    logger::log_fatal("Column clade_name not found in input data")
+    logger::log_level(level = "FATAL", "Column clade_name not found in input data")
     stop()
   }
   if (colnames(hData)[1] != "clade_name") {
@@ -191,7 +194,7 @@ read_in_hierarchical_data <- function(input, metadata, cores) {
   
   ## check and make sure there are no NAs in hData
   if (anyNA(hData)) {
-    logger::log_fatal("Please remove NAs from your hierarchical data input.")
+    logger::log_level(level = "FATAL", "Please remove NAs from your hierarchical data input.")
     stop()
   }
   
@@ -431,7 +434,7 @@ build_tree <- function(df, filter_prevalence, filter_mean_abundance) {
   # start the unique id counter at 1 greater than the original df size
   next_row_id <- nrow(df) + 1
 
-  logger::log_info("Fixing unpopulated nodes...")
+  logger::log_level(level = "INFO", "Fixing unpopulated nodes...")
   pb2 <- progress::progress_bar$new(format = " Fixing unpopulated nodes [:bar] :percent in :elapsed", total = taxa_tree$totalCount, clear = FALSE, width = 60)
 
   # traverse the tree and fix the unpopulated nodes
@@ -444,7 +447,7 @@ build_tree <- function(df, filter_prevalence, filter_mean_abundance) {
     next_row_id <<- next_row_id + 1
   }, traversal = "post-order")
 
-  logger::log_info("Tree built!")
+  logger::log_level(level = "INFO", "Tree built!")
   return(taxa_tree)
 }
 
@@ -674,7 +677,7 @@ compete_tree <- function(tree, modify_tree = TRUE, col_names, lowest_level = 2, 
   # if not modifying the input tree, create a copy of the tree to perform the competition
   if (!modify_tree) tree <- data.tree::Clone(tree)
 
-  logger::log_info("Competing tree...")
+  logger::log_level(level = "INFO", "Competing tree...")
   pb <- progress::progress_bar$new(format = " Competing tree [:bar] :percent in :elapsed", total = tree$totalCount, clear = FALSE, width = 60)
 
   # perform the competition, modifying the tree (which may or may not be a clone of the input)
@@ -695,11 +698,11 @@ compete_tree <- function(tree, modify_tree = TRUE, col_names, lowest_level = 2, 
     random_effects = random_effects
   )
 
-  logger::log_info("Inital tree competition done!")
+  logger::log_level(level = "INFO", "Inital tree competition done!")
   # compete all winners
   # increasing nperm by a factor of 10 to further reduce the variability in the final rf importance scores
   if (disable_super_filter == FALSE) {
-    logger::log_info("Competing final winners...")
+    logger::log_level(level = "INFO", "Competing final winners...")
     compete_all_winners(
       tree,
       metadata,
@@ -710,9 +713,9 @@ compete_tree <- function(tree, modify_tree = TRUE, col_names, lowest_level = 2, 
       random_effects,
       max_level
     )
-    logger::log_info("Competing final winners finished!")
+    logger::log_level(level = "INFO", "Competing final winners finished!")
   } else {
-    logger::log_info("Skipping super filter!")
+    logger::log_level(level = "INFO", "Skipping super filter!")
   }
 
   # return the tree
@@ -978,15 +981,15 @@ generate_outputs <- function(tree, metadata, col_names, output_location, disable
     write_output_file(flattened_winners, metadata, output_location, "taxahfe_no_sf.csv")
   }
   
-  logger::log_info(paste0("Features (no super filter): ", nrow(flattened_winners)))
+  logger::log_level(level = "INFO", paste0("Features (no super filter): ", nrow(flattened_winners)))
   
   if (disable_super_filter != TRUE) {
-    logger::log_info(paste0("Features (super filter): ", nrow(flattened_sf_winners)))
+    logger::log_level(level = "INFO", paste0("Features (super filter): ", nrow(flattened_sf_winners)))
   }
 
   ## write old files
   if (write_old_files == TRUE) {
-    logger::log_info("Writing old files...")
+    logger::log_level(level = "INFO", "Writing old files...")
     write_summary_files(input = flattened_df, metadata = metadata, output = output_location)
     write_oudah_input(input = flattened_df, output = output_location, metadata = metadata)
   }
