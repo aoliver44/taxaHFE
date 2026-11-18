@@ -196,7 +196,7 @@ run_dietML_enet <- function(split_from_data_frame, seed, folds, cv_repeats,
                             parallel_workers, ncores, tune_length, tune_stop, 
                             tune_time, metric, feature_of_interest, model, program, 
                             output, type, null_results, cor_level, vif_threshold,
-                            info_gain_n, pct_loss, diet_ml_recipe) {
+                            info_gain_n, pct_loss, diet_ml_recipe, shuffle_response) {
   
   ## log start of ENET function
   logger::log_level(level = "INFO", "{model} model started...")
